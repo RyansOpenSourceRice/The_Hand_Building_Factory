@@ -37,6 +37,16 @@ describe('AssemblyStage', () => {
     stage.endGrab('xr');
   };
 
+  const driveAll = (target: AssemblyStage = stage) => {
+    for (let guard = 0; guard < 20; guard++) {
+      const site = target.screwSites()[0];
+      if (!site) {
+        return;
+      }
+      target.driveTick(2, site, true, 'xr');
+    }
+  };
+
   it('starts on the palm as the only grab candidate', () => {
     expect(stage.currentIndex).toBe(0);
     const palm = stage.currentPart;
@@ -45,11 +55,19 @@ describe('AssemblyStage', () => {
     expect(stage.isGrabCandidate(next)).toBe(false);
   });
 
-  it('advances the queue after a snap', () => {
+  it('holds the queue while screws are pending', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    expect(stage.currentIndex).toBe(0);
+    expect(stage.screwSites()).toHaveLength(4);
+    expect(statuses.at(-1)).toContain('mounted');
+  });
+
+  it('advances the queue after driving all screws', () => {
     const palm = stage.currentPart;
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     grabTo(ghost.position);
-    expect(palm.isEnabled()).toBe(true);
+    driveAll();
     expect(stage.currentIndex).toBe(1);
     const servo = stage.currentPart;
     expect(stage.isGrabCandidate(servo)).toBe(true);
@@ -77,6 +95,7 @@ describe('AssemblyStage', () => {
   it('undo reverts a snap within the current part', () => {
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     grabTo(ghost.position);
+    driveAll();
     expect(stage.currentIndex).toBe(1);
     stage.undo();
     expect(stage.currentIndex).toBe(0);
@@ -110,7 +129,31 @@ describe('AssemblyStage', () => {
     stage.onProgress = (done, total) => progress.push([done, total]);
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     grabTo(ghost.position);
+    driveAll();
     expect(progress.at(-1)).toEqual([1, 13]);
+  });
+
+  it('undo reverts a driven screw', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    const sites = stage.screwSites();
+    stage.driveTick(2, sites[0] ?? null, true, 'xr');
+    stage.driveTick(2, stage.screwSites()[0] ?? null, true, 'xr');
+    expect(stage.screwSites()).toHaveLength(2);
+    stage.undo();
+    expect(stage.screwSites()).toHaveLength(3);
+    expect(statuses.at(-1)).toBe('Undo.');
+  });
+
+  it('does not drive screws while a part is carried', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    stage.startGrab('xr');
+    expect(stage.screwSites()).toHaveLength(0);
+    stage.driveTick(2, new Vector3(0, 1.2, 0.1), true, 'xr');
+    stage.moveGrabbed(ghost.position);
+    expect(stage.screwSites()).toHaveLength(0);
+    stage.endGrab('xr');
+    expect(stage.screwSites()).toHaveLength(4);
   });
 
   it('spawns parts resting on their source machine', () => {
@@ -122,6 +165,7 @@ describe('AssemblyStage', () => {
     quiet.startGrab('xr');
     quiet.moveGrabbed(ghost.position);
     quiet.endGrab('xr');
+    driveAll(quiet);
     const servo = quiet.currentPart;
     expect(servo.position.x).toBeCloseTo(0.62, 2);
     expect(servo.position.y).toBeCloseTo(1.18, 2);

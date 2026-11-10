@@ -6,9 +6,12 @@ import type {
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import type {WebXRInputSource} from '@babylonjs/core/XR/webXRInputSource';
 import type {AssemblyStage} from '../game/assembly';
+import type {Screwdriver} from '../game/screwdriver';
 
 const PULSE_VALUE = 0.7;
 const PULSE_DURATION_MS = 60;
+const PULSE_SOFT_VALUE = 0.05;
+const PULSE_SOFT_DURATION_MS = 40;
 
 let liveControllers: WebXRInputSource[] = [];
 
@@ -21,43 +24,101 @@ export function pulseController(tag: string): void {
   }
 }
 
+export function pulseControllerSoft(tag: string): void {
+  if (tag !== 'xr') {
+    return;
+  }
+  for (const ctrl of liveControllers) {
+    void ctrl.motionController?.pulse(
+        PULSE_SOFT_VALUE,
+        PULSE_SOFT_DURATION_MS,
+    );
+  }
+}
+
 export function attachXrGrab(
     xr: WebXRDefaultExperience,
     stage: AssemblyStage,
+    driver: Screwdriver,
     scene: Scene,
 ): void {
   const ray = new Ray(Vector3.Zero(), Vector3.Forward());
+  const tipScratch = new Vector3();
   let holder: WebXRInputSource | null = null;
+  let holderMode: 'part' | 'tool' | null = null;
+  let driving = false;
 
   const controllerFor = (source: XRInputSource): WebXRInputSource | undefined =>
     xr.input.controllers.find((ctrl) => ctrl.inputSource === source);
 
   const release = (): void => {
+    if (holderMode === 'tool') {
+      driver.endGrab('xr');
+    } else if (holderMode === 'part') {
+      stage.endGrab('xr');
+    }
     holder = null;
-    stage.endGrab('xr');
+    holderMode = null;
+    driving = false;
   };
 
-  const onSelectStart = (event: XRInputSourceEvent): void => {
-    const ctrl = controllerFor(event.inputSource);
-    if (!ctrl || holder) {
+  const grabAt = (ctrl: WebXRInputSource): void => {
+    ctrl.getWorldPointerRayToRef(ray);
+    const pick = scene.pickWithRay(ray, (mesh) =>
+      stage.isGrabCandidate(mesh) || driver.isGrabCandidate(mesh));
+    const root = pick?.pickedMesh;
+    if (!root) {
       return;
     }
-    ctrl.getWorldPointerRayToRef(ray);
-    const pick = scene.pickWithRay(ray, (mesh) => stage.isGrabCandidate(mesh));
-    if (pick?.pickedMesh && stage.startGrab('xr')) {
+    if (driver.isGrabCandidate(root) && driver.startGrab('xr')) {
       holder = ctrl;
+      holderMode = 'tool';
+      driver.attachTo(ctrl.pointer);
+      return;
+    }
+    if (stage.isGrabCandidate(root) && stage.startGrab('xr')) {
+      holder = ctrl;
+      holderMode = 'part';
       stage.attachTo(ctrl.pointer);
     }
   };
 
+  const onSelectStart = (event: XRInputSourceEvent): void => {
+    const ctrl = controllerFor(event.inputSource);
+    if (!ctrl) {
+      return;
+    }
+    if (ctrl === holder && holderMode === 'tool') {
+      driving = true;
+      return;
+    }
+    if (holder) {
+      return;
+    }
+    grabAt(ctrl);
+  };
+
   const onSelectEnd = (event: XRInputSourceEvent): void => {
-    if (controllerFor(event.inputSource) === holder && holder) {
+    const ctrl = controllerFor(event.inputSource);
+    if (!ctrl) {
+      return;
+    }
+    if (ctrl === holder && holderMode === 'tool') {
+      driving = false;
+      return;
+    }
+    if (ctrl === holder && holderMode === 'part') {
       release();
     }
   };
 
   const onSqueezeStart = (event: XRInputSourceEvent): void => {
-    if (controllerFor(event.inputSource) === holder && holder) {
+    const ctrl = controllerFor(event.inputSource);
+    if (ctrl === holder && holderMode === 'tool') {
+      release();
+      return;
+    }
+    if (ctrl === holder && holderMode === 'part') {
       release();
     }
     stage.reset();
@@ -92,5 +153,13 @@ export function attachXrGrab(
     if (holder) {
       release();
     }
+  });
+
+  scene.onBeforeRenderObservable.add(() => {
+    if (holderMode !== 'tool' || !driving) {
+      return;
+    }
+    const dt = scene.getEngine().getDeltaTime() / 1000;
+    stage.driveTick(dt, driver.tipWorld(tipScratch), true, 'xr');
   });
 }

@@ -14,10 +14,16 @@ import {
 } from './scene/environment';
 import {enableGamePhysics} from './scene/physics';
 import {AssemblyStage} from './game/assembly';
+import {Screwdriver} from './game/screwdriver';
+import {ratchet, screwClick, snap} from './audio/sfx';
 import {SettingsStore} from './game/settings';
 import {createPartProvider, loadPrototypes} from './scene/partMeshes';
 import {Hud} from './ui/hud';
-import {attachXrGrab, pulseController} from './input/xrGrab';
+import {
+  attachXrGrab,
+  pulseController,
+  pulseControllerSoft,
+} from './input/xrGrab';
 import {attachXrLocomotion} from './input/locomotion';
 import {attachDesktopControls} from './input/desktopControls';
 import {attachDesktopGrab} from './input/desktopGrab';
@@ -81,6 +87,17 @@ async function boot(): Promise<void> {
       createPartProvider(prototypes),
       reducedMotion,
   );
+  const driver = new Screwdriver(scene);
+  driver.show();
+  stage.onRatchet = (tag) => {
+    ratchet();
+    pulseControllerSoft(tag);
+  };
+  stage.onScrewDriven = () => screwClick();
+  stage.onSnapped = (tag) => {
+    pulseController(tag);
+    snap();
+  };
   const hud = new Hud({
     reset: () => stage.reset(),
     undo: () => stage.undo(),
@@ -89,7 +106,6 @@ async function boot(): Promise<void> {
     cycleSnapAngle: () => settings.cycleSnapAngle(),
   });
   stage.onStatus = (text) => hud.setStatus(text);
-  stage.onSnapped = (tag) => pulseController(tag);
   stage.onPartInfo = (info) => hud.setPartInfo(info);
   const applySettings = (): void => {
     const current = settings.get();
@@ -129,7 +145,7 @@ async function boot(): Promise<void> {
   });
   const xr = await initXr(scene, env.ground);
   if (xr) {
-    attachXrGrab(xr, stage, scene);
+    attachXrGrab(xr, stage, driver, scene);
     attachXrLocomotion(xr, settings, scene, reportCamera);
     hud.hideDesktopOnly();
     hud.setReady('xr');
@@ -161,7 +177,7 @@ async function boot(): Promise<void> {
         'Assemble the hand. Grab the part waiting on the printer bed.');
   }
   attachDesktopControls(scene, camera, reportCamera);
-  attachDesktopGrab(scene, camera, stage);
+  attachDesktopGrab(scene, camera, stage, driver);
 
   document.getElementById('boot-fallback')?.remove();
   engine.runRenderLoop(() => scene.render());
