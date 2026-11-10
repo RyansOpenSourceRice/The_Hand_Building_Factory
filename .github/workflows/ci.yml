@@ -25,8 +25,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npx playwright install --with-deps firefox
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
       - run: npm run build
-      - run: npm run test:e2e
+      - run: xvfb-run -a npm run test:e2e
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
 
