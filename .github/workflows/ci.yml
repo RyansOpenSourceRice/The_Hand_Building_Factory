@@ -32,7 +32,9 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
 
   deploy-pages:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: quality
     runs-on: ubuntu-latest
     environment:
