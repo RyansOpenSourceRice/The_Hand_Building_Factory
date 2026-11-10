@@ -9,8 +9,9 @@ import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import {createEnvironment} from './scene/environment';
-import {DemoStage} from './game/demoStage';
+import {AssemblyStage} from './game/assembly';
 import {SettingsStore} from './game/settings';
+import {createPartProvider, loadPrototypes} from './scene/partMeshes';
 import {Hud} from './ui/hud';
 import {attachXrGrab, pulseController} from './input/xrGrab';
 import {attachXrLocomotion} from './input/locomotion';
@@ -65,7 +66,8 @@ async function boot(): Promise<void> {
   camera.minZ = 0.05;
 
   const settings = new SettingsStore();
-  const stage = new DemoStage(scene, {pedestalTop: env.pedestalTop});
+  const prototypes = await loadPrototypes(scene);
+  const stage = new AssemblyStage(scene, createPartProvider(prototypes));
   const hud = new Hud({
     reset: () => stage.reset(),
     undo: () => stage.undo(),
@@ -73,6 +75,9 @@ async function boot(): Promise<void> {
     cycleTurnMode: () => settings.cycleTurnMode(),
     cycleSnapAngle: () => settings.cycleSnapAngle(),
   });
+  stage.onStatus = (text) => hud.setStatus(text);
+  stage.onSnapped = (tag) => pulseController(tag);
+  stage.onPartInfo = (info) => hud.setPartInfo(info);
   const applySettings = (): void => {
     const current = settings.get();
     hud.setSettings(current.turnMode, current.snapAngle);
@@ -109,8 +114,6 @@ async function boot(): Promise<void> {
       stage.redo();
     }
   });
-  stage.onStatus = (text) => hud.setStatus(text);
-  stage.onSnapped = (tag) => pulseController(tag);
   const xr = await initXr(scene, env.ground);
   if (xr) {
     attachXrGrab(xr, stage, scene);
@@ -142,7 +145,7 @@ async function boot(): Promise<void> {
     hud.setStatus(uaQuest ?
         'WebXR is missing in this browser even though this looks like ' +
         'a Quest. Reload the page, or open a private window and try again.' :
-        'Grab the red part. Slot it into the blue outline.');
+        'Assemble the hand. Grab the part waiting on the printer bed.');
   }
   attachDesktopControls(scene, camera, reportCamera);
   attachDesktopGrab(scene, camera, stage);

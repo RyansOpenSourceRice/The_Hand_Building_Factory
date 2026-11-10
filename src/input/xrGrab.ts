@@ -5,7 +5,7 @@ import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import type {WebXRInputSource} from '@babylonjs/core/XR/webXRInputSource';
-import type {DemoStage} from '../game/demoStage';
+import type {AssemblyStage} from '../game/assembly';
 
 const PULSE_VALUE = 0.7;
 const PULSE_DURATION_MS = 60;
@@ -23,7 +23,7 @@ export function pulseController(tag: string): void {
 
 export function attachXrGrab(
     xr: WebXRDefaultExperience,
-    stage: DemoStage,
+    stage: AssemblyStage,
     scene: Scene,
 ): void {
   const ray = new Ray(Vector3.Zero(), Vector3.Forward());
@@ -46,7 +46,7 @@ export function attachXrGrab(
     const pick = scene.pickWithRay(ray, (mesh) => stage.isGrabCandidate(mesh));
     if (pick?.pickedMesh && stage.startGrab('xr')) {
       holder = ctrl;
-      stage.part.setParent(ctrl.pointer);
+      stage.attachTo(ctrl.pointer);
     }
   };
 

@@ -3,7 +3,7 @@ import {Plane} from '@babylonjs/core/Maths/math.plane';
 import {PointerEventTypes} from '@babylonjs/core/Events/pointerEvents';
 import type {UniversalCamera} from '@babylonjs/core/Cameras/universalCamera';
 import {Scene} from '@babylonjs/core/scene';
-import {DemoStage} from '../game/demoStage';
+import {AssemblyStage} from '../game/assembly';
 
 const LOOK_SENSITIVITY = 0.0045;
 const PITCH_MIN = -0.65;
@@ -12,7 +12,7 @@ const PITCH_MAX = 0.45;
 export function attachDesktopGrab(
     scene: Scene,
     camera: UniversalCamera,
-    stage: DemoStage,
+    stage: AssemblyStage,
 ): void {
   let dragging = false;
   let looking = false;

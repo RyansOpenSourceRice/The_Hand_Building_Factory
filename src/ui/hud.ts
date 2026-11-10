@@ -231,6 +231,12 @@ export class Hud {
     }
   }
 
+  setPartInfo(info: string): void {
+    if (this.live) {
+      this.live.setAttribute('data-part', info);
+    }
+  }
+
   showDesktopOnly(uaQuest = false): void {
     this.xrNote.isVisible = true;
     if (this.live) {

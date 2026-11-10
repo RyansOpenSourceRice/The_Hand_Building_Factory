@@ -47,7 +47,8 @@ test('reset returns the part', async ({page}) => {
   });
 
   await page.mouse.click(1187, 655);
-  await expect(status).toContainText('Part returned', {timeout: 5_000});
+  await expect(status).toContainText('returned', {timeout: 5_000});
+  await expect(status).toHaveAttribute('data-part', /^palm:/);
 });
 
 test('settings buttons flip turn mode and snap angle', async ({page}) => {
