@@ -1,11 +1,10 @@
 # AI use in this project
 
-This document records which AI tools and models were used to build HANDS ON!,
-for transparency and for the jam's AI disclosure requirements.
-
-The shipped game itself contains no AI. Nothing in the build talks to an AI
-service at runtime. All AI use happened during development, on the tools
-listed below.
+HANDS ON! is vibe coded. Ryan directs, OpenCode writes, and every change is
+reviewed before it lands. This document records which AI tools and models
+were used, for transparency and for the jam's AI disclosure requirements.
+The list below covers development only; the running game is a static build
+and makes no AI service calls.
 
 ## Development tools and models
 
@@ -39,9 +38,9 @@ listed below.
 
 ## Disclosure summary (for the jam page)
 
-- Code: largely AI-assisted (OpenCode + GLM-5.3-Flash), human-directed and
-  human-reviewed.
+- Code: vibe coded — written by OpenCode (GLM-5.3-Flash) under Ryan's
+  direction and review.
 - Development memory/notes: AI-assisted (SuperMemory).
 - In-game media: generated in code by this project; any AI-generated media
   will be listed here and on the itch.io page before submission.
-- Runtime: no AI models, no AI service calls.
+- Runtime: static build, no AI service calls.
