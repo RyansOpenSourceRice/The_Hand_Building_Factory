@@ -74,7 +74,13 @@ async function boot(): Promise<void> {
 
   const settings = new SettingsStore();
   const prototypes = await loadPrototypes(scene);
-  const stage = new AssemblyStage(scene, createPartProvider(prototypes));
+  const reducedMotion =
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stage = new AssemblyStage(
+      scene,
+      createPartProvider(prototypes),
+      reducedMotion,
+  );
   const hud = new Hud({
     reset: () => stage.reset(),
     undo: () => stage.undo(),

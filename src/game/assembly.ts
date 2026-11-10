@@ -11,7 +11,11 @@ import {
 import type {PhysicsBody} from '@babylonjs/core/Physics/v2/physicsBody';
 import {makeBoxBody} from '../scene/physics';
 import type {PartDef} from './handParts';
-import {PART_DEFS} from './handParts';
+import {
+  CONVEYOR_BELT_TOP,
+  PART_DEFS,
+  PRINTER_BED_TOP,
+} from './handParts';
 import {SnapService} from './snap';
 
 const HISTORY_LIMIT = 50;
@@ -42,9 +46,14 @@ type PartState = {
 
 const STANDING_TILT = Math.PI / 2;
 const FALLEN_Y = -1;
+const SPAWN_DROP = 0.04;
+const SPAWN_SLIDE = 0.3;
+const SPAWN_FRAMES = 14;
+const EMISSIVE_FLASH = 0.45;
 
 export class AssemblyStage {
   private readonly states: PartState[] = [];
+  private readonly reducedMotion: boolean;
   private lastTouched = 0;
   private grabbing = false;
   private grabbedBy: string | null = null;
@@ -58,7 +67,9 @@ export class AssemblyStage {
   constructor(
       scene: Scene,
       provider: (def: PartDef, scene: Scene) => Mesh,
+      reducedMotion = false,
   ) {
+    this.reducedMotion = reducedMotion;
     this.ghostMaterial = new StandardMaterial('ghostMat', scene);
     this.ghostMaterial.diffuseColor = new Color3(0.16, 0.45, 1.0);
     this.ghostMaterial.emissiveColor = new Color3(0.08, 0.26, 0.8);
@@ -81,6 +92,7 @@ export class AssemblyStage {
           0,
           0,
       );
+      mesh.position.y = this.restHeight(def, mesh);
 
       const ghost = mesh.clone(`ghost:${def.id}`);
       ghost.material = this.ghostMaterial;
@@ -320,9 +332,43 @@ export class AssemblyStage {
     this.setBodyMotion(state, PhysicsMotionType.STATIC);
     state.mesh.position.copyFrom(state.home);
     state.mesh.rotationQuaternion = state.homeQuat.clone();
-    const source = state.def.source === 'printer' ? 'printer' : 'conveyor';
+    const printer = state.def.source === 'printer';
+    if (!this.reducedMotion) {
+      const from = state.home.clone();
+      if (printer) {
+        from.y += SPAWN_DROP;
+      } else {
+        from.z -= SPAWN_SLIDE;
+      }
+      state.mesh.position.copyFrom(from);
+      this.tweenTo(state, state.home, state.homeQuat);
+      this.flash(state);
+    }
+    const source = printer ? 'printer' : 'conveyor';
     this.report(`Next part: the ${state.def.label}, at the ${source}.`);
     this.reportPartInfo(state);
+  }
+
+  private flash(state: PartState): void {
+    const material = state.mesh.material as StandardMaterial;
+    const base = Color3.FromHexString(state.def.color);
+    Animation.CreateAndStartAnimation(
+        'partFlash',
+        material,
+        'emissiveColor',
+        60,
+        SPAWN_FRAMES,
+        base.scale(EMISSIVE_FLASH),
+        base.scale(0.06),
+        0,
+    );
+  }
+
+  private restHeight(def: PartDef, mesh: Mesh): number {
+    const base =
+        def.source === 'printer' ? PRINTER_BED_TOP : CONVEYOR_BELT_TOP;
+    const {min, max} = mesh.getHierarchyBoundingVectors();
+    return base + (max.y - min.y) / 2;
   }
 
   private ensureBody(state: PartState): PhysicsBody | null {

@@ -24,6 +24,8 @@ const SERVO_BACK_Z = -0.19;
 
 export const PRINTER_HOME: Vec3Literal = {x: -0.36, y: 1.115, z: 0.36};
 export const CONVEYOR_HOME: Vec3Literal = {x: 0.62, y: 1.16, z: 0.35};
+export const PRINTER_BED_TOP = 1.09;
+export const CONVEYOR_BELT_TOP = 1.13;
 
 const servoScrew = (x: number, y: number): Vec3Literal => ({
   x,

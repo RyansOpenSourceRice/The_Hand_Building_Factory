@@ -112,4 +112,22 @@ describe('AssemblyStage', () => {
     grabTo(ghost.position);
     expect(progress.at(-1)).toEqual([1, 13]);
   });
+
+  it('spawns parts resting on their source machine', () => {
+    const quiet = new AssemblyStage(scene, boxProvider, true);
+    const palm = quiet.currentPart;
+    expect(palm.position.x).toBeCloseTo(-0.36, 2);
+    expect(palm.position.y).toBeCloseTo(1.14, 2);
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    quiet.startGrab('xr');
+    quiet.moveGrabbed(ghost.position);
+    quiet.endGrab('xr');
+    const servo = quiet.currentPart;
+    expect(servo.position.x).toBeCloseTo(0.62, 2);
+    expect(servo.position.y).toBeCloseTo(1.18, 2);
+  });
+
+  it('holds the spawn offset until the scene renders', () => {
+    expect(stage.currentPart.position.y).toBeCloseTo(1.18, 2);
+  });
 });
