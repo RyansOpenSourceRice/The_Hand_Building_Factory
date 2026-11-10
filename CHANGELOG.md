@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.10.2] - 2026-11-10
+
+### Added
+
+- `CITATION.cff` with citation metadata (author Ryan Glascock, CalVer
+  version, Apache-2.0, repository URL). CI now fails when the citation
+  version drifts from `package.json`.
+- Visible boot screen in plain HTML so the page is never blank, and a
+  detailed error screen (type, detail, explanation, next steps) when the
+  scene fails to start.
+- `docs/AI_USAGE.md` recording the development-time AI tools and models.
+
+### Fixed
+
+- Production build now uses relative asset paths, so GitHub Pages serves
+  it from the repository subpath (previously a blank page).
+- CI E2E runs under a virtual display with software GL, fixing the
+  headless Firefox "WebGL not supported" failure.
+- Pages deploy now also runs for manual workflow_dispatch runs on main.
+
 ## [2026.11.10.1] - 2026-11-10
 
 ### Added

@@ -7,7 +7,7 @@ Operating rules for AI agents working in this repository. Distilled from Ryan's 
 - Commit author: `RyansOpenSourceRice <43384871+RyansOpenSourceRice@users.noreply.github.com>`. Never add `Co-Authored-By: AI` trailers.
 - Branch model: protected `main`, integration branch `dev`. New work lands in `dev` first; merges to `main` happen via squash pull requests. Prefer linear history.
 - Pushes are manual and operator-triggered, only after a diff review. Never force-push, never rewrite published history.
-- Versioning: CalVer `YYYY.MM.DD.N` in `package.json` and `CHANGELOG.md` (Keep a Changelog format, updated as part of each change).
+- Versioning: CalVer `YYYY.MM.DD.N` in `package.json`, `CHANGELOG.md`, and `CITATION.cff` (Keep a Changelog format, updated as part of each change). CI fails when the `CITATION.cff` version drifts from `package.json`.
 
 ## Engine and stack
 

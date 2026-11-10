@@ -21,11 +21,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Verify citation metadata is in sync
+        run: >-
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8')).version;const m=fs.readFileSync('CITATION.cff','utf8').match(/^version:\s*\"([^\"]+)\"/m);if(!m){console.error('CITATION.cff has no version field');process.exit(1);}if(m[1]!==p){console.error(`CITATION.cff version ${m[1]} != package.json version ${p}`);process.exit(1);}"
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npx playwright install --with-deps firefox
-      - run: sudo apt-get update && sudo apt-get install -y xvfb
       - run: npm run build
       - run: xvfb-run -a npm run test:e2e
         env:

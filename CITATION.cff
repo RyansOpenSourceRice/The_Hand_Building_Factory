@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "HANDS ON!"
+type: software
+authors:
+  - given-names: Ryan
+    family-names: Glascock
+version: "2026.11.10.2"
+date-released: "2026-11-10"
+license: Apache-2.0
+repository-code: "https://github.com/RyansOpenSourceRice/The_Hand_Building_Factory"
+abstract: >-
+  HANDS ON! is a Meta Quest 3 WebXR game where you assemble a robotic hand
+  on stage while the crowd cheers. Built with Babylon.js for the Super
+  Free AI Game Jam 2.
+keywords:
+  - webxr
+  - babylonjs
+  - virtual-reality
+  - game-jam
