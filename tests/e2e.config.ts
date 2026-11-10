@@ -13,6 +13,12 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     headless: true,
+    launchOptions: {
+      firefoxUserPrefs: {
+        'webgl.force-enabled': true,
+        'webgl.disabled': false,
+      },
+    },
   },
   webServer: {
     command: 'npm run preview -- --port 4173 --strictPort',
