@@ -4,6 +4,7 @@ import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import {Scene} from '@babylonjs/core/scene';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import '@babylonjs/core/XR/webXRDefaultExperience';
+import {WebXRState} from '@babylonjs/core/XR/webXRTypes';
 import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
@@ -13,9 +14,7 @@ import {Hud} from './ui/hud';
 import {attachXrGrab, pulseController} from './input/xrGrab';
 import {attachDesktopGrab} from './input/desktopGrab';
 
-type XrCapableNavigator = Navigator & {
-  xr?: { isSessionSupported(mode: string): Promise<boolean> };
-};
+type XrCapableNavigator = Navigator & {xr?: object};
 
 async function initXr(
     scene: Scene,
@@ -23,15 +22,6 @@ async function initXr(
 ): Promise<WebXRDefaultExperience | null> {
   const nav = navigator as XrCapableNavigator;
   if (!nav.xr) {
-    return null;
-  }
-  let supported: boolean;
-  try {
-    supported = await nav.xr.isSessionSupported('immersive-vr');
-  } catch {
-    return null;
-  }
-  if (!supported) {
     return null;
   }
   return scene.createDefaultXRExperienceAsync({
@@ -71,16 +61,33 @@ async function boot(): Promise<void> {
   const hud = new Hud(() => stage.reset());
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onSnapped = (tag) => pulseController(tag);
-  hud.setStatus('Grab the red part. Slot it into the blue outline.');
-
   const xr = await initXr(scene, env.ground);
   if (xr) {
     attachXrGrab(xr, stage, scene);
     hud.hideDesktopOnly();
     hud.setReady('xr');
+    hud.setEnterVr(() => {
+      xr.baseExperience
+          .enterXRAsync('immersive-vr', 'local-floor')
+          .then(() => hud.hideEnterVr())
+          .catch((err: unknown) => {
+            console.error(err);
+            const reason = err instanceof Error ? err.message : String(err);
+            hud.setStatus('VR did not start. ' + reason);
+          });
+    });
+    xr.baseExperience.onStateChangedObservable.add((state) => {
+      if (state === WebXRState.IN_XR) {
+        hud.hideEnterVr();
+      } else if (state === WebXRState.NOT_IN_XR) {
+        hud.showEnterVr();
+      }
+    });
+    hud.setStatus('VR ready. Press ENTER VR to start.');
   } else {
     hud.showDesktopOnly();
     hud.setReady('desktop');
+    hud.setStatus('Grab the red part. Slot it into the blue outline.');
   }
   attachDesktopGrab(scene, camera, stage);
 

@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.10.3] - 2026-11-10
+
+### Changed
+
+- Assume VR when a browser exposes `navigator.xr`: the unreliable
+  `isSessionSupported` pre-check is gone, and a large ENTER VR button now
+  starts the session from its own click (which also satisfies the WebXR
+  user-gesture requirement). The button hides in VR and returns on exit.
+- When a session fails to start, the status line reports the reason and the
+  stage stays usable instead of treating it as fatal.
+
 ## [2026.11.10.2] - 2026-11-10
 
 ### Added

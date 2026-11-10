@@ -11,11 +11,15 @@ export class Hud {
   private readonly live: HTMLElement | null;
   private readonly statusBlock: TextBlock;
   private readonly xrNote: TextBlock;
+  private enterVrButton: Button | null = null;
+  private enterVrHandler: (() => void) | null = null;
+
+  private readonly adt: AdvancedDynamicTexture;
 
   constructor(onReset: () => void) {
     this.live = document.getElementById('live-status');
 
-    const adt = AdvancedDynamicTexture.CreateFullscreenUI('ui', true);
+    this.adt = AdvancedDynamicTexture.CreateFullscreenUI('ui', true);
 
     const title = new TextBlock('title');
     title.text = 'HANDS ON!';
@@ -27,7 +31,7 @@ export class Hud {
     title.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     title.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     title.top = '3%';
-    adt.addControl(title);
+    this.adt.addControl(title);
 
     this.statusBlock = new TextBlock('status');
     this.statusBlock.fontFamily = FONT;
@@ -37,7 +41,7 @@ export class Hud {
     this.statusBlock.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     this.statusBlock.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     this.statusBlock.top = '10%';
-    adt.addControl(this.statusBlock);
+    this.adt.addControl(this.statusBlock);
 
     const hint = new TextBlock('hint');
     hint.text =
@@ -49,7 +53,7 @@ export class Hud {
     hint.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     hint.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
     hint.top = '-6%';
-    adt.addControl(hint);
+    this.adt.addControl(hint);
 
     this.xrNote = new TextBlock('xrNote');
     this.xrNote.text =
@@ -63,7 +67,7 @@ export class Hud {
     this.xrNote.left = '3%';
     this.xrNote.top = '3%';
     this.xrNote.isVisible = false;
-    adt.addControl(this.xrNote);
+    this.adt.addControl(this.xrNote);
 
     const reset = Button.CreateSimpleButton('reset', 'RESET');
     reset.fontFamily = FONT;
@@ -78,7 +82,7 @@ export class Hud {
     reset.left = '-3%';
     reset.top = '-6%';
     reset.onPointerClickObservable.add(() => onReset());
-    adt.addControl(reset);
+    this.adt.addControl(reset);
   }
 
   setStatus(text: string): void {
@@ -88,9 +92,43 @@ export class Hud {
     }
   }
 
+  setEnterVr(handler: () => void): void {
+    this.enterVrHandler = handler;
+    if (this.enterVrButton) {
+      this.enterVrButton.isVisible = true;
+      return;
+    }
+    const enter = Button.CreateSimpleButton('enterVr', 'ENTER VR');
+    enter.fontFamily = FONT;
+    enter.fontSize = '26px';
+    enter.color = '#f2f4ff';
+    enter.background = 'rgba(35, 45, 80, 0.9)';
+    enter.cornerRadius = 12;
+    enter.width = '240px';
+    enter.height = '64px';
+    enter.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    enter.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    enter.top = '-14%';
+    enter.onPointerClickObservable.add(() => this.enterVrHandler?.());
+    this.adt.addControl(enter);
+    this.enterVrButton = enter;
+  }
+
+  showEnterVr(): void {
+    if (this.enterVrButton) {
+      this.enterVrButton.isVisible = true;
+    }
+  }
+
+  hideEnterVr(): void {
+    if (this.enterVrButton) {
+      this.enterVrButton.isVisible = false;
+    }
+  }
+
   setReady(mode: 'xr' | 'desktop'): void {
     if (this.live) {
-      this.live.textContent = `ready:${mode}`;
+      this.live.setAttribute('data-ready', mode);
     }
   }
 

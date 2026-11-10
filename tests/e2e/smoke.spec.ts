@@ -9,7 +9,9 @@ test('boots to a running scene with no page errors', async ({page}) => {
   await expect(page.locator('#stage')).toBeVisible();
 
   const status = page.locator('#live-status');
-  await expect(status).toHaveText(/ready:(xr|desktop)/, {timeout: 20_000});
+  await expect(status).toHaveAttribute('data-ready', /^(xr|desktop)$/, {
+    timeout: 20_000,
+  });
 
   expect(errors).toEqual([]);
 });

@@ -7,6 +7,13 @@ What HANDS ON! does, milestone by milestone.
 - A stage scene loads: floor, lit pedestal, spot light, curtain backdrop.
 - A red part rests on the pedestal. A translucent blue outline floats to its
   upper right, showing where the part belongs.
+- Any browser that exposes `navigator.xr` (Quest browsers included) is
+  treated as XR-capable: a large ENTER VR button appears bottom-center.
+  Pressing it starts an immersive-vr session with a local-floor reference
+  space; the button hides while in VR and returns on exit. If the session
+  fails to start, the status line says why and the stage stays usable.
+  The support pre-check is deliberately skipped because Quest Browser has
+  been observed reporting no support even in-headset.
 - Quest 3: point at the part with a controller and hold the trigger to grab
   it. The part follows the controller. Release the trigger with the part
   inside the outline and the part locks in place, the outline fades away, and
@@ -48,7 +55,8 @@ What HANDS ON! does, milestone by milestone.
 - Frame budget pass targeting Quest 3 at 90 Hz; crowd geometry instanced.
 - Seated mode support and bench height adaptation to player height.
 - Calming pause menu; stage mirror showing the player's controller hands.
-- Final docs, itch.io HTML5 upload (fullscreen iframe embed), on-device
+- Final docs, itch.io HTML5 upload (fullscreen iframe embed, VR support
+  enabled so the iframe grants `xr-spatial-tracking`), on-device
   validation of the itch page, and jam ratings for other entries.
 
 ## Non-goals
