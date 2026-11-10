@@ -5,6 +5,11 @@ import {Quaternion, Vector3} from '@babylonjs/core/Maths/math.vector';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import {Scene} from '@babylonjs/core/scene';
+import {
+  PhysicsMotionType,
+} from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
+import type {PhysicsBody} from '@babylonjs/core/Physics/v2/physicsBody';
+import {makeBoxBody} from '../scene/physics';
 import type {PartDef} from './handParts';
 import {PART_DEFS} from './handParts';
 import {SnapService} from './snap';
@@ -25,6 +30,7 @@ type PartState = {
   mesh: Mesh;
   ghost: Mesh;
   snap: SnapService;
+  body: PhysicsBody | null;
   home: Vector3;
   homeQuat: Quaternion;
   socket: Vector3;
@@ -35,6 +41,7 @@ type PartState = {
 };
 
 const STANDING_TILT = Math.PI / 2;
+const FALLEN_Y = -1;
 
 export class AssemblyStage {
   private readonly states: PartState[] = [];
@@ -94,6 +101,7 @@ export class AssemblyStage {
         mesh,
         ghost,
         snap: new SnapService(ghost, def.snapRadius),
+        body: null,
         home: mesh.position.clone(),
         homeQuat: mesh.rotationQuaternion.clone(),
         socket: ghost.position.clone(),
@@ -106,6 +114,7 @@ export class AssemblyStage {
       this.states.push(state);
     }
     this.spawnCurrent();
+    scene.onBeforeRenderObservable.add(() => this.recoverFallen());
   }
 
   get currentPart(): Mesh {
@@ -145,6 +154,7 @@ export class AssemblyStage {
     }
     this.grabbing = true;
     this.grabbedBy = tag;
+    this.setBodyMotion(state, PhysicsMotionType.ANIMATED);
     this.report(
         `Carrying the ${state.def.label}. ` +
         'Release it inside the blue outline.',
@@ -186,6 +196,7 @@ export class AssemblyStage {
     if (state.snap.trySnap(state.mesh.position)) {
       this.placePart(state, tag);
     } else {
+      this.setBodyMotion(state, PhysicsMotionType.DYNAMIC);
       this.report('Release inside the blue outline to place the part.');
       this.commit(state);
       this.reportPartInfo(state);
@@ -200,6 +211,7 @@ export class AssemblyStage {
     const state = this.active;
     state.snap.reset();
     state.screws = 0;
+    this.setBodyMotion(state, PhysicsMotionType.STATIC);
     this.restore(state);
     this.tweenTo(state, state.home, state.homeQuat);
     this.commit(state, {
@@ -270,6 +282,7 @@ export class AssemblyStage {
 
   private placePart(state: PartState, tag: string): void {
     state.screws = state.def.screwCount;
+    this.setBodyMotion(state, PhysicsMotionType.STATIC);
     this.tweenTo(state, state.socket, state.socketQuat);
     state.ghost.setEnabled(false);
     this.commit(state, {
@@ -304,11 +317,52 @@ export class AssemblyStage {
   private spawnCurrent(): void {
     const state = this.active;
     this.syncVisibility();
+    this.setBodyMotion(state, PhysicsMotionType.STATIC);
     state.mesh.position.copyFrom(state.home);
     state.mesh.rotationQuaternion = state.homeQuat.clone();
     const source = state.def.source === 'printer' ? 'printer' : 'conveyor';
     this.report(`Next part: the ${state.def.label}, at the ${source}.`);
     this.reportPartInfo(state);
+  }
+
+  private ensureBody(state: PartState): PhysicsBody | null {
+    if (!state.body) {
+      state.body =
+          makeBoxBody(state.mesh, PhysicsMotionType.STATIC, 1);
+    }
+    return state.body;
+  }
+
+  private setBodyMotion(
+      state: PartState,
+      motion: PhysicsMotionType,
+  ): void {
+    const body = this.ensureBody(state);
+    if (!body) {
+      return;
+    }
+    body.setMotionType(motion);
+    if (motion === PhysicsMotionType.DYNAMIC) {
+      body.disablePreStep = true;
+      body.setLinearVelocity(Vector3.Zero());
+      body.setAngularVelocity(Vector3.Zero());
+    } else {
+      body.disablePreStep = false;
+    }
+  }
+
+  private recoverFallen(): void {
+    if (this.grabbing || this.states.length === 0) {
+      return;
+    }
+    const state = this.states[this.current];
+    if (!state || !state.body) {
+      return;
+    }
+    const dynamic = state.body.motionType === PhysicsMotionType.DYNAMIC;
+    if (dynamic && state.mesh.position.y < FALLEN_Y) {
+      this.reset();
+    }
   }
 
   private restore(state: PartState): void {
@@ -344,6 +398,7 @@ export class AssemblyStage {
       this.restore(state);
     }
     state.screws = snapshot.screws;
+    this.setBodyMotion(state, PhysicsMotionType.STATIC);
     this.tweenTo(state, snapshot.pos, snapshot.quat);
   }
 

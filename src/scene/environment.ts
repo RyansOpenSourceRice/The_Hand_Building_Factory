@@ -11,11 +11,14 @@ import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import {
   DynamicTexture,
 } from '@babylonjs/core/Materials/Textures/dynamicTexture';
+import {addStaticCollider} from './physics';
 
 export interface Environment {
   engine: Engine;
   scene: Scene;
   ground: Mesh;
+  column: Mesh;
+  slab: Mesh;
   pedestalTop: number;
 }
 
@@ -93,5 +96,26 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   curtain.position.set(0, 2.75, -3.4);
   curtain.material = curtainMat;
 
-  return {engine, scene, ground, pedestalTop};
+  return {engine, scene, ground, column, slab, pedestalTop};
+}
+
+export function attachEnvironmentColliders(env: Environment): void {
+  addStaticCollider(
+      env.scene,
+      env.ground,
+      new Vector3(0, -0.05, 0),
+      new Vector3(24, 0.1, 24),
+  );
+  addStaticCollider(
+      env.scene,
+      env.column,
+      Vector3.Zero(),
+      new Vector3(0.9, 1.0, 0.9),
+  );
+  addStaticCollider(
+      env.scene,
+      env.slab,
+      Vector3.Zero(),
+      new Vector3(1.15, 0.07, 1.15),
+  );
 }

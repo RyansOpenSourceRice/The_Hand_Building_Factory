@@ -64,7 +64,13 @@ export function createPartProvider(
       if (!proto) {
         throw new Error(`missing prototype for ${def.file}`);
       }
-      return proto.clone(`part:${def.id}`);
+      const mesh = proto.clone(`part:${def.id}`);
+      if (def.scale !== 1) {
+        mesh.scaling.setAll(def.scale);
+        mesh.bakeCurrentTransformIntoVertices();
+        mesh.scaling.setAll(1);
+      }
+      return mesh;
     }
     if (def.primitive === 'servo') {
       return buildServo(def.id, scene);

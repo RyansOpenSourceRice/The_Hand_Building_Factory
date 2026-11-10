@@ -8,7 +8,11 @@ import {WebXRState} from '@babylonjs/core/XR/webXRTypes';
 import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
-import {createEnvironment} from './scene/environment';
+import {
+  attachEnvironmentColliders,
+  createEnvironment,
+} from './scene/environment';
+import {enableGamePhysics} from './scene/physics';
 import {AssemblyStage} from './game/assembly';
 import {SettingsStore} from './game/settings';
 import {createPartProvider, loadPrototypes} from './scene/partMeshes';
@@ -60,6 +64,9 @@ async function boot(): Promise<void> {
 
   const env = createEnvironment(canvas);
   const {scene, engine} = env;
+
+  await enableGamePhysics(scene);
+  attachEnvironmentColliders(env);
 
   const camera = new UniversalCamera('cam', new Vector3(0, 1.4, 2.2), scene);
   camera.rotation.set(0, Math.PI, -0.15);
