@@ -84,19 +84,50 @@ async function boot(): Promise<void> {
   }
   attachDesktopGrab(scene, camera, stage);
 
+  document.getElementById('boot-fallback')?.remove();
   engine.runRenderLoop(() => scene.render());
   window.addEventListener('resize', () => engine.resize());
 }
 
 boot().catch((err: unknown) => {
   console.error(err);
+  const type = err instanceof Error ? err.name : 'Error';
   const message = err instanceof Error ? err.message : String(err);
   const live = document.getElementById('live-status');
   if (live) {
-    live.textContent = `fatal:${message}`;
+    live.textContent = `fatal:${type}:${message}`;
   }
+
   const overlay = document.createElement('div');
   overlay.className = 'fatal-overlay';
-  overlay.textContent = 'Something went wrong starting the scene.';
+
+  const heading = document.createElement('h1');
+  heading.textContent = 'The stage could not load';
+
+  const kind = document.createElement('p');
+  kind.textContent = `Type: ${type}`;
+
+  const detail = document.createElement('p');
+  detail.textContent = `Detail: ${message}`;
+
+  const why = document.createElement('p');
+  why.textContent =
+    'The 3D scene needs WebGL to draw, and this browser did not ' +
+    'provide it. This usually means WebGL is off or the browser ' +
+    'is out of date.';
+
+  const steps = document.createElement('ul');
+  const advice = [
+    'Reload the page.',
+    'Turn on WebGL or hardware acceleration in your browser settings.',
+    'On a Quest, open this page in the Meta Quest Browser.',
+  ];
+  for (const step of advice) {
+    const li = document.createElement('li');
+    li.textContent = step;
+    steps.append(li);
+  }
+
+  overlay.append(heading, kind, detail, why, steps);
   document.body.appendChild(overlay);
 });
