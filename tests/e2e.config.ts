@@ -9,9 +9,13 @@ export default defineConfig({
       name: 'firefox',
       use: {...devices['Desktop Firefox']},
     },
+    {
+      name: 'chromium',
+      use: {...devices['Desktop Chrome'], channel: 'chromium'},
+    },
   ],
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: 'http://localhost:4173',
     headless: true,
     launchOptions: {
       firefoxUserPrefs: {
@@ -22,7 +26,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run preview -- --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
+    url: 'http://localhost:4173',
     reuseExistingServer: true,
     timeout: 60_000,
   },

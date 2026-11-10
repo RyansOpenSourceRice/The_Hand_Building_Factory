@@ -34,6 +34,10 @@ export class SnapService {
     return true;
   }
 
+  forceComplete(): void {
+    this.complete = true;
+  }
+
   reset(): void {
     this.complete = false;
   }

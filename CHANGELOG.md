@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.10.4] - 2026-11-10
+
+### Added
+
+- Undo and redo for every committed part move, snap, and reset: UNDO and
+  REDO buttons in the HUD (pressable in VR through the controller pointer
+  rays), Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y on desktop, and unit tests for the
+  history stack.
+- XR self-diagnostics: when `navigator.xr` is missing, the status line says
+  so, with a Quest-specific message on Quest-identifying browsers, plus
+  `data-xr`, `data-ua-quest`, and `data-secure` attributes for remote
+  diagnosis.
+- E2E coverage of the XR path in headless Chromium: detection, ENTER VR
+  rendering, and graceful failure without a device. Firefox E2E now covers
+  the RESET and UNDO buttons.
+
+### Changed
+
+- RESET always returns the part to the pedestal, even before the first snap.
+- The snap target outline now disappears the moment the part locks in,
+  instead of after its fade-out animation.
+
 ## [2026.11.10.3] - 2026-11-10
 
 ### Changed

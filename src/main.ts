@@ -3,7 +3,7 @@ import {ArcRotateCamera} from '@babylonjs/core/Cameras/arcRotateCamera';
 import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import {Scene} from '@babylonjs/core/scene';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
-import '@babylonjs/core/XR/webXRDefaultExperience';
+import '@babylonjs/core/Helpers/sceneHelpers';
 import {WebXRState} from '@babylonjs/core/XR/webXRTypes';
 import type {
   WebXRDefaultExperience,
@@ -16,12 +16,26 @@ import {attachDesktopGrab} from './input/desktopGrab';
 
 type XrCapableNavigator = Navigator & {xr?: object};
 
+const XR_PROBE_DELAYS_MS = [0, 150, 350, 700, 1500, 3000];
+
+async function waitForXr(): Promise<boolean> {
+  const nav = () => (navigator as XrCapableNavigator).xr;
+  for (const delay of XR_PROBE_DELAYS_MS) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    if (nav()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function initXr(
     scene: Scene,
     ground: Mesh,
 ): Promise<WebXRDefaultExperience | null> {
-  const nav = navigator as XrCapableNavigator;
-  if (!nav.xr) {
+  if (!(await waitForXr())) {
     return null;
   }
   return scene.createDefaultXRExperienceAsync({
@@ -58,7 +72,29 @@ async function boot(): Promise<void> {
   camera.upperBetaLimit = 1.45;
 
   const stage = new DemoStage(scene, {pedestalTop: env.pedestalTop});
-  const hud = new Hud(() => stage.reset());
+  const hud = new Hud({
+    reset: () => stage.reset(),
+    undo: () => stage.undo(),
+    redo: () => stage.redo(),
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey)) {
+      return;
+    }
+    const key = e.key.toLowerCase();
+    if (key === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        stage.redo();
+      } else {
+        stage.undo();
+      }
+    } else if (key === 'y') {
+      e.preventDefault();
+      stage.redo();
+    }
+  });
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onSnapped = (tag) => pulseController(tag);
   const xr = await initXr(scene, env.ground);
@@ -85,9 +121,13 @@ async function boot(): Promise<void> {
     });
     hud.setStatus('VR ready. Press ENTER VR to start.');
   } else {
-    hud.showDesktopOnly();
+    const uaQuest = /Quest|OculusBrowser/i.test(navigator.userAgent);
+    hud.showDesktopOnly(uaQuest);
     hud.setReady('desktop');
-    hud.setStatus('Grab the red part. Slot it into the blue outline.');
+    hud.setStatus(uaQuest ?
+        'WebXR is missing in this browser even though this looks like ' +
+        'a Quest. Reload the page, or open a private window and try again.' :
+        'Grab the red part. Slot it into the blue outline.');
   }
   attachDesktopGrab(scene, camera, stage);
 

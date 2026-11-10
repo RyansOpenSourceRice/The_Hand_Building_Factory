@@ -7,6 +7,12 @@ import {
 
 const FONT = '\'Atkinson Hyperlegible\', system-ui, sans-serif';
 
+export type HudActions = {
+  reset: () => void;
+  undo: () => void;
+  redo: () => void;
+};
+
 export class Hud {
   private readonly live: HTMLElement | null;
   private readonly statusBlock: TextBlock;
@@ -16,7 +22,7 @@ export class Hud {
 
   private readonly adt: AdvancedDynamicTexture;
 
-  constructor(onReset: () => void) {
+  constructor(actions: HudActions) {
     this.live = document.getElementById('live-status');
 
     this.adt = AdvancedDynamicTexture.CreateFullscreenUI('ui', true);
@@ -81,8 +87,38 @@ export class Hud {
     reset.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
     reset.left = '-3%';
     reset.top = '-6%';
-    reset.onPointerClickObservable.add(() => onReset());
+    reset.onPointerClickObservable.add(() => actions.reset());
     this.adt.addControl(reset);
+
+    const redo = Button.CreateSimpleButton('redo', 'REDO');
+    redo.fontFamily = FONT;
+    redo.fontSize = '20px';
+    redo.color = '#f2f4ff';
+    redo.background = 'rgba(35, 45, 80, 0.85)';
+    redo.cornerRadius = 8;
+    redo.width = '90px';
+    redo.height = '44px';
+    redo.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    redo.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    redo.left = '-14%';
+    redo.top = '-6%';
+    redo.onPointerClickObservable.add(() => actions.redo());
+    this.adt.addControl(redo);
+
+    const undo = Button.CreateSimpleButton('undo', 'UNDO');
+    undo.fontFamily = FONT;
+    undo.fontSize = '20px';
+    undo.color = '#f2f4ff';
+    undo.background = 'rgba(35, 45, 80, 0.85)';
+    undo.cornerRadius = 8;
+    undo.width = '90px';
+    undo.height = '44px';
+    undo.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    undo.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    undo.left = '-25%';
+    undo.top = '-6%';
+    undo.onPointerClickObservable.add(() => actions.undo());
+    this.adt.addControl(undo);
   }
 
   setStatus(text: string): void {
@@ -129,14 +165,29 @@ export class Hud {
   setReady(mode: 'xr' | 'desktop'): void {
     if (this.live) {
       this.live.setAttribute('data-ready', mode);
+      this.live.setAttribute(
+          'data-xr',
+          mode === 'xr' ? 'present' : 'missing',
+      );
     }
   }
 
-  showDesktopOnly(): void {
+  showDesktopOnly(uaQuest = false): void {
     this.xrNote.isVisible = true;
+    if (this.live) {
+      this.live.setAttribute('data-ua-quest', uaQuest ? 'yes' : 'no');
+      this.live.setAttribute(
+          'data-secure',
+          window.isSecureContext ? 'yes' : 'no',
+      );
+    }
   }
 
   hideDesktopOnly(): void {
     this.xrNote.isVisible = false;
+    if (this.live) {
+      this.live.removeAttribute('data-ua-quest');
+      this.live.removeAttribute('data-secure');
+    }
   }
 }
