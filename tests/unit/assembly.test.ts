@@ -164,7 +164,7 @@ describe('AssemblyStage', () => {
     const quiet = new AssemblyStage(scene, boxProvider, true);
     const palm = quiet.currentPart;
     expect(palm.position.x).toBeCloseTo(PRINTER_HOME.x, 2);
-    expect(palm.position.y).toBeCloseTo(PRINTER_BED_TOP + 0.05, 2);
+    expect(palm.position.y).toBeCloseTo(PRINTER_BED_TOP + 0.055, 2);
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     quiet.startGrab('xr');
     quiet.moveGrabbed(ghost.position);
@@ -172,10 +172,11 @@ describe('AssemblyStage', () => {
     driveAll(quiet);
     const servo = quiet.currentPart;
     expect(servo.position.x).toBeCloseTo(0.62, 2);
-    expect(servo.position.y).toBeCloseTo(1.18, 2);
+    expect(servo.position.y).toBeCloseTo(1.185, 2);
   });
 
   it('holds the spawn offset until the scene renders', () => {
-    expect(stage.currentPart.position.y).toBeCloseTo(PRINTER_BED_TOP + 0.09, 2);
+    const y = stage.currentPart.position.y;
+    expect(y).toBeCloseTo(PRINTER_BED_TOP + 0.095, 2);
   });
 });

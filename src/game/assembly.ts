@@ -53,6 +53,7 @@ type PartState = {
 
 const STANDING_TILT = Math.PI / 2;
 const FALLEN_Y = -1;
+const REST_GAP = 0.005;
 const SPAWN_DROP = 0.04;
 const SPAWN_FRAMES = 14;
 const SPAWN_RIDE_FRAMES = 72;
@@ -156,6 +157,11 @@ export class AssemblyStage {
 
   get currentIndex(): number {
     return this.current;
+  }
+
+  activeCenter(): Vector3 {
+    const {min, max} = this.active.mesh.getHierarchyBoundingVectors();
+    return Vector3.Center(min, max);
   }
 
   private get current(): number {
@@ -522,6 +528,16 @@ export class AssemblyStage {
       this.flash(state);
     }
     const source = printer ? 'printer' : 'conveyor';
+    this.announce(state, source);
+  }
+
+  announceCurrent(): void {
+    const state = this.active;
+    const printer = state.def.source === 'printer';
+    this.announce(state, printer ? 'printer' : 'conveyor');
+  }
+
+  private announce(state: PartState, source: string): void {
     this.report(`Next part: the ${state.def.label}, at the ${source}.`);
     this.reportPartInfo(state);
   }
@@ -566,8 +582,8 @@ export class AssemblyStage {
   private restHeight(def: PartDef, mesh: Mesh): number {
     const base =
         def.source === 'printer' ? PRINTER_BED_TOP : CONVEYOR_BELT_TOP;
-    const {min, max} = mesh.getHierarchyBoundingVectors();
-    return base + (max.y - min.y) / 2;
+    const {min} = mesh.getHierarchyBoundingVectors();
+    return mesh.position.y + (base - min.y) + REST_GAP;
   }
 
   private ensureBody(state: PartState): PhysicsBody | null {
