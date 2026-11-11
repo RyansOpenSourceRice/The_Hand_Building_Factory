@@ -5,6 +5,7 @@ import {Constants} from '@babylonjs/core/Engines/constants';
 import {Scene} from '@babylonjs/core/scene';
 import {HemisphericLight} from '@babylonjs/core/Lights/hemisphericLight';
 import {SpotLight} from '@babylonjs/core/Lights/spotLight';
+import {PointLight} from '@babylonjs/core/Lights/pointLight';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
@@ -146,10 +147,12 @@ const WALL_HEIGHT = 10;
 const BEAM_LEVELS = [3.2, 6.4, 9.2];
 
 function buildWarehouse(scene: Scene): void {
-  const wallMat = machineMat(scene, 'warehouseWallMat', '#1a2030', '#04060b');
-  const steelMat = machineMat(scene, 'warehouseSteelMat', '#28304a', '#070a12');
-  const crateMat = machineMat(scene, 'warehouseCrateMat', '#3a2f22', '#0a0806');
-  const bulbMat = machineMat(scene, 'warehouseBulbMat', '#fff3d6', '#4d4232');
+  const wallMat = machineMat(scene, 'warehouseWallMat', '#b6bfca', '#3a4149');
+  const steelMat = machineMat(scene, 'warehouseSteelMat', '#7c8694', '#20252d');
+  const crateMat = machineMat(scene, 'warehouseCrateMat', '#8a6f4d', '#2a2118');
+  const bulbMat = machineMat(scene, 'warehouseBulbMat', '#fff3d6', '#8a7a54');
+  const fixtureMat =
+      machineMat(scene, 'warehouseFixtureMat', '#f5f8ff', '#c9d2e0');
 
   const wallSpec = {width: 24, depth: 0.2, height: WALL_HEIGHT};
   const back = MeshBuilder.CreateBox('warehouseBack', wallSpec, scene);
@@ -209,6 +212,20 @@ function buildWarehouse(scene: Scene): void {
     bulb.material = bulbMat;
   }
 
+  const barSpec = {width: 1.8, depth: 0.22, height: 0.08};
+  const cordSpec = {diameter: 0.015, height: 5.9};
+  for (const x of [-6, -2.4, 2.4, 6]) {
+    const bar = MeshBuilder.CreateBox('warehouseBayBar', barSpec, scene);
+    bar.position.set(x, 3.18, 0.6);
+    bar.material = fixtureMat;
+    for (const dx of [-0.7, 0.7]) {
+      const hang = MeshBuilder.CreateCylinder(
+          'warehouseBayCord', cordSpec, scene);
+      hang.position.set(x + dx, 6.14, 0.6);
+      hang.material = steelMat;
+    }
+  }
+
   const crateSpec = {width: 0.8, depth: 0.8, height: 0.8};
   const crateSpots: Array<[number, number, number]> = [
     [-6, 0.4, -6.4], [-5.1, 0.4, -6.9], [-6.2, 1.2, -6.2],
@@ -227,15 +244,15 @@ function buildWarehouse(scene: Scene): void {
 export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   const engine = new Engine(canvas, true, {stencil: false});
   const scene = new Scene(engine);
-  const voidColor = new Color4(0.04, 0.05, 0.1, 1);
+  const voidColor = new Color4(0.58, 0.63, 0.7, 1);
   scene.clearColor = voidColor;
   scene.fogMode = Scene.FOGMODE_EXP2;
-  scene.fogColor = new Color3(0.04, 0.05, 0.1);
-  scene.fogDensity = 0.045;
+  scene.fogColor = new Color3(0.58, 0.63, 0.7);
+  scene.fogDensity = 0.016;
 
   const ambient = new HemisphericLight('ambient', new Vector3(0, 1, 0), scene);
-  ambient.intensity = 0.55;
-  ambient.groundColor = new Color3(0.1, 0.12, 0.18);
+  ambient.intensity = 0.85;
+  ambient.groundColor = new Color3(0.42, 0.44, 0.48);
 
   const spot = new SpotLight(
       'stageSpot',
@@ -245,8 +262,16 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
       4,
       scene,
   );
-  spot.intensity = 1.4;
+  spot.intensity = 1.1;
   spot.diffuse = new Color3(1.0, 0.96, 0.9);
+
+  for (const [name, x] of [['bayLightLeft', -2.4],
+    ['bayLightRight', 2.4]] as const) {
+    const bay = new PointLight(name, new Vector3(x, 3.1, 0.6), scene);
+    bay.intensity = 0.5;
+    bay.range = 14;
+    bay.diffuse = new Color3(1, 0.98, 0.94);
+  }
 
   const ground =
       MeshBuilder.CreateGround('ground', {width: 24, height: 24}, scene);
@@ -263,15 +288,15 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   const pedestalTop = 1.0 + 0.07;
   slab.position.y = 1.0 + 0.035;
   const benchMat = new StandardMaterial('benchMat', scene);
-  benchMat.diffuseColor = new Color3(0.16, 0.18, 0.26);
-  benchMat.emissiveColor = new Color3(0.03, 0.04, 0.07);
-  benchMat.specularColor = new Color3(0.05, 0.05, 0.07);
+  benchMat.diffuseColor = new Color3(0.62, 0.65, 0.72);
+  benchMat.emissiveColor = new Color3(0.1, 0.11, 0.13);
+  benchMat.specularColor = new Color3(0.08, 0.08, 0.1);
   column.material = benchMat;
   slab.material = benchMat;
 
   const curtainMat = new StandardMaterial('curtainMat', scene);
-  curtainMat.diffuseColor = new Color3(0.24, 0.05, 0.08);
-  curtainMat.emissiveColor = new Color3(0.06, 0.01, 0.02);
+  curtainMat.diffuseColor = new Color3(0.42, 0.1, 0.14);
+  curtainMat.emissiveColor = new Color3(0.09, 0.02, 0.03);
   curtainMat.specularColor = new Color3(0.0, 0.0, 0.0);
   const curtain =
       MeshBuilder.CreatePlane('curtain', {width: 14, height: 5.5}, scene);
