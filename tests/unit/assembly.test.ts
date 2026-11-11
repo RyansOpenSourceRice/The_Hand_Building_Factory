@@ -6,7 +6,10 @@ import {Scene} from '@babylonjs/core/scene';
 import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {AssemblyStage} from '../../src/game/assembly';
-import type {PartDef} from '../../src/game/handParts';
+import {
+  PRINTER_BED_TOP,
+  type PartDef,
+} from '../../src/game/handParts';
 
 const boxProvider = (def: PartDef, scene: Scene): Mesh =>
   MeshBuilder.CreateBox(`part:${def.id}`, {size: 0.1}, scene);
@@ -160,7 +163,7 @@ describe('AssemblyStage', () => {
     const quiet = new AssemblyStage(scene, boxProvider, true);
     const palm = quiet.currentPart;
     expect(palm.position.x).toBeCloseTo(-0.36, 2);
-    expect(palm.position.y).toBeCloseTo(1.14, 2);
+    expect(palm.position.y).toBeCloseTo(PRINTER_BED_TOP + 0.05, 2);
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     quiet.startGrab('xr');
     quiet.moveGrabbed(ghost.position);
@@ -172,6 +175,6 @@ describe('AssemblyStage', () => {
   });
 
   it('holds the spawn offset until the scene renders', () => {
-    expect(stage.currentPart.position.y).toBeCloseTo(1.18, 2);
+    expect(stage.currentPart.position.y).toBeCloseTo(PRINTER_BED_TOP + 0.09, 2);
   });
 });
