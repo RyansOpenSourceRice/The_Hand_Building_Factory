@@ -429,5 +429,16 @@
         controllersReady: state.controllersReady,
       };
     },
+    snapshot() {
+      return {
+        xrActive: state.xrActive,
+        controllersReady: state.controllersReady,
+        controllers: {
+          left: {...state.controllers.left},
+          right: {...state.controllers.right},
+        },
+        viewer: {...state.viewer},
+      };
+    },
   };
 })();
