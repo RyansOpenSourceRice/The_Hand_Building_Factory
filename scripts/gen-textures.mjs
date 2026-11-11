@@ -30,6 +30,29 @@ const TEXTURES = {
       'flecks at panel seams, evenly lit, no shadows, no objects, flat ' +
       'orthographic view, ribs run horizontally, repeats seamlessly on ' +
       'all edges.',
+  'pegboard': 'Seamless tileable albedo texture of a dark slate grey ' +
+      'workshop pegboard panel. Photorealistic, regular grid of small ' +
+      'round holes with subtle chamfers, faint dust and light scuffs, ' +
+      'evenly lit, no shadows, no tools or objects, flat orthographic ' +
+      'front view, repeats seamlessly on all edges.',
+  'brushed-steel': 'Seamless tileable albedo texture of brushed ' +
+      'stainless steel sheet. Photorealistic, fine horizontal brushing ' +
+      'grain, soft light grey tone with subtle sheen variation and a ' +
+      'few faint smudges, evenly lit, no shadows, no objects, flat ' +
+      'orthographic view, grain runs horizontally, repeats seamlessly ' +
+      'on all edges.',
+  'rack-boxes': 'Albedo texture of rows of plain cardboard shipping ' +
+      'boxes stacked on an industrial warehouse shelf. Photorealistic, ' +
+      'two neat rows of brown cardboard boxes of slightly varying ' +
+      'tones with plain blank faces, dark shelf gap between rows, ' +
+      'evenly lit, no shadows, no labels or text, flat orthographic ' +
+      'front view, tiles horizontally.',
+  'garage-door': 'Seamless tileable albedo texture of a light grey ' +
+      'industrial sectional garage door panel. Photorealistic, ' +
+      'horizontal panel seams and recessed grooves, faint dirt ' +
+      'streaks and scuffs near the bottom, evenly lit, no shadows, no ' +
+      'objects, flat orthographic front view, repeats seamlessly on ' +
+      'top and bottom edges.',
 };
 
 const name = process.argv[2];

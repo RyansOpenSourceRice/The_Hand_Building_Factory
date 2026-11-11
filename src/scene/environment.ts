@@ -475,40 +475,6 @@ function markingsTexture(scene: Scene): DynamicTexture {
   return texture;
 }
 
-function boxesTexture(scene: Scene): DynamicTexture {
-  const size = 256;
-  const texture = new DynamicTexture('rackBoxesTex', size, scene, false);
-  const ctx = texture.getContext();
-  ctx.fillStyle = '#23272f';
-  ctx.fillRect(0, 0, size, size);
-  const tones = ['#8a6f4d', '#9a7d57', '#7c6444'];
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 3; col++) {
-      const tone = tones[(row * 3 + col) % 3] ?? '#8a6f4d';
-      ctx.fillStyle = tone;
-      ctx.fillRect(col * 86 + 8, row * 128 + 14, 70, 100);
-      ctx.fillStyle = '#d9cbb3';
-      ctx.fillRect(col * 86 + 30, row * 128 + 52, 26, 18);
-    }
-  }
-  texture.update();
-  return texture;
-}
-
-function corrugationTexture(scene: Scene): DynamicTexture {
-  const size = 128;
-  const texture = new DynamicTexture('doorCorrugationTex', size, scene, false);
-  const ctx = texture.getContext();
-  for (let x = 0; x < size; x += 16) {
-    ctx.fillStyle = '#9aa2ad';
-    ctx.fillRect(x, 0, 8, size);
-    ctx.fillStyle = '#7d848e';
-    ctx.fillRect(x + 8, 0, 8, size);
-  }
-  texture.update();
-  return texture;
-}
-
 function stageScreenTexture(scene: Scene): DynamicTexture {
   const texture = new DynamicTexture('stageScreenTex', 256, scene, false);
   const ctx = texture.getContext();
@@ -778,10 +744,8 @@ function buildGrandHall(scene: Scene): void {
     });
   });
 
-  const loadMat = new StandardMaterial('rackLoadMat', scene);
-  const boxes = boxesTexture(scene);
-  loadMat.diffuseTexture = boxes;
-  loadMat.specularColor = new Color3(0.05, 0.05, 0.06);
+  const loadMat =
+      imageMat(scene, 'rackLoadMat', 'textures/rack-boxes.png', 1, 1);
   buildRack(scene, steelMat, loadMat, -13, -13, true);
   buildRack(scene, steelMat, loadMat, -13, -17, true);
   buildRack(scene, steelMat, loadMat, -13, -22, true);
@@ -984,11 +948,8 @@ function buildGrandHall(scene: Scene): void {
     }
   }
 
-  const doorMat = new StandardMaterial('garageDoorMat', scene);
-  const corrugation = corrugationTexture(scene);
-  corrugation.uScale = 6;
-  doorMat.diffuseTexture = corrugation;
-  doorMat.specularColor = new Color3(0.06, 0.06, 0.07);
+  const doorMat =
+      imageMat(scene, 'garageDoorMat', 'textures/garage-door.png', 1, 1);
   for (const x of [-5.5, 0, 5.5]) {
     const door = MeshBuilder.CreateBox(
         `garageDoor${x}`, {width: 3.4, height: 3.2, depth: 0.1}, scene);
@@ -1004,8 +965,10 @@ function buildGrandHall(scene: Scene): void {
 
 function buildPrinterBench(scene: Scene): void {
   const frameMat = machineMat(scene, 'benchFrameMat', '#3a4149', '#0b0e14');
-  const steelMat = machineMat(scene, 'benchSteelMat', '#9aa4b2', '#252a33');
-  const pegMat = machineMat(scene, 'benchPegMat', '#2f3542', '#080b10');
+  const steelMat =
+      imageMat(scene, 'benchSteelMat', 'textures/brushed-steel.png', 2, 2);
+  const pegMat =
+      imageMat(scene, 'benchPegMat', 'textures/pegboard.png', 3, 3);
   const cx = PRINTER_HOME.x;
   const cz = PRINTER_HOME.z;
   const top = MeshBuilder.CreateBox(
