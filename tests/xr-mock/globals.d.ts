@@ -4,6 +4,12 @@ interface FactoryDebug {
   yaw: () => number;
   enterVr: () => Promise<void>;
   state: () => {ready: string; inXr: boolean};
+  pointer: (hand: string) => number[] | null;
+  pointerRot: (hand: string) => number[] | null;
+  partCenter: () => number[];
+  sites: () => number[][];
+  tip: () => number[];
+  driverCenter: () => number[];
 }
 
 interface XrMock {

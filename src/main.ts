@@ -1,7 +1,7 @@
 import './style.css';
 import {UniversalCamera} from '@babylonjs/core/Cameras/universalCamera';
-import type {WebXRCamera} from '@babylonjs/core/XR/webXRCamera';
 import {Vector3} from '@babylonjs/core/Maths/math.vector';
+import type {WebXRCamera} from '@babylonjs/core/XR/webXRCamera';
 import {Scene} from '@babylonjs/core/scene';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import '@babylonjs/core/Helpers/sceneHelpers';
@@ -128,6 +128,7 @@ async function boot(): Promise<void> {
   });
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onPartInfo = (info) => hud.setPartInfo(info);
+  stage.announceCurrent();
   const applySettings = (): void => {
     const current = settings.get();
     hud.setSettings(current.turnMode, current.snapAngle);
@@ -199,7 +200,6 @@ async function boot(): Promise<void> {
         hud.showEnterVr();
       }
     });
-    hud.setStatus('VR ready. Press ENTER VR to start.');
   } else {
     const uaQuest = /Quest|OculusBrowser/i.test(navigator.userAgent);
     hud.showDesktopOnly(uaQuest);
@@ -221,6 +221,12 @@ async function boot(): Promise<void> {
       yaw: () => number;
       enterVr: () => Promise<void>;
       state: () => {ready: string; inXr: boolean};
+      pointer: (hand: string) => number[] | null;
+      pointerRot: (hand: string) => number[] | null;
+      partCenter: () => number[];
+      sites: () => number[][];
+      tip: () => number[];
+      driverCenter: () => number[];
     };
   };
   bridgeWindow.factoryDebug = {
@@ -245,6 +251,39 @@ async function boot(): Promise<void> {
       ready: xr ? 'xr' : 'desktop',
       inXr: xr?.baseExperience.state === WebXRState.IN_XR,
     }),
+    pointer: (hand) => {
+      const ctrl = xr?.input.controllers.find(
+          (c) => c.inputSource.handedness === hand,
+      );
+      if (!ctrl) {
+        return null;
+      }
+      const p = ctrl.pointer.absolutePosition;
+      return [p.x, p.y, p.z];
+    },
+    pointerRot: (hand) => {
+      const ctrl = xr?.input.controllers.find(
+          (c) => c.inputSource.handedness === hand,
+      );
+      const q = ctrl?.pointer.rotationQuaternion;
+      if (!q) {
+        return null;
+      }
+      return q.asArray();
+    },
+    partCenter: () => {
+      const v = stage.activeCenter();
+      return [v.x, v.y, v.z];
+    },
+    sites: () => stage.screwSites().map((v) => [v.x, v.y, v.z]),
+    tip: () => {
+      const v = driver.tipWorld(new Vector3());
+      return [v.x, v.y, v.z];
+    },
+    driverCenter: () => {
+      const c = driver.mesh.getBoundingInfo().boundingBox.centerWorld;
+      return [c.x, c.y, c.z];
+    },
   };
 
   document.getElementById('boot-fallback')?.remove();

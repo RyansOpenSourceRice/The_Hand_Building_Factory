@@ -305,6 +305,9 @@
     }
 
     _syncGamepads() {
+      if (!this._buttonState) {
+        this._buttonState = new Map();
+      }
       for (const src of this.inputSources) {
         const c = state.controllers[src.handedness];
         if (!c) {
@@ -323,6 +326,28 @@
         set(0, c.trigger);
         set(1, c.squeeze);
         set(3, c.stickPressed ? 1 : 0);
+        const prev = this._buttonState.get(src) ??
+          {trigger: 0, squeeze: 0};
+        const event = (type) => ({
+          type,
+          session: this,
+          target: this,
+          inputSource: src,
+        });
+        if (prev.trigger <= 0.5 && c.trigger > 0.5) {
+          dispatch('selectstart', event('selectstart'));
+        }
+        if (prev.trigger > 0.5 && c.trigger <= 0.5) {
+          dispatch('selectend', event('selectend'));
+        }
+        if (prev.squeeze <= 0.5 && c.squeeze > 0.5) {
+          dispatch('squeezestart', event('squeezestart'));
+        }
+        if (prev.squeeze > 0.5 && c.squeeze <= 0.5) {
+          dispatch('squeezeend', event('squeezeend'));
+        }
+        this._buttonState.set(
+            src, {trigger: c.trigger, squeeze: c.squeeze});
       }
     }
   }
