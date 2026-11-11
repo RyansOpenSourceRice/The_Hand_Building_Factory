@@ -7,6 +7,20 @@ const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
 });
 
+// eslint-config-google 0.14.0 references core rules that ESLint 10 removed,
+// and ESLint rejects unknown rules even when disabled, so drop them.
+const REMOVED_IN_ESLINT_10 = new Set(['require-jsdoc', 'valid-jsdoc']);
+const google = compat.extends('google').map((config) => {
+  if (!config.rules) {
+    return config;
+  }
+  const rules = {...config.rules};
+  for (const rule of REMOVED_IN_ESLINT_10) {
+    delete rules[rule];
+  }
+  return {...config, rules};
+});
+
 export default tseslint.config(
     {
       ignores: [
@@ -18,7 +32,7 @@ export default tseslint.config(
       ],
     },
     js.configs.recommended,
-    ...compat.extends('google'),
+    ...google,
     tseslint.configs.recommended,
     {
       files: ['**/*.ts', '**/*.js'],
@@ -32,14 +46,21 @@ export default tseslint.config(
         },
       },
       rules: {
-        'require-jsdoc': 'off',
-        'valid-jsdoc': 'off',
         'no-unused-vars': 'off',
         'new-cap': ['error', {newIsCap: true, capIsNew: false}],
         '@typescript-eslint/no-unused-vars': [
           'error',
           {argsIgnorePattern: '^_', varsIgnorePattern: '^_'},
         ],
+      },
+    },
+    {
+      files: ['scripts/**/*.mjs'],
+      languageOptions: {
+        globals: {
+          ...globals.node,
+          ...globals.nodeBuiltin,
+        },
       },
     },
 );

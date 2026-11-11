@@ -9,9 +9,7 @@ import {PointLight} from '@babylonjs/core/Lights/pointLight';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
-import {
-  DynamicTexture,
-} from '@babylonjs/core/Materials/Textures/dynamicTexture';
+import {Texture} from '@babylonjs/core/Materials/Textures/texture';
 import {addStaticCollider} from './physics';
 import {
   CONVEYOR_BELT_TOP,
@@ -31,24 +29,22 @@ export interface Environment {
   pedestalTop: number;
 }
 
-function checkerTexture(scene: Scene): DynamicTexture {
-  const sizePx = 256;
-  const cells = 4;
-  const tex = new DynamicTexture('floorTex', sizePx, scene, true);
-  const ctx = tex.getContext() as CanvasRenderingContext2D;
-  const cell = sizePx / cells;
-  for (let y = 0; y < cells; y++) {
-    for (let x = 0; x < cells; x++) {
-      ctx.fillStyle = (x + y) % 2 === 0 ? '#1b2136' : '#141a2c';
-      ctx.fillRect(x * cell, y * cell, cell, cell);
-    }
-  }
-  tex.update();
-  tex.wrapU = Constants.TEXTURE_WRAP_ADDRESSMODE;
-  tex.wrapV = Constants.TEXTURE_WRAP_ADDRESSMODE;
-  tex.uScale = 14;
-  tex.vScale = 14;
-  return tex;
+function imageMat(
+    scene: Scene,
+    name: string,
+    url: string,
+    uScale: number,
+    vScale: number,
+): StandardMaterial {
+  const mat = new StandardMaterial(name, scene);
+  const texture = new Texture(url, scene);
+  texture.wrapU = Constants.TEXTURE_WRAP_ADDRESSMODE;
+  texture.wrapV = Constants.TEXTURE_WRAP_ADDRESSMODE;
+  texture.uScale = uScale;
+  texture.vScale = vScale;
+  mat.diffuseTexture = texture;
+  mat.specularColor = new Color3(0.04, 0.04, 0.05);
+  return mat;
 }
 
 function machineMat(
@@ -226,6 +222,33 @@ function buildWarehouse(scene: Scene): void {
     }
   }
 
+  const purlinSpec = {width: 0.15, depth: 16.4, height: 0.25};
+  for (const x of [-8, -4, 0, 4, 8]) {
+    const purlin = MeshBuilder.CreateBox('warehousePurlin', purlinSpec, scene);
+    purlin.position.set(x, 9.8, 0);
+    purlin.material = steelMat;
+  }
+
+  const roof = MeshBuilder.CreateBox(
+      'warehouseRoof', {width: 23.6, depth: 0.06, height: 16.6}, scene);
+  roof.rotation.x = Math.PI / 2;
+  roof.position.set(0, 9.97, 0);
+  roof.material =
+      imageMat(scene, 'warehouseRoofMat', 'textures/metal-roof.png', 4, 3);
+
+  const diffuserMat = machineMat(
+      scene, 'warehouseDiffuserMat', '#dde4ee', '#96a0ae');
+  const skylightSpec = {width: 2.6, depth: 0.07, height: 1.5};
+  for (const x of [-7, 0, 7]) {
+    for (const z of [-2.6, 2.6]) {
+      const panel =
+          MeshBuilder.CreateBox('warehouseSkylight', skylightSpec, scene);
+      panel.rotation.x = Math.PI / 2;
+      panel.position.set(x, 10.05, z);
+      panel.material = diffuserMat;
+    }
+  }
+
   const crateSpec = {width: 0.8, depth: 0.8, height: 0.8};
   const crateSpots: Array<[number, number, number]> = [
     [-6, 0.4, -6.4], [-5.1, 0.4, -6.9], [-6.2, 1.2, -6.2],
@@ -275,9 +298,8 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
 
   const ground =
       MeshBuilder.CreateGround('ground', {width: 24, height: 24}, scene);
-  const groundMat = new StandardMaterial('groundMat', scene);
-  groundMat.diffuseTexture = checkerTexture(scene);
-  groundMat.specularColor = new Color3(0.02, 0.02, 0.03);
+  const groundMat =
+      imageMat(scene, 'groundMat', 'textures/concrete-floor.png', 6, 6);
   ground.material = groundMat;
 
   const column = MeshBuilder.CreateBox(
