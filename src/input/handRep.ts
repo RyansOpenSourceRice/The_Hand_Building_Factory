@@ -9,9 +9,10 @@ import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import type {WebXRInputSource} from '@babylonjs/core/XR/webXRInputSource';
-import type {WebXRControllerComponent} from '@babylonjs/core/XR/motionController';
-import type {MotionControllerComponentType} from
-  '@babylonjs/core/XR/motionController';
+import type {
+  MotionControllerComponentType,
+  WebXRControllerComponent,
+} from '@babylonjs/core/XR/motionController';
 import {
   FALLBACK_HEX,
   FILAMENT_COLORS,
