@@ -30,6 +30,7 @@ import {
   pulseControllerSoft,
 } from './input/xrGrab';
 import {attachXrLocomotion} from './input/locomotion';
+import {attachHeightControl} from './input/height';
 import {attachDesktopControls} from './input/desktopControls';
 import {attachDesktopGrab} from './input/desktopGrab';
 
@@ -160,6 +161,7 @@ async function boot(): Promise<void> {
   if (xr) {
     attachXrGrab(xr, stage, driver, scene);
     attachXrLocomotion(xr, settings, scene, reportCamera);
+    attachHeightControl(xr, scene, reducedMotion);
     hud.hideDesktopOnly();
     hud.setReady('xr');
     hud.setEnterVr(() => {
