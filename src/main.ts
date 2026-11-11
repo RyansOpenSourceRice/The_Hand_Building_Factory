@@ -75,7 +75,7 @@ async function boot(): Promise<void> {
   attachEnvironmentColliders(env);
 
   const camera = new UniversalCamera('cam', new Vector3(0, 1.4, 2.2), scene);
-  camera.rotation.set(0, Math.PI, -0.15);
+  camera.rotation.set(0, Math.PI, 0);
   camera.minZ = 0.05;
 
   const settings = new SettingsStore();
