@@ -1,5 +1,6 @@
 import './style.css';
 import {UniversalCamera} from '@babylonjs/core/Cameras/universalCamera';
+import type {WebXRCamera} from '@babylonjs/core/XR/webXRCamera';
 import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import {Scene} from '@babylonjs/core/scene';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
@@ -70,6 +71,9 @@ async function initXr(
     floorMeshes: [ground],
     disableTeleportation: true,
     disablePointerSelection: true,
+    disableNearInteraction: true,
+    disableHandTracking: true,
+    disableDefaultUI: true,
   });
 }
 
@@ -207,6 +211,41 @@ async function boot(): Promise<void> {
   }
   attachDesktopControls(scene, camera, reportCamera);
   attachDesktopGrab(scene, camera, stage, driver);
+
+  const xrCamera = (): UniversalCamera | WebXRCamera =>
+    xr?.baseExperience.camera ?? camera;
+  const bridgeWindow = window as typeof window & {
+    factoryDebug?: {
+      camera: () => number[];
+      dir: (v: number[]) => number[];
+      yaw: () => number;
+      enterVr: () => Promise<void>;
+      state: () => {ready: string; inXr: boolean};
+    };
+  };
+  bridgeWindow.factoryDebug = {
+    camera: () => xrCamera().position.asArray(),
+    dir: (v) =>
+      xrCamera().getDirection(new Vector3(v[0], v[1], v[2])).asArray(),
+    yaw: () => {
+      const cam = xrCamera();
+      const q = cam.rotationQuaternion;
+      if (q) {
+        return Math.atan2(
+            2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.x * q.x + q.y * q.y));
+      }
+      return cam.rotation.y;
+    },
+    enterVr: () =>
+        xr ? xr.baseExperience
+            .enterXRAsync('immersive-vr', 'local-floor')
+            .then(() => undefined) :
+             Promise.reject(new Error('no xr')),
+    state: () => ({
+      ready: xr ? 'xr' : 'desktop',
+      inXr: xr?.baseExperience.state === WebXRState.IN_XR,
+    }),
+  };
 
   document.getElementById('boot-fallback')?.remove();
   engine.runRenderLoop(() => scene.render());

@@ -69,9 +69,8 @@ export function attachXrLocomotion(
       }
       const dead = (value: number): number =>
         Math.abs(value) > STICK_DEADZONE ? value : 0;
-      // Quest Browser reports thumbstick axes inverted from the
-      // xr-standard convention, so both are negated before use.
-      const x = dead(-stick.axes.x);
+      // xr-standard: stick right is +x, stick forward is -y.
+      const x = dead(stick.axes.x);
       const y = dead(-stick.axes.y);
       if (motion.handedness === 'left') {
         const {turnMode, snapAngle} = settings.get();
@@ -80,11 +79,11 @@ export function attachXrLocomotion(
             armed = true;
           } else if (armed && Math.abs(x) >= TURN_ARM) {
             const radians = (snapAngle * Math.PI) / 180;
-            rotateBy(x > 0 ? -radians : radians);
+            rotateBy(x > 0 ? radians : -radians);
             armed = false;
           }
         } else if (x !== 0) {
-          rotateBy(-x * SMOOTH_TURN_RATE * dt);
+          rotateBy(x * SMOOTH_TURN_RATE * dt);
         }
       } else if (motion.handedness === 'right') {
         strafe = x;
