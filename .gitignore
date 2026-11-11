@@ -4,4 +4,7 @@ coverage/
 playwright-report/
 test-results/
 *.local
+PLAN.local.md
+.env.local
+.env.*.local
 .DS_Store

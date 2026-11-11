@@ -1,7 +1,7 @@
 {
   "name": "the-hand-building-factory",
   "description": "HANDS ON! - assemble a robotic hand on stage while the crowd cheers. Meta Quest 3 WebXR for the Super Free AI Game Jam #2.",
-  "version": "2026.11.10.7",
+  "version": "2026.11.11.1",
   "type": "module",
   "private": true,
   "license": "Apache-2.0",
@@ -28,6 +28,7 @@
     "@eslint/eslintrc": "3.3.7",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
+    "@types/node": "26.6.6",
     "eslint": "10.14.0",
     "eslint-config-google": "0.14.0",
     "globals": "17.14.0",

@@ -60,6 +60,7 @@ export default tseslint.config(
         globals: {
           ...globals.node,
           ...globals.nodeBuiltin,
+          ...globals.browser,
         },
       },
     },

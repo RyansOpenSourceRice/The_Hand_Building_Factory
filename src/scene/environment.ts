@@ -30,7 +30,7 @@ import {
   PRINTER_BED_TOP,
   PRINTER_HOME,
 } from '../game/handParts';
-import {PLAY_RADIUS} from '../input/locomotion';
+import {WALK_HALF} from '../input/locomotion';
 import {FILAMENT_COLORS, FALLBACK_HEX} from '../game/palette';
 
 export interface Environment {
@@ -317,7 +317,6 @@ function buildConveyor(scene: Scene): Mesh {
   return belt;
 }
 
-const BARRIER_SEGMENTS = 16;
 const BARRIER_HEIGHTS = [0.5, 0.95] as const;
 
 function chevronTexture(scene: Scene): DynamicTexture {
@@ -339,6 +338,71 @@ function chevronTexture(scene: Scene): DynamicTexture {
   texture.update();
   texture.wrapU = Texture.WRAP_ADDRESSMODE;
   return texture;
+}
+
+const BELT_SAMPLES = 26;
+
+function catmullPoint(
+    a: Vector3,
+    b: Vector3,
+    c: Vector3,
+    d: Vector3,
+    t: number,
+): Vector3 {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const v = (p0: number, p1: number, p2: number, p3: number): number =>
+    0.5 * ((2 * p1) + (-p0 + p2) * t +
+          ((2 * p0) - (5 * p1) + (4 * p2) - p3) * t2 +
+          (-p0 + (3 * p1) - (3 * p2) + p3) * t3);
+  return new Vector3(
+      v(a.x, b.x, c.x, d.x),
+      v(a.y, b.y, c.y, d.y),
+      v(a.z, b.z, c.z, d.z),
+  );
+}
+
+function beltSurfaceSamples(): {points: Vector3[]; segLen: number} {
+  const [pitHome, floorStop, curveStop, beltSouth] = CONVEYOR_PATH;
+  const w0 = new Vector3(pitHome.x, pitHome.y - 0.02, pitHome.z);
+  const w1 = new Vector3(floorStop.x, floorStop.y - 0.02, floorStop.z);
+  const w2 = new Vector3(curveStop.x, curveStop.y - 0.02, curveStop.z);
+  const w3 = new Vector3(beltSouth.x, beltSouth.y - 0.03, beltSouth.z);
+  type Span = [Vector3, Vector3, Vector3, Vector3];
+  const spans: readonly Span[] = [
+    [w0, w0, w1, w2],
+    [w0, w1, w2, w3],
+    [w1, w2, w3, w3],
+  ];
+  const dense: Vector3[] = [];
+  for (const [a, b, c, d] of spans) {
+    for (let i = 0; i < 48; i++) {
+      dense.push(catmullPoint(a, b, c, d, i / 48));
+    }
+  }
+  dense.push(w3);
+  const lengths = [0];
+  for (let i = 1; i < dense.length; i++) {
+    const prev = dense[i - 1] ?? new Vector3();
+    const cur = dense[i] ?? new Vector3();
+    lengths.push((lengths[i - 1] ?? 0) + Vector3.Distance(prev, cur));
+  }
+  const total = lengths[lengths.length - 1] ?? 1;
+  const segLen = total / BELT_SAMPLES;
+  const points: Vector3[] = [];
+  let cursor = 0;
+  for (let i = 0; i <= BELT_SAMPLES; i++) {
+    const target = (i / BELT_SAMPLES) * total;
+    while (cursor < dense.length - 2 && (lengths[cursor + 1] ?? 0) < target) {
+      cursor++;
+    }
+    const p0 = dense[cursor] ?? new Vector3();
+    const p1 = dense[cursor + 1] ?? p0;
+    const span = (lengths[cursor + 1] ?? 1) - (lengths[cursor] ?? 0);
+    const f = span > 1e-6 ? (target - (lengths[cursor] ?? 0)) / span : 0;
+    points.push(Vector3.Lerp(p0, p1, f));
+  }
+  return {points, segLen};
 }
 
 function buildConveyorRun(scene: Scene): void {
@@ -390,11 +454,6 @@ function buildConveyorRun(scene: Scene): void {
   shaft.material = shaftMat;
   shaft.isPickable = false;
 
-  const floorLen = Math.abs(floorStop.x - pitHome.x);
-  const floorBelt = MeshBuilder.CreateBox(
-      'beltRunFloor', {width: floorLen, depth: 0.5, height: 0.14}, scene);
-  floorBelt.position.set((pitHome.x + floorStop.x) / 2, 0.17, floorStop.z);
-  floorBelt.material = runMat;
   const legSpec = {width: 0.04, depth: 0.04, height: 0.2};
   for (const dx of [-0.2, 0.2]) {
     const leg = MeshBuilder.CreateBox('beltRunLeg', legSpec, scene);
@@ -402,34 +461,67 @@ function buildConveyorRun(scene: Scene): void {
     leg.material = frameMat;
   }
 
-  const curve = MeshBuilder.CreateBox(
-      'beltRunCurve', {width: 0.55, depth: 0.45, height: 0.06}, scene);
-  curve.position.set(curveStop.x, 0.32, curveStop.z);
-  curve.rotation.y = Math.PI / 4;
-  curve.material = runMat;
+  const {points, segLen} = beltSurfaceSamples();
+  const belt = MeshBuilder.CreateBox(
+      'beltSegment',
+      {width: 0.3, height: 0.02, depth: segLen * 1.1},
+      scene,
+  );
+  belt.material = runMat;
+  belt.setEnabled(false);
+  const skirt = MeshBuilder.CreateBox(
+      'beltSkirt',
+      {width: 0.02, height: 0.08, depth: segLen * 1.1},
+      scene,
+  );
+  skirt.material = frameMat;
+  skirt.setEnabled(false);
+  const beltMatrices = new Float32Array(BELT_SAMPLES * 16);
+  const skirtMatrices = new Float32Array(BELT_SAMPLES * 32);
+  const dir = new Vector3();
+  const axis = new Vector3();
+  const rot = new Matrix();
+  const quat = new Quaternion();
+  const scale = Vector3.One();
+  for (let i = 0; i < BELT_SAMPLES; i++) {
+    const prev = points[i] ?? new Vector3();
+    const next = points[i + 1] ?? prev;
+    Vector3.LerpToRef(prev, next, 0.5, axis);
+    dir.copyFrom(next).subtractInPlace(prev).normalize();
+    Matrix.LookAtLHToRef(Vector3.ZeroReadOnly, dir, Vector3.Up(), rot);
+    Quaternion.FromRotationMatrixToRef(rot, quat);
+    Matrix.ComposeToRef(scale, quat, axis, rot);
+    rot.copyToArray(beltMatrices, i * 16);
+    Vector3.CrossToRef(Vector3.Up(), dir, dir);
+    const baseX = axis.x;
+    const baseY = axis.y;
+    const baseZ = axis.z;
+    for (const side of [-0.155, 0.155]) {
+      axis.set(baseX, baseY, baseZ);
+      axis.addInPlace(dir.scale(side));
+      axis.y += 0.035;
+      Matrix.ComposeToRef(scale, quat, axis, rot);
+      rot.copyToArray(skirtMatrices, i * 32 + (side > 0 ? 16 : 0));
+    }
+  }
+  belt.thinInstanceSetBuffer('matrix', beltMatrices, 16);
+  skirt.thinInstanceSetBuffer('matrix', skirtMatrices, 16);
+  belt.alwaysSelectAsActiveMesh = true;
+  skirt.alwaysSelectAsActiveMesh = true;
+
+  const rollerSpec = {diameter: 0.09, height: 0.34};
+  const rollerAt = (x: number, y: number, z: number): void => {
+    const roller = MeshBuilder.CreateCylinder('beltRoller', rollerSpec, scene);
+    roller.rotation.z = Math.PI / 2;
+    roller.position.set(x, y, z);
+    roller.material = frameMat;
+  };
+  rollerAt(floorStop.x + 0.28, 0.12, floorStop.z);
+  rollerAt(floorStop.x - 0.06, 0.12, floorStop.z);
+  rollerAt(curveStop.x - 0.02, curveStop.y - 0.04, curveStop.z + 0.02);
+  rollerAt(beltSouth.x + 0.04, beltSouth.y - 0.07, beltSouth.z + 0.04);
 
   const rise = beltSouth.y - curveStop.y;
-  const run = beltSouth.z - curveStop.z;
-  const slopeLen = Math.hypot(rise, run);
-  const slopeAngle = Math.atan2(rise, Math.abs(run));
-  const slope = MeshBuilder.CreateBox(
-      'beltRunSlope', {width: 0.5, height: 0.06, depth: slopeLen}, scene);
-  slope.position.set(
-      (curveStop.x + beltSouth.x) / 2,
-      (curveStop.y + beltSouth.y) / 2,
-      (curveStop.z + beltSouth.z) / 2,
-  );
-  slope.rotation.x = slopeAngle;
-  slope.material = runMat;
-  const slopeRailSpec = {width: 0.02, height: 0.08, depth: slopeLen};
-  for (const dx of [-0.26, 0.26]) {
-    const rail = MeshBuilder.CreateBox(
-        'beltRunSlopeRail', slopeRailSpec, scene);
-    rail.position.set(slope.position.x + dx, slope.position.y + 0.05,
-        slope.position.z);
-    rail.rotation.x = slopeAngle;
-    rail.material = frameMat;
-  }
   for (const dz of [1.05, 0.85, 0.65]) {
     const t = (1.25 - dz) / 0.7;
     const legX = curveStop.x + t * (beltSouth.x - curveStop.x);
@@ -998,43 +1090,56 @@ function buildPrinterBench(scene: Scene): void {
   pegboard.material = pegMat;
 }
 
-function buildBarrierRing(scene: Scene): Mesh[] {
+function buildBarrierFence(scene: Scene): Mesh[] {
   const yellowMat = machineMat(scene, 'barrierYellowMat', '#d9a622', '#4a3a0c');
   const footMat = machineMat(scene, 'barrierFootMat', '#2a2f3e', '#05070c');
   const stripeMat = machineMat(scene, 'barrierStripeMat', '#d9a622', '#4a3a0c');
   stripeMat.diffuseTexture = hazardTexture(scene);
 
-  const radius = PLAY_RADIUS;
-  const chord = (2 * Math.PI * radius) / BARRIER_SEGMENTS;
+  const half = WALK_HALF;
+  const span = half * 2;
+  const postsPerSide = 10;
+  const step = span / postsPerSide;
   const rails: Mesh[] = [];
   const trims: Mesh[] = [];
-  for (let i = 0; i < BARRIER_SEGMENTS; i++) {
-    const angle = (i / BARRIER_SEGMENTS) * Math.PI * 2;
-    const mid = angle + Math.PI / BARRIER_SEGMENTS;
-    const px = Math.cos(angle) * radius;
-    const pz = Math.sin(angle) * radius;
+  const addPost = (px: number, pz: number): void => {
     const post = MeshBuilder.CreateBox(
-        `barrierPost${i}`, {width: 0.05, height: 1.0, depth: 0.05}, scene);
+        'barrierPost', {width: 0.05, height: 1.0, depth: 0.05}, scene);
     post.position.set(px, 0.5, pz);
     post.material = yellowMat;
     trims.push(post);
     const foot = MeshBuilder.CreateBox(
-        `barrierFoot${i}`, {width: 0.16, height: 0.04, depth: 0.16}, scene);
+        'barrierFoot', {width: 0.16, height: 0.04, depth: 0.16}, scene);
     foot.position.set(px, 0.02, pz);
     foot.material = footMat;
     trims.push(foot);
-    BARRIER_HEIGHTS.forEach((y, j) => {
-      const rail = MeshBuilder.CreateBox(
-          `barrierRail${i}-${j}`, {width: chord, height: 0.06, depth: 0.05},
-          scene);
-      rail.position.set(
-          Math.cos(mid) * radius,
-          y,
-          Math.sin(mid) * radius,
-      );
-      rail.rotation.y = mid + Math.PI / 2;
-      rail.material = y > 0.9 ? stripeMat : yellowMat;
-      rails.push(rail);
+  };
+  const addRail = (alongX: boolean, fixed: number, y: number): void => {
+    const length = span + 0.1;
+    const rail = MeshBuilder.CreateBox(
+        'barrierRail',
+        alongX ?
+            {width: length, height: 0.06, depth: 0.05} :
+            {width: 0.05, height: 0.06, depth: length},
+        scene,
+    );
+    if (alongX) {
+      rail.position.set(0, y, fixed);
+    } else {
+      rail.position.set(fixed, y, 0);
+    }
+    rail.material = y > 0.9 ? stripeMat : yellowMat;
+    rails.push(rail);
+  };
+  for (const fixed of [-half, half]) {
+    for (let i = 0; i < postsPerSide; i++) {
+      const along = -half + (i + 0.5) * step;
+      addPost(along, fixed);
+      addPost(fixed, along);
+    }
+    BARRIER_HEIGHTS.forEach((y) => {
+      addRail(true, fixed, y);
+      addRail(false, fixed, y);
     });
   }
   const trim = Mesh.MergeMeshes(trims, true, true);
@@ -1254,7 +1359,7 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   buildConveyorRun(scene);
   buildWarehouse(scene);
   buildGrandHall(scene);
-  const barrierRails = buildBarrierRing(scene);
+  const barrierRails = buildBarrierFence(scene);
 
   return {
     engine,

@@ -8,8 +8,7 @@ import type {SettingsStore} from '../game/settings';
 
 export const SMOOTH_TURN_RATE = Math.PI / 2;
 export const MOVE_SPEED = 1.5;
-export const PLAY_RADIUS = 1.25;
-export const INNER_RADIUS = 0.7;
+export const WALK_HALF = 6.25;
 
 const STICK_DEADZONE = 0.15;
 const TURN_ARM = 0.6;
@@ -17,20 +16,8 @@ const TURN_RELEASE = 0.4;
 const THUMBSTICK = 'xr-standard-thumbstick';
 
 export function clampToPlayArea(position: Vector3): void {
-  const distance = Math.hypot(position.x, position.z);
-  if (distance === 0) {
-    position.z = INNER_RADIUS;
-    return;
-  }
-  if (distance > PLAY_RADIUS) {
-    const scale = PLAY_RADIUS / distance;
-    position.x *= scale;
-    position.z *= scale;
-  } else if (distance < INNER_RADIUS) {
-    const scale = INNER_RADIUS / distance;
-    position.x *= scale;
-    position.z *= scale;
-  }
+  position.x = Math.max(-WALK_HALF, Math.min(WALK_HALF, position.x));
+  position.z = Math.max(-WALK_HALF, Math.min(WALK_HALF, position.z));
 }
 
 export function attachXrLocomotion(
@@ -82,9 +69,8 @@ export function attachXrLocomotion(
       }
       const dead = (value: number): number =>
         Math.abs(value) > STICK_DEADZONE ? value : 0;
-      // Quest Browser reports thumbstick axes inverted from the
-      // xr-standard convention, so both are negated before use.
-      const x = dead(-stick.axes.x);
+      // xr-standard: stick right is +x, stick forward is -y.
+      const x = dead(stick.axes.x);
       const y = dead(-stick.axes.y);
       if (motion.handedness === 'left') {
         const {turnMode, snapAngle} = settings.get();
@@ -93,11 +79,11 @@ export function attachXrLocomotion(
             armed = true;
           } else if (armed && Math.abs(x) >= TURN_ARM) {
             const radians = (snapAngle * Math.PI) / 180;
-            rotateBy(x > 0 ? -radians : radians);
+            rotateBy(x > 0 ? radians : -radians);
             armed = false;
           }
         } else if (x !== 0) {
-          rotateBy(-x * SMOOTH_TURN_RATE * dt);
+          rotateBy(x * SMOOTH_TURN_RATE * dt);
         }
       } else if (motion.handedness === 'right') {
         strafe = x;

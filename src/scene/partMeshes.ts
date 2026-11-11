@@ -128,6 +128,7 @@ export function createPartProvider(
         throw new Error(`missing prototype for ${def.file}`);
       }
       const mesh = proto.clone(`part:${def.id}`);
+      mesh.makeGeometryUnique();
       if (def.scale !== 1) {
         mesh.scaling.setAll(def.scale);
         mesh.bakeCurrentTransformIntoVertices();

@@ -1,13 +1,18 @@
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder';
+import {TransformNode} from '@babylonjs/core/Meshes/transformNode';
 import {Scene} from '@babylonjs/core/scene';
 import {Color3} from '@babylonjs/core/Maths/math.color';
-import {Vector3} from '@babylonjs/core/Maths/math.vector';
+import {Quaternion} from '@babylonjs/core/Maths/math.vector';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import type {WebXRInputSource} from '@babylonjs/core/XR/webXRInputSource';
+import type {
+  MotionControllerComponentType,
+  WebXRControllerComponent,
+} from '@babylonjs/core/XR/motionController';
 import {
   FALLBACK_HEX,
   FILAMENT_COLORS,
@@ -16,45 +21,82 @@ import {
 
 export const HAND_REP_ALPHA = 0.55;
 const EMISSIVE_SHARE = 0.12;
+const CURL_REST = 0.3;
+const CURL_RANGE = [1.05, 1.2, 1.25, 1.0] as const;
+const FINGER_X = [-0.028, -0.0095, 0.0095, 0.028];
 
-const FINGER_X = [-0.0325, -0.011, 0.011, 0.0325];
+type HandPose = (trigger: number, squeeze: number) => void;
+
+type Finger = {pivot: TransformNode; distal: TransformNode; range: number};
+
+function box(
+    name: string,
+    size: [number, number, number],
+    parent: TransformNode,
+    at: [number, number, number],
+): Mesh {
+  const mesh = MeshBuilder.CreateBox(
+      name,
+      {width: size[0], height: size[1], depth: size[2]},
+      parent.getScene(),
+  );
+  mesh.parent = parent;
+  mesh.position.set(at[0], at[1], at[2]);
+  mesh.isPickable = false;
+  return mesh;
+}
+
+function buildFinger(
+    index: number,
+    x: number,
+    root: TransformNode,
+): Finger {
+  const pivot = new TransformNode(`handRep-finger${index}`, root.getScene());
+  pivot.parent = root;
+  pivot.position.set(x, -0.052, 0.03);
+  box(`handRep-proximal${index}`, [0.017, 0.042, 0.017], pivot, [0, -0.021, 0]);
+  const distal = new TransformNode(`handRep-distal${index}`, root.getScene());
+  distal.parent = pivot;
+  distal.position.set(0, -0.042, 0);
+  box(`handRep-tip${index}`, [0.015, 0.036, 0.015], distal, [0, -0.018, 0]);
+  return {pivot, distal, range: CURL_RANGE[index] ?? 1.1};
+}
 
 function buildHand(
     thumbSide: number,
     material: StandardMaterial,
     scene: Scene,
-): Mesh {
-  const parts = [];
-  const palm = MeshBuilder.CreateBox(
-      'handRep-palm', {width: 0.085, height: 0.03, depth: 0.09}, scene);
-  palm.position = new Vector3(0, 0, 0.06);
-  parts.push(palm);
-  const wrist = MeshBuilder.CreateBox(
-      'handRep-wrist', {width: 0.06, height: 0.026, depth: 0.035}, scene);
-  wrist.position = new Vector3(0, 0, 0.005);
-  parts.push(wrist);
-  for (let i = 0; i < FINGER_X.length; i++) {
-    const x = FINGER_X[i] ?? 0;
-    const knuckle = MeshBuilder.CreateBox(
-        `handRep-knuckle${i}`, {width: 0.018, height: 0.018, depth: 0.042},
-        scene);
-    knuckle.position = new Vector3(x, -0.004, 0.125);
-    parts.push(knuckle);
-    const tip = MeshBuilder.CreateBox(
-        `handRep-tip${i}`, {width: 0.016, height: 0.016, depth: 0.038}, scene);
-    tip.position = new Vector3(x, -0.012, 0.162);
-    tip.rotation.x = 0.25;
-    parts.push(tip);
-  }
-  const thumb = MeshBuilder.CreateBox(
-      'handRep-thumb', {width: 0.022, height: 0.022, depth: 0.055}, scene);
-  thumb.position = new Vector3(thumbSide * 0.05, -0.008, 0.055);
-  thumb.rotation.y = thumbSide * 0.35;
-  parts.push(thumb);
-  const hand = Mesh.MergeMeshes(parts, true, true) ?? palm;
-  hand.material = material;
-  hand.isPickable = false;
-  return hand;
+): {root: TransformNode; pose: HandPose; dispose: () => void} {
+  const root = new TransformNode('handRep-root', scene);
+  box('handRep-wrist', [0.055, 0.03, 0.045], root, [0, -0.055, -0.045])
+      .material = material;
+  box('handRep-palm', [0.075, 0.035, 0.085], root, [0, -0.035, 0])
+      .material = material;
+  const fingers = FINGER_X.map((x, i) => buildFinger(i, x, root));
+
+  const thumbPivot = new TransformNode('handRep-thumb', scene);
+  thumbPivot.parent = root;
+  thumbPivot.position.set(thumbSide * 0.04, -0.03, 0.005);
+  box('handRep-thumbSeg', [0.02, 0.02, 0.05], thumbPivot, [0, 0, 0.026])
+      .material = material;
+
+  const pose: HandPose = (trigger, squeeze) => {
+    const grip = Math.max(trigger, squeeze);
+    const fist = squeeze;
+    for (const finger of fingers) {
+      const bend = CURL_REST + finger.range * grip + 0.25 * fist;
+      finger.pivot.rotation.x = bend;
+      finger.distal.rotation.x = finger.range * 0.55 * grip + 0.3 * fist;
+    }
+    thumbPivot.rotation.y = thumbSide * (0.5 + 0.45 * fist);
+    thumbPivot.rotation.x = 0.25 * fist;
+  };
+  pose(0.12, 0);
+
+  const dispose = (): void => {
+    root.dispose(false, true);
+  };
+  return {root, pose, dispose};
 }
 
 export function handRepTint(colorIndex: number): Color3 {
@@ -69,6 +111,16 @@ export function setHandTint(material: StandardMaterial, tint: Color3): void {
   material.emissiveColor = tint.scale(EMISSIVE_SHARE);
 }
 
+type ActiveHand = {
+  controller: WebXRInputSource;
+  motion: {
+    getComponentOfType: (
+        type: MotionControllerComponentType,
+    ) => WebXRControllerComponent | null;
+  };
+  hand: {root: TransformNode; pose: HandPose; dispose: () => void};
+};
+
 export function attachControllerHands(
     xr: WebXRDefaultExperience,
     scene: Scene,
@@ -79,26 +131,53 @@ export function attachControllerHands(
   material.alpha = HAND_REP_ALPHA;
   setHandTint(material, handRepTint(colorIndex));
 
-  const byController = new Map<WebXRInputSource, Mesh>();
+  const active = new Map<'left' | 'right', ActiveHand>();
 
-  xr.input.onControllerAddedObservable.add((controller) => {
+  const attach = (controller: WebXRInputSource): void => {
     controller.onMotionControllerInitObservable.add((motion) => {
-      const thumbSide = motion.handedness === 'left' ? 1 : -1;
+      const handedness = motion.handedness === 'left' ? 'left' : 'right';
+      const previous = active.get(handedness);
+      if (previous) {
+        previous.hand.dispose();
+      }
+      const thumbSide = handedness === 'left' ? 1 : -1;
       const hand = buildHand(thumbSide, material, scene);
-      hand.name = `handRep-${motion.handedness}`;
-      byController.set(controller, hand);
-      const anchor = controller.grip ?? controller.pointer;
-      hand.rotation.x = 0.3;
-      hand.position.y = -0.03;
-      anchor.addChild(hand);
+      hand.root.name = `handRep-${handedness}`;
+      active.set(handedness, {controller, motion, hand});
     });
-  });
+  };
+
+  for (const controller of xr.input.controllers) {
+    attach(controller);
+  }
+  xr.input.onControllerAddedObservable.add(attach);
 
   xr.input.onControllerRemovedObservable.add((controller) => {
-    const hand = byController.get(controller);
-    if (hand) {
-      hand.dispose();
-      byController.delete(controller);
+    for (const [handedness, entry] of active) {
+      if (entry.controller === controller) {
+        entry.hand.dispose();
+        active.delete(handedness);
+      }
+    }
+  });
+
+  scene.onBeforeRenderObservable.add(() => {
+    for (const entry of active.values()) {
+      const anchor = entry.controller.grip ?? entry.controller.pointer;
+      if (!anchor) {
+        continue;
+      }
+      anchor.computeWorldMatrix(true);
+      anchor.getWorldMatrix().decompose(
+          undefined,
+          entry.hand.root.rotationQuaternion ??=
+              Quaternion.Identity(),
+          entry.hand.root.position,
+          undefined,
+      );
+      const trigger = entry.motion.getComponentOfType('trigger');
+      const squeeze = entry.motion.getComponentOfType('squeeze');
+      entry.hand.pose(trigger?.value ?? 0, squeeze?.value ?? 0);
     }
   });
 
