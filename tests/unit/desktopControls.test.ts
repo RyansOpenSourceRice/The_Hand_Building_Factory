@@ -4,6 +4,7 @@ import {Scene} from '@babylonjs/core/scene';
 import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {attachDesktopControls} from '../../src/input/desktopControls';
+import {WALK_HALF} from '../../src/input/locomotion';
 
 type KeyHandler = (event: {code: string; preventDefault: () => void}) => void;
 
@@ -66,9 +67,8 @@ describe('desktopControls', () => {
     }
     release('KeyD');
     expect(camera.position.x).toBeGreaterThan(0.01);
-    const radius = Math.hypot(
-        camera.position.x, camera.position.z);
-    expect(radius).toBeLessThanOrEqual(1.26);
+    expect(camera.position.x).toBeLessThanOrEqual(WALK_HALF);
+    expect(Math.abs(camera.position.z)).toBeLessThanOrEqual(WALK_HALF);
   });
 
   it('strafes left with A while facing the stage', () => {

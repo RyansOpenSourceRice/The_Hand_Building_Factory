@@ -30,7 +30,7 @@ import {
   PRINTER_BED_TOP,
   PRINTER_HOME,
 } from '../game/handParts';
-import {PLAY_RADIUS} from '../input/locomotion';
+import {WALK_HALF} from '../input/locomotion';
 import {FILAMENT_COLORS, FALLBACK_HEX} from '../game/palette';
 
 export interface Environment {
@@ -317,7 +317,6 @@ function buildConveyor(scene: Scene): Mesh {
   return belt;
 }
 
-const BARRIER_SEGMENTS = 16;
 const BARRIER_HEIGHTS = [0.5, 0.95] as const;
 
 function chevronTexture(scene: Scene): DynamicTexture {
@@ -998,43 +997,56 @@ function buildPrinterBench(scene: Scene): void {
   pegboard.material = pegMat;
 }
 
-function buildBarrierRing(scene: Scene): Mesh[] {
+function buildBarrierFence(scene: Scene): Mesh[] {
   const yellowMat = machineMat(scene, 'barrierYellowMat', '#d9a622', '#4a3a0c');
   const footMat = machineMat(scene, 'barrierFootMat', '#2a2f3e', '#05070c');
   const stripeMat = machineMat(scene, 'barrierStripeMat', '#d9a622', '#4a3a0c');
   stripeMat.diffuseTexture = hazardTexture(scene);
 
-  const radius = PLAY_RADIUS;
-  const chord = (2 * Math.PI * radius) / BARRIER_SEGMENTS;
+  const half = WALK_HALF;
+  const span = half * 2;
+  const postsPerSide = 10;
+  const step = span / postsPerSide;
   const rails: Mesh[] = [];
   const trims: Mesh[] = [];
-  for (let i = 0; i < BARRIER_SEGMENTS; i++) {
-    const angle = (i / BARRIER_SEGMENTS) * Math.PI * 2;
-    const mid = angle + Math.PI / BARRIER_SEGMENTS;
-    const px = Math.cos(angle) * radius;
-    const pz = Math.sin(angle) * radius;
+  const addPost = (px: number, pz: number): void => {
     const post = MeshBuilder.CreateBox(
-        `barrierPost${i}`, {width: 0.05, height: 1.0, depth: 0.05}, scene);
+        'barrierPost', {width: 0.05, height: 1.0, depth: 0.05}, scene);
     post.position.set(px, 0.5, pz);
     post.material = yellowMat;
     trims.push(post);
     const foot = MeshBuilder.CreateBox(
-        `barrierFoot${i}`, {width: 0.16, height: 0.04, depth: 0.16}, scene);
+        'barrierFoot', {width: 0.16, height: 0.04, depth: 0.16}, scene);
     foot.position.set(px, 0.02, pz);
     foot.material = footMat;
     trims.push(foot);
-    BARRIER_HEIGHTS.forEach((y, j) => {
-      const rail = MeshBuilder.CreateBox(
-          `barrierRail${i}-${j}`, {width: chord, height: 0.06, depth: 0.05},
-          scene);
-      rail.position.set(
-          Math.cos(mid) * radius,
-          y,
-          Math.sin(mid) * radius,
-      );
-      rail.rotation.y = mid + Math.PI / 2;
-      rail.material = y > 0.9 ? stripeMat : yellowMat;
-      rails.push(rail);
+  };
+  const addRail = (alongX: boolean, fixed: number, y: number): void => {
+    const length = span + 0.1;
+    const rail = MeshBuilder.CreateBox(
+        'barrierRail',
+        alongX ?
+            {width: length, height: 0.06, depth: 0.05} :
+            {width: 0.05, height: 0.06, depth: length},
+        scene,
+    );
+    if (alongX) {
+      rail.position.set(0, y, fixed);
+    } else {
+      rail.position.set(fixed, y, 0);
+    }
+    rail.material = y > 0.9 ? stripeMat : yellowMat;
+    rails.push(rail);
+  };
+  for (const fixed of [-half, half]) {
+    for (let i = 0; i < postsPerSide; i++) {
+      const along = -half + (i + 0.5) * step;
+      addPost(along, fixed);
+      addPost(fixed, along);
+    }
+    BARRIER_HEIGHTS.forEach((y) => {
+      addRail(true, fixed, y);
+      addRail(false, fixed, y);
     });
   }
   const trim = Mesh.MergeMeshes(trims, true, true);
@@ -1254,7 +1266,7 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   buildConveyorRun(scene);
   buildWarehouse(scene);
   buildGrandHall(scene);
-  const barrierRails = buildBarrierRing(scene);
+  const barrierRails = buildBarrierFence(scene);
 
   return {
     engine,
