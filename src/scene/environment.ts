@@ -313,6 +313,39 @@ function buildConveyor(scene: Scene): Mesh {
 const BARRIER_SEGMENTS = 16;
 const BARRIER_HEIGHTS = [0.5, 0.95] as const;
 
+function buildPrinterBench(scene: Scene): void {
+  const frameMat = machineMat(scene, 'benchFrameMat', '#3a4149', '#0b0e14');
+  const steelMat = machineMat(scene, 'benchSteelMat', '#9aa4b2', '#252a33');
+  const pegMat = machineMat(scene, 'benchPegMat', '#2f3542', '#080b10');
+  const cx = PRINTER_HOME.x;
+  const cz = PRINTER_HOME.z;
+  const top = MeshBuilder.CreateBox(
+      'benchTop', {width: 0.6, depth: 0.55, height: 0.05}, scene);
+  top.position.set(cx, 1.033, cz);
+  top.material = frameMat;
+  const plate = MeshBuilder.CreateBox(
+      'benchPlate', {width: 0.58, depth: 0.53, height: 0.012}, scene);
+  plate.position.set(cx, 1.064, cz);
+  plate.material = steelMat;
+  const legSpec = {width: 0.05, depth: 0.05, height: 1.008};
+  const legSpots: Array<[number, number]> = [
+    [-0.24, -0.21], [0.24, -0.21], [-0.24, 0.21], [0.24, 0.21],
+  ];
+  legSpots.forEach(([dx, dz], i) => {
+    const leg = MeshBuilder.CreateBox(`benchLeg${i}`, legSpec, scene);
+    leg.position.set(cx + dx, 0.504, cz + dz);
+    leg.material = frameMat;
+  });
+  const shelf = MeshBuilder.CreateBox(
+      'benchShelf', {width: 0.5, depth: 0.45, height: 0.03}, scene);
+  shelf.position.set(cx, 0.38, cz);
+  shelf.material = frameMat;
+  const pegboard = MeshBuilder.CreateBox(
+      'benchPegboard', {width: 0.6, depth: 0.03, height: 0.5}, scene);
+  pegboard.position.set(cx, 1.32, cz + 0.26);
+  pegboard.material = pegMat;
+}
+
 function buildBarrierRing(scene: Scene): Mesh[] {
   const yellowMat = machineMat(scene, 'barrierYellowMat', '#d9a622', '#4a3a0c');
   const footMat = machineMat(scene, 'barrierFootMat', '#2a2f3e', '#05070c');
@@ -527,19 +560,30 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
       imageMat(scene, 'groundMat', 'textures/concrete-floor.png', 6, 6);
   ground.material = groundMat;
 
-  const column = MeshBuilder.CreateBox(
-      'pedestalColumn', {width: 0.9, depth: 0.9, height: 1.0}, scene);
+  const column = MeshBuilder.CreateCylinder(
+      'pedestalColumn', {diameter: 0.6, height: 1.0, tessellation: 24}, scene);
   column.position.y = 0.5;
-  const slab = MeshBuilder.CreateBox(
-      'pedestalSlab', {width: 1.15, depth: 1.15, height: 0.07}, scene);
+  const baseRing = MeshBuilder.CreateCylinder(
+      'pedestalBase', {diameter: 0.8, height: 0.06, tessellation: 24}, scene);
+  baseRing.position.y = 0.03;
+  const slab = MeshBuilder.CreateCylinder(
+      'pedestalSlab', {diameter: 0.72, height: 0.07, tessellation: 24}, scene);
   const pedestalTop = 1.0 + 0.07;
   slab.position.y = 1.0 + 0.035;
+  const accentRing = MeshBuilder.CreateCylinder(
+      'pedestalAccent', {diameter: 0.78, height: 0.02, tessellation: 24},
+      scene);
+  accentRing.position.y = 0.995;
   const benchMat = new StandardMaterial('benchMat', scene);
   benchMat.diffuseColor = new Color3(0.62, 0.65, 0.72);
   benchMat.emissiveColor = new Color3(0.1, 0.11, 0.13);
-  benchMat.specularColor = new Color3(0.08, 0.08, 0.1);
+  benchMat.specularColor = new Color3(0.3, 0.3, 0.34);
   column.material = benchMat;
   slab.material = benchMat;
+  baseRing.material =
+      machineMat(scene, 'pedestalBaseMat', '#2a2f3e', '#05070c');
+  accentRing.material =
+      machineMat(scene, 'pedestalAccentMat', '#2e8d7c', '#0b4a3e');
 
   const curtainMat = new StandardMaterial('curtainMat', scene);
   curtainMat.diffuseColor = new Color3(0.42, 0.1, 0.14);
@@ -551,6 +595,7 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   curtain.material = curtainMat;
 
   const printerBed = buildPrinter(scene);
+  buildPrinterBench(scene);
   const conveyorBelt = buildConveyor(scene);
   buildWarehouse(scene);
   const barrierRails = buildBarrierRing(scene);
@@ -579,13 +624,19 @@ export function attachEnvironmentColliders(env: Environment): void {
       env.scene,
       env.column,
       Vector3.Zero(),
-      new Vector3(0.9, 1.0, 0.9),
+      new Vector3(0.6, 1.0, 0.6),
   );
   addStaticCollider(
       env.scene,
       env.slab,
       Vector3.Zero(),
-      new Vector3(1.15, 0.07, 1.15),
+      new Vector3(0.72, 0.07, 0.72),
+  );
+  addStaticCollider(
+      env.scene,
+      env.column,
+      new Vector3(PRINTER_HOME.x, 0.535, PRINTER_HOME.z),
+      new Vector3(0.6, 1.07, 0.55),
   );
   addStaticCollider(
       env.scene,

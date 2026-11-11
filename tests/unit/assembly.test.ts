@@ -8,6 +8,7 @@ import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {AssemblyStage} from '../../src/game/assembly';
 import {
   PRINTER_BED_TOP,
+  PRINTER_HOME,
   type PartDef,
 } from '../../src/game/handParts';
 
@@ -92,7 +93,7 @@ describe('AssemblyStage', () => {
     expect(statuses.at(-1)).toContain('returned');
     expect(stage.currentIndex).toBe(0);
     expect(palm.isEnabled()).toBe(true);
-    expect(home.x).toBeCloseTo(-0.36, 2);
+    expect(home.x).toBeCloseTo(PRINTER_HOME.x, 2);
   });
 
   it('undo reverts a snap within the current part', () => {
@@ -162,7 +163,7 @@ describe('AssemblyStage', () => {
   it('spawns parts resting on their source machine', () => {
     const quiet = new AssemblyStage(scene, boxProvider, true);
     const palm = quiet.currentPart;
-    expect(palm.position.x).toBeCloseTo(-0.36, 2);
+    expect(palm.position.x).toBeCloseTo(PRINTER_HOME.x, 2);
     expect(palm.position.y).toBeCloseTo(PRINTER_BED_TOP + 0.05, 2);
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     quiet.startGrab('xr');
