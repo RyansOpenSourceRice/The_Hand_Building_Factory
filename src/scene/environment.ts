@@ -13,13 +13,17 @@ import {Texture} from '@babylonjs/core/Materials/Textures/texture';
 import {
   DynamicTexture,
 } from '@babylonjs/core/Materials/Textures/dynamicTexture';
-import {addStaticCollider} from './physics';
+import {addStaticCollider, makeBoxBody} from './physics';
+import {
+  PhysicsMotionType,
+} from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import {
   CONVEYOR_BELT_TOP,
   CONVEYOR_HOME,
   PRINTER_BED_TOP,
   PRINTER_HOME,
 } from '../game/handParts';
+import {PLAY_RADIUS} from '../input/locomotion';
 import {FILAMENT_COLORS, FALLBACK_HEX} from '../game/palette';
 
 export interface Environment {
@@ -30,6 +34,7 @@ export interface Environment {
   slab: Mesh;
   printerBed: Mesh;
   conveyorBelt: Mesh;
+  barrierRails: readonly Mesh[];
   pedestalTop: number;
 }
 
@@ -305,6 +310,59 @@ function buildConveyor(scene: Scene): Mesh {
   return belt;
 }
 
+const BARRIER_SEGMENTS = 16;
+const BARRIER_HEIGHTS = [0.5, 0.95] as const;
+
+function buildBarrierRing(scene: Scene): Mesh[] {
+  const yellowMat = machineMat(scene, 'barrierYellowMat', '#d9a622', '#4a3a0c');
+  const footMat = machineMat(scene, 'barrierFootMat', '#2a2f3e', '#05070c');
+  const stripeMat = machineMat(scene, 'barrierStripeMat', '#d9a622', '#4a3a0c');
+  stripeMat.diffuseTexture = hazardTexture(scene);
+
+  const radius = PLAY_RADIUS;
+  const chord = (2 * Math.PI * radius) / BARRIER_SEGMENTS;
+  const rails: Mesh[] = [];
+  const trims: Mesh[] = [];
+  for (let i = 0; i < BARRIER_SEGMENTS; i++) {
+    const angle = (i / BARRIER_SEGMENTS) * Math.PI * 2;
+    const mid = angle + Math.PI / BARRIER_SEGMENTS;
+    const px = Math.cos(angle) * radius;
+    const pz = Math.sin(angle) * radius;
+    const post = MeshBuilder.CreateBox(
+        `barrierPost${i}`, {width: 0.05, height: 1.0, depth: 0.05}, scene);
+    post.position.set(px, 0.5, pz);
+    post.material = yellowMat;
+    trims.push(post);
+    const foot = MeshBuilder.CreateBox(
+        `barrierFoot${i}`, {width: 0.16, height: 0.04, depth: 0.16}, scene);
+    foot.position.set(px, 0.02, pz);
+    foot.material = footMat;
+    trims.push(foot);
+    BARRIER_HEIGHTS.forEach((y, j) => {
+      const rail = MeshBuilder.CreateBox(
+          `barrierRail${i}-${j}`, {width: chord, height: 0.06, depth: 0.05},
+          scene);
+      rail.position.set(
+          Math.cos(mid) * radius,
+          y,
+          Math.sin(mid) * radius,
+      );
+      rail.rotation.y = mid + Math.PI / 2;
+      rail.material = y > 0.9 ? stripeMat : yellowMat;
+      rails.push(rail);
+    });
+  }
+  const trim = Mesh.MergeMeshes(trims, true, true);
+  if (trim) {
+    trim.name = 'barrierTrims';
+    trim.isPickable = false;
+  }
+  for (const rail of rails) {
+    rail.isPickable = false;
+  }
+  return rails;
+}
+
 const WALL_Z = 8.2;
 const WALL_HEIGHT = 10;
 const BEAM_LEVELS = [3.2, 6.4, 9.2];
@@ -495,6 +553,7 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   const printerBed = buildPrinter(scene);
   const conveyorBelt = buildConveyor(scene);
   buildWarehouse(scene);
+  const barrierRails = buildBarrierRing(scene);
 
   return {
     engine,
@@ -504,6 +563,7 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
     slab,
     printerBed,
     conveyorBelt,
+    barrierRails,
     pedestalTop,
   };
 }
@@ -549,4 +609,7 @@ export function attachEnvironmentColliders(env: Environment): void {
       new Vector3(CONVEYOR_HOME.x, CONVEYOR_BELT_TOP - 0.01, 0.25),
       new Vector3(0.3, 0.02, 0.7),
   );
+  for (const rail of env.barrierRails) {
+    makeBoxBody(rail, PhysicsMotionType.STATIC, 0);
+  }
 }
