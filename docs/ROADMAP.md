@@ -13,11 +13,15 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
        screw driving with the screwdriver. (2026.11.10.5)
 5. [x] Warehouse dressing (walls, beams, railing, lights, crates).
        (2026.11.10.5)
-6. [ ] Test on the actual Quest 3 via the Pages staging URL and in an
+6. [x] Desktop comfort pass: strafe fix, level start camera, brighter
+       daylight warehouse (bay lights, skylights, AI concrete and metal
+       roof textures), filament color menu, detailed printer and
+       conveyor. (2026.11.10.6)
+7. [ ] Test on the actual Quest 3 via the Pages staging URL and in an
        itch-style iframe (pending Ryan pushing `dev`/`main`).
-7. [ ] Add an audience (instanced crowd, cheer swell, audio from OpenRouter
+8. [ ] Add an audience (instanced crowd, cheer swell, audio from OpenRouter
        generation direction to be provided by Ryan).
-8. [ ] Fine tuning (90 Hz budget, seated/height adaptation, pause menu,
+9. [ ] Fine tuning (90 Hz budget, seated/height adaptation, pause menu,
        mirror, itch upload, on-device validation, rate other entries).
 
 Definition of done for every item: the four gates in AGENTS.md.

@@ -1,5 +1,14 @@
 import {describe, expect, it, vi} from 'vitest';
 import {SettingsStore, type StorageLike} from '../../src/game/settings';
+import {DEFAULT_THEME} from '../../src/game/palette';
+
+const DEFAULTS = {
+  turnMode: 'snap' as const,
+  snapAngle: 45 as const,
+  themePrimary: DEFAULT_THEME.primary,
+  themeSecondary: DEFAULT_THEME.secondary,
+  themeTertiary: DEFAULT_THEME.tertiary,
+};
 
 class FakeStorage implements StorageLike {
   private readonly map = new Map<string, string>();
@@ -26,34 +35,51 @@ class ThrowingStorage implements StorageLike {
 describe('SettingsStore', () => {
   it('falls back to defaults with no stored data', () => {
     const store = new SettingsStore(new FakeStorage());
-    expect(store.get()).toEqual({turnMode: 'snap', snapAngle: 45});
+    expect(store.get()).toEqual(DEFAULTS);
   });
 
   it('falls back to defaults on invalid JSON', () => {
     const storage = new FakeStorage();
     storage.setItem('hands-on-settings', '{not json');
     const store = new SettingsStore(storage);
-    expect(store.get()).toEqual({turnMode: 'snap', snapAngle: 45});
+    expect(store.get()).toEqual(DEFAULTS);
   });
 
   it('falls back to defaults on unknown values', () => {
     const storage = new FakeStorage();
     storage.setItem(
         'hands-on-settings',
-        '{"turnMode":"spin","snapAngle":77}',
+        '{"turnMode":"spin","snapAngle":77,"themePrimary":99}',
     );
     const store = new SettingsStore(storage);
-    expect(store.get()).toEqual({turnMode: 'snap', snapAngle: 45});
+    expect(store.get()).toEqual(DEFAULTS);
+  });
+
+  it('falls back to theme defaults on out-of-range theme colors', () => {
+    const storage = new FakeStorage();
+    storage.setItem(
+        'hands-on-settings',
+        '{"turnMode":"snap","snapAngle":45,' +
+        '"themePrimary":-1,"themeSecondary":8,"themeTertiary":1.5}',
+    );
+    const store = new SettingsStore(storage);
+    const current = store.get();
+    expect(current.themePrimary).toBe(DEFAULT_THEME.primary);
+    expect(current.themeSecondary).toBe(DEFAULT_THEME.secondary);
+    expect(current.themeTertiary).toBe(DEFAULT_THEME.tertiary);
   });
 
   it('restores stored settings', () => {
     const storage = new FakeStorage();
     storage.setItem(
         'hands-on-settings',
-        '{"turnMode":"smooth","snapAngle":90}',
+        '{"turnMode":"smooth","snapAngle":90,"themePrimary":4}',
     );
     const store = new SettingsStore(storage);
-    expect(store.get()).toEqual({turnMode: 'smooth', snapAngle: 90});
+    const current = store.get();
+    expect(current.turnMode).toBe('smooth');
+    expect(current.snapAngle).toBe(90);
+    expect(current.themePrimary).toBe(4);
   });
 
   it('persists changes for the next session', () => {
@@ -61,14 +87,14 @@ describe('SettingsStore', () => {
     const store = new SettingsStore(storage);
     store.cycleSnapAngle();
     const reloaded = new SettingsStore(storage);
-    expect(reloaded.get()).toEqual({turnMode: 'snap', snapAngle: 90});
+    expect(reloaded.get()).toEqual({...DEFAULTS, snapAngle: 90});
   });
 
   it('survives unavailable storage', () => {
     const store = new SettingsStore(new ThrowingStorage());
-    expect(store.get()).toEqual({turnMode: 'snap', snapAngle: 45});
+    expect(store.get()).toEqual(DEFAULTS);
     store.cycleTurnMode();
-    expect(store.get()).toEqual({turnMode: 'smooth', snapAngle: 45});
+    expect(store.get()).toEqual({...DEFAULTS, turnMode: 'smooth'});
   });
 
   it('cycles turn mode between snap and smooth', () => {
@@ -94,10 +120,27 @@ describe('SettingsStore', () => {
     const listener = vi.fn();
     store.onChange(listener);
     store.cycleTurnMode();
-    expect(listener).toHaveBeenCalledWith({
-      turnMode: 'smooth',
-      snapAngle: 45,
-    });
+    expect(listener).toHaveBeenCalledWith({...DEFAULTS, turnMode: 'smooth'});
+  });
+
+  it('sets theme colors and persists them', () => {
+    const storage = new FakeStorage();
+    const store = new SettingsStore(storage);
+    const listener = vi.fn();
+    store.onChange(listener);
+    store.setTheme('primary', 4);
+    expect(store.get().themePrimary).toBe(4);
+    expect(listener).toHaveBeenCalledTimes(1);
+    const reloaded = new SettingsStore(storage);
+    expect(reloaded.get().themePrimary).toBe(4);
+  });
+
+  it('ignores invalid theme color indexes', () => {
+    const store = new SettingsStore(new FakeStorage());
+    store.setTheme('tertiary', 8);
+    store.setTheme('tertiary', -1);
+    store.setTheme('tertiary', 2.5);
+    expect(store.get().themeTertiary).toBe(DEFAULT_THEME.tertiary);
   });
 
   it('hands out copies so callers cannot mutate state', () => {

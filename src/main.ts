@@ -17,7 +17,12 @@ import {AssemblyStage} from './game/assembly';
 import {Screwdriver} from './game/screwdriver';
 import {ratchet, screwClick, snap} from './audio/sfx';
 import {SettingsStore} from './game/settings';
-import {createPartProvider, loadPrototypes} from './scene/partMeshes';
+import {
+  applyTheme,
+  createPartProvider,
+  createThemeMaterials,
+  loadPrototypes,
+} from './scene/partMeshes';
 import {Hud} from './ui/hud';
 import {
   attachXrGrab,
@@ -75,16 +80,17 @@ async function boot(): Promise<void> {
   attachEnvironmentColliders(env);
 
   const camera = new UniversalCamera('cam', new Vector3(0, 1.4, 2.2), scene);
-  camera.rotation.set(0, Math.PI, -0.15);
+  camera.rotation.set(0, Math.PI, 0);
   camera.minZ = 0.05;
 
   const settings = new SettingsStore();
-  const prototypes = await loadPrototypes(scene);
+  const theme = createThemeMaterials(scene, settings.get());
+  const prototypes = await loadPrototypes(scene, theme);
   const reducedMotion =
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const stage = new AssemblyStage(
       scene,
-      createPartProvider(prototypes),
+      createPartProvider(prototypes, theme),
       reducedMotion,
   );
   const driver = new Screwdriver(scene);
@@ -104,12 +110,19 @@ async function boot(): Promise<void> {
     redo: () => stage.redo(),
     cycleTurnMode: () => settings.cycleTurnMode(),
     cycleSnapAngle: () => settings.cycleSnapAngle(),
+    setTheme: (slot, colorIndex) => settings.setTheme(slot, colorIndex),
   });
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onPartInfo = (info) => hud.setPartInfo(info);
   const applySettings = (): void => {
     const current = settings.get();
     hud.setSettings(current.turnMode, current.snapAngle);
+    applyTheme(theme, current);
+    hud.setThemeSelection({
+      primary: current.themePrimary,
+      secondary: current.themeSecondary,
+      tertiary: current.themeTertiary,
+    });
   };
   settings.onChange(applySettings);
   applySettings();

@@ -56,12 +56,12 @@ export function attachDesktopControls(
       dz -= forwardZ;
     }
     if (held.has('KeyD')) {
-      dx += forwardZ;
-      dz -= forwardX;
-    }
-    if (held.has('KeyA')) {
       dx -= forwardZ;
       dz += forwardX;
+    }
+    if (held.has('KeyA')) {
+      dx += forwardZ;
+      dz -= forwardX;
     }
     if (dx !== 0 || dz !== 0) {
       const step = new Vector3(

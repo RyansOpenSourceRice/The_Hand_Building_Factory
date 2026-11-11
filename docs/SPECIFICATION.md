@@ -2,12 +2,19 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.10.5)
+## Current behavior (release 2026.11.10.6)
 
-- A warehouse stage loads, generated entirely in code: a lit pedestal with
-  the assembly slab, a 3D printer on the left, a conveyor belt on the
-  right, and three-story dressing (walls, steel beams, a catwalk railing,
-  pendant lights, crates).
+- A warehouse stage loads, generated almost entirely in code: a lit
+  pedestal with the assembly slab, a detailed 3D printer on the left, a
+  conveyor belt on the right, and three-story dressing (walls, steel
+  beams, a catwalk railing, pendant lights, high-bay fixtures, crates).
+  The floor is AI-generated polished concrete and the roof carries
+  AI-generated corrugated metal, purlins, and frosted skylight
+  diffusers (both textures disclosed in `docs/AI_USAGE.md`).
+- A filament color menu: the COLORS button opens three rows of eight
+  calm colors for the primary, secondary, and tertiary roles. The
+  palette applies to hand parts only, updates the build live, and
+  persists between visits.
 - The game builds a yeah-hand robotic hand, one part at a time: palm,
   servo base, four finger servos, thumb base, four fingers, thumb
   segments, and the upper cover. The current part shows a translucent blue
@@ -41,7 +48,9 @@ What HANDS ON! does, milestone by milestone.
   Smooth turning uses the left thumbstick at a gentle 90 degrees per
   second; small clamped steps stay within 1.25 m of the stage.
 - Desktop: click and drag parts and the screwdriver; WASD or arrow keys
-  move within the stage radius, arrow keys also turn the camera.
+  move within the stage radius (A and D strafe relative to the view
+  direction), arrow keys also turn the camera. The start camera looks
+  level at the bench.
 - Any browser that exposes `navigator.xr` (Quest browsers included) is
   treated as XR-capable: a large ENTER VR button appears bottom-center.
   Pressing it starts an immersive-vr session with a local-floor reference

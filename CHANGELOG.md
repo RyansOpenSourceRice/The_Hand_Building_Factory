@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.10.6] - 2026-11-10
+
+### Added
+
+- A filament color menu: the COLORS button opens three rows (primary,
+  secondary, tertiary) of eight calm colors. Choices apply to the hand
+  parts only, persist between visits, and re-tint the build live.
+- Concrete floor and corrugated metal roof surfaces, generated with an
+  AI image model (see `docs/AI_USAGE.md`), with procedural placeholder
+  fallbacks in `scripts/gen-placeholder-textures.mjs`.
+- Roof detail: steel purlins and six frosted skylight diffusers.
+- High-bay light fixtures with hanging cords, two additional bay lights,
+  and a brighter, bluer fog for a calm daytime warehouse.
+- Printer detail: a full body shell with side panels, a glass window, a
+  PRINTING control screen, an LED strip, a warning plate, vents, feet,
+  and two filament spools on top. The print bed moved up to sit on the
+  shell. The conveyor gained side rails, mid rollers, and a hazard
+  stripe band.
+
+### Fixed
+
+- A and D (and strafe input) no longer feel inverted on desktop; the
+  start camera no longer leans to one side.
+
+### Changed
+
+- The lint setup strips rules that ESLint 10 removed from the Google
+  config and gives the Node scripts their own globals.
+
 ## [2026.11.10.5] - 2026-11-10
 
 ### Added

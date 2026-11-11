@@ -1,9 +1,14 @@
+import {DEFAULT_THEME, isValidColorIndex, type ThemeSlot} from './palette';
+
 export type TurnMode = 'snap' | 'smooth';
 export type SnapAngle = 30 | 45 | 90;
 
 export type GameSettings = {
   turnMode: TurnMode;
   snapAngle: SnapAngle;
+  themePrimary: number;
+  themeSecondary: number;
+  themeTertiary: number;
 };
 
 export interface StorageLike {
@@ -12,8 +17,20 @@ export interface StorageLike {
 }
 
 const STORAGE_KEY = 'hands-on-settings';
-const DEFAULT_SETTINGS: GameSettings = {turnMode: 'snap', snapAngle: 45};
+const DEFAULT_SETTINGS: GameSettings = {
+  turnMode: 'snap',
+  snapAngle: 45,
+  themePrimary: DEFAULT_THEME.primary,
+  themeSecondary: DEFAULT_THEME.secondary,
+  themeTertiary: DEFAULT_THEME.tertiary,
+};
 const ANGLE_CYCLE: readonly SnapAngle[] = [30, 45, 90];
+
+const THEME_KEYS: Readonly<Record<ThemeSlot, keyof GameSettings>> = {
+  primary: 'themePrimary',
+  secondary: 'themeSecondary',
+  tertiary: 'themeTertiary',
+};
 
 const MEMORY_STORAGE: StorageLike = {
   getItem: () => null,
@@ -47,7 +64,16 @@ function parseStored(raw: string | null): GameSettings {
         ANGLE_CYCLE.includes(parsed.snapAngle as SnapAngle) ?
         (parsed.snapAngle as SnapAngle) :
         DEFAULT_SETTINGS.snapAngle;
-    return {turnMode, snapAngle};
+    const themePrimary = isValidColorIndex(parsed.themePrimary) ?
+        parsed.themePrimary :
+        DEFAULT_SETTINGS.themePrimary;
+    const themeSecondary = isValidColorIndex(parsed.themeSecondary) ?
+        parsed.themeSecondary :
+        DEFAULT_SETTINGS.themeSecondary;
+    const themeTertiary = isValidColorIndex(parsed.themeTertiary) ?
+        parsed.themeTertiary :
+        DEFAULT_SETTINGS.themeTertiary;
+    return {turnMode, snapAngle, themePrimary, themeSecondary, themeTertiary};
   } catch {
     return {...DEFAULT_SETTINGS};
   }
@@ -78,6 +104,13 @@ export class SettingsStore {
   cycleSnapAngle(): void {
     const index = ANGLE_CYCLE.indexOf(this.data.snapAngle);
     this.apply({snapAngle: ANGLE_CYCLE[(index + 1) % ANGLE_CYCLE.length]});
+  }
+
+  setTheme(slot: ThemeSlot, colorIndex: number): void {
+    if (!isValidColorIndex(colorIndex)) {
+      return;
+    }
+    this.apply({[THEME_KEYS[slot]]: colorIndex} as Partial<GameSettings>);
   }
 
   onChange(listener: (settings: GameSettings) => void): void {
