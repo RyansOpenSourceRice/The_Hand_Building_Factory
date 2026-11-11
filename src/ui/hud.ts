@@ -2,11 +2,15 @@ import {
   AdvancedDynamicTexture,
   Button,
   Control,
+  Rectangle,
   TextBlock,
 } from '@babylonjs/gui';
 import type {SnapAngle, TurnMode} from '../game/settings';
+import {FILAMENT_COLORS, type ThemeSlot} from '../game/palette';
 
 const FONT = '\'Atkinson Hyperlegible\', system-ui, sans-serif';
+
+export type HudTheme = Readonly<Record<ThemeSlot, number>>;
 
 export type HudActions = {
   reset: () => void;
@@ -14,21 +18,37 @@ export type HudActions = {
   redo: () => void;
   cycleTurnMode: () => void;
   cycleSnapAngle: () => void;
+  setTheme: (slot: ThemeSlot, colorIndex: number) => void;
 };
+
+const ROW_LABELS: Readonly<Array<[ThemeSlot, string]>> = [
+  ['primary', 'PRIMARY'],
+  ['secondary', 'SECONDARY'],
+  ['tertiary', 'TERTIARY'],
+];
 
 export class Hud {
   private readonly live: HTMLElement | null;
   private readonly statusBlock: TextBlock;
   private readonly xrNote: TextBlock;
+  private readonly actions: HudActions;
   private enterVrButton: Button | null = null;
   private enterVrHandler: (() => void) | null = null;
   private turnButton: Button | null = null;
   private angleButton: Button | null = null;
+  private themePanel: Rectangle | null = null;
+  private readonly swatches: Array<{
+    button: Button;
+    slot: ThemeSlot;
+    index: number;
+  }> = [];
+  private theme: HudTheme = {primary: 3, secondary: 2, tertiary: 0};
 
   private readonly adt: AdvancedDynamicTexture;
 
   constructor(actions: HudActions) {
     this.live = document.getElementById('live-status');
+    this.actions = actions;
 
     this.adt = AdvancedDynamicTexture.CreateFullscreenUI('ui', true);
 
@@ -156,6 +176,88 @@ export class Hud {
     angle.onPointerClickObservable.add(() => actions.cycleSnapAngle());
     this.adt.addControl(angle);
     this.angleButton = angle;
+
+    const colors = Button.CreateSimpleButton('colors', 'COLORS');
+    colors.fontFamily = FONT;
+    colors.fontSize = '17px';
+    colors.color = '#f2f4ff';
+    colors.background = 'rgba(35, 45, 80, 0.85)';
+    colors.cornerRadius = 8;
+    colors.width = '104px';
+    colors.height = '44px';
+    colors.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    colors.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    colors.left = '25%';
+    colors.top = '-6%';
+    colors.onPointerClickObservable.add(() => this.toggleThemePanel());
+    this.adt.addControl(colors);
+    this.buildThemePanel();
+  }
+
+  private buildThemePanel(): void {
+    const panel = new Rectangle('themePanel');
+    panel.width = '480px';
+    panel.height = '200px';
+    panel.background = 'rgba(35, 45, 80, 0.92)';
+    panel.cornerRadius = 12;
+    panel.thickness = 1;
+    panel.color = '#8f9cc4';
+    panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    panel.left = '3%';
+    panel.top = '-38%';
+    panel.isVisible = false;
+    this.adt.addControl(panel);
+    this.themePanel = panel;
+
+    ROW_LABELS.forEach(([slot, label], row) => {
+      const text = new TextBlock(`themeLabel-${slot}`, label);
+      text.fontFamily = FONT;
+      text.fontSize = '14px';
+      text.color = '#f2f4ff';
+      text.resizeToFit = true;
+      text.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+      text.left = '14px';
+      text.top = `${row * 64 + 50 - 100}px`;
+      panel.addControl(text);
+
+      FILAMENT_COLORS.forEach((color, index) => {
+        const swatch = Button.CreateSimpleButton(
+            `swatch-${slot}-${index}`, '');
+        swatch.background = color.hex;
+        swatch.cornerRadius = 4;
+        swatch.width = '36px';
+        swatch.height = '36px';
+        swatch.thickness = 1;
+        swatch.color = '#ffffff';
+        swatch.left = `${140 + index * 42 + 18 - 240}px`;
+        swatch.top = `${row * 64 + 50 - 100}px`;
+        swatch.onPointerClickObservable.add(() => {
+          this.actions.setTheme(slot, index);
+        });
+        panel.addControl(swatch);
+        this.swatches.push({button: swatch, slot, index});
+      });
+    });
+    this.refreshSwatches();
+  }
+
+  private toggleThemePanel(): void {
+    if (this.themePanel) {
+      this.themePanel.isVisible = !this.themePanel.isVisible;
+    }
+  }
+
+  private refreshSwatches(): void {
+    for (const entry of this.swatches) {
+      const selected = this.theme[entry.slot] === entry.index;
+      entry.button.thickness = selected ? 3 : 1;
+    }
+  }
+
+  setThemeSelection(theme: HudTheme): void {
+    this.theme = {...theme};
+    this.refreshSwatches();
   }
 
   setStatus(text: string): void {
