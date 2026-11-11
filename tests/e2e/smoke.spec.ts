@@ -47,7 +47,55 @@ test('reset returns the part', async ({page}) => {
   });
 
   await page.mouse.click(1187, 655);
-  await expect(status).toContainText('Part returned', {timeout: 5_000});
+  await expect(status).toContainText('returned', {timeout: 5_000});
+  await expect(status).toHaveAttribute('data-part', /^palm:/);
+});
+
+test('settings buttons flip turn mode and snap angle', async ({page}) => {
+  test.skip(
+      test.info().project.name !== 'firefox',
+      'settings copy is asserted on the desktop project',
+  );
+  await page.goto('/');
+  const status = page.locator('#live-status');
+  await expect(status).toHaveAttribute('data-ready', 'desktop', {
+    timeout: 20_000,
+  });
+  await expect(status).toHaveAttribute('data-turn', 'snap');
+  await expect(status).toHaveAttribute('data-angle', '45');
+
+  await page.mouse.click(103, 655);
+  await expect(status).toHaveAttribute('data-turn', 'smooth');
+  await page.mouse.click(103, 655);
+  await expect(status).toHaveAttribute('data-turn', 'snap');
+
+  await page.mouse.click(231, 655);
+  await expect(status).toHaveAttribute('data-angle', '90');
+  await page.mouse.click(231, 655);
+  await expect(status).toHaveAttribute('data-angle', '30');
+});
+
+test('WASD moves the desktop camera', async ({page}) => {
+  test.skip(
+      test.info().project.name !== 'firefox',
+      'keyboard movement is asserted on the desktop project',
+  );
+  await page.goto('/');
+  const status = page.locator('#live-status');
+  await expect(status).toHaveAttribute('data-ready', 'desktop', {
+    timeout: 20_000,
+  });
+  await expect(status).toHaveAttribute('data-cam', '0.00,2.20');
+
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(500);
+  await page.keyboard.up('KeyW');
+
+  await expect(status).not.toHaveAttribute('data-cam', '0.00,2.20');
+  const cam = await status.getAttribute('data-cam');
+  const z = Number(cam?.split(',')[1]);
+  expect(z).toBeLessThan(2.2);
+  expect(z).toBeGreaterThan(0.69);
 });
 
 test('enter VR fails gracefully without a device', async ({page}) => {

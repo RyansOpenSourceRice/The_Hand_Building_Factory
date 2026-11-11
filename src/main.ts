@@ -1,5 +1,5 @@
 import './style.css';
-import {ArcRotateCamera} from '@babylonjs/core/Cameras/arcRotateCamera';
+import {UniversalCamera} from '@babylonjs/core/Cameras/universalCamera';
 import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import {Scene} from '@babylonjs/core/scene';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
@@ -8,10 +8,24 @@ import {WebXRState} from '@babylonjs/core/XR/webXRTypes';
 import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
-import {createEnvironment} from './scene/environment';
-import {DemoStage} from './game/demoStage';
+import {
+  attachEnvironmentColliders,
+  createEnvironment,
+} from './scene/environment';
+import {enableGamePhysics} from './scene/physics';
+import {AssemblyStage} from './game/assembly';
+import {Screwdriver} from './game/screwdriver';
+import {ratchet, screwClick, snap} from './audio/sfx';
+import {SettingsStore} from './game/settings';
+import {createPartProvider, loadPrototypes} from './scene/partMeshes';
 import {Hud} from './ui/hud';
-import {attachXrGrab, pulseController} from './input/xrGrab';
+import {
+  attachXrGrab,
+  pulseController,
+  pulseControllerSoft,
+} from './input/xrGrab';
+import {attachXrLocomotion} from './input/locomotion';
+import {attachDesktopControls} from './input/desktopControls';
 import {attachDesktopGrab} from './input/desktopGrab';
 
 type XrCapableNavigator = Navigator & {xr?: object};
@@ -57,26 +71,60 @@ async function boot(): Promise<void> {
   const env = createEnvironment(canvas);
   const {scene, engine} = env;
 
-  const camera = new ArcRotateCamera(
-      'cam',
-      -Math.PI / 2,
-      1.08,
-      3.4,
-      new Vector3(0, 0.95, 0),
-      scene,
-  );
-  camera.attachControl(true);
-  camera.lowerRadiusLimit = 1.4;
-  camera.upperRadiusLimit = 8;
-  camera.wheelDeltaPercentage = 0.01;
-  camera.upperBetaLimit = 1.45;
+  await enableGamePhysics(scene);
+  attachEnvironmentColliders(env);
 
-  const stage = new DemoStage(scene, {pedestalTop: env.pedestalTop});
+  const camera = new UniversalCamera('cam', new Vector3(0, 1.4, 2.2), scene);
+  camera.rotation.set(0, Math.PI, -0.15);
+  camera.minZ = 0.05;
+
+  const settings = new SettingsStore();
+  const prototypes = await loadPrototypes(scene);
+  const reducedMotion =
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stage = new AssemblyStage(
+      scene,
+      createPartProvider(prototypes),
+      reducedMotion,
+  );
+  const driver = new Screwdriver(scene);
+  driver.show();
+  stage.onRatchet = (tag) => {
+    ratchet();
+    pulseControllerSoft(tag);
+  };
+  stage.onScrewDriven = () => screwClick();
+  stage.onSnapped = (tag) => {
+    pulseController(tag);
+    snap();
+  };
   const hud = new Hud({
     reset: () => stage.reset(),
     undo: () => stage.undo(),
     redo: () => stage.redo(),
+    cycleTurnMode: () => settings.cycleTurnMode(),
+    cycleSnapAngle: () => settings.cycleSnapAngle(),
   });
+  stage.onStatus = (text) => hud.setStatus(text);
+  stage.onPartInfo = (info) => hud.setPartInfo(info);
+  const applySettings = (): void => {
+    const current = settings.get();
+    hud.setSettings(current.turnMode, current.snapAngle);
+  };
+  settings.onChange(applySettings);
+  applySettings();
+  hud.setCameraInfo(camera.position.x, camera.position.z);
+
+  const lastCam = {key: `${camera.position.x.toFixed(2)},` +
+      `${camera.position.z.toFixed(2)}`};
+  const reportCamera = (x: number, z: number): void => {
+    const key = `${x.toFixed(2)},${z.toFixed(2)}`;
+    if (key === lastCam.key) {
+      return;
+    }
+    lastCam.key = key;
+    hud.setCameraInfo(x, z);
+  };
 
   window.addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey)) {
@@ -95,11 +143,10 @@ async function boot(): Promise<void> {
       stage.redo();
     }
   });
-  stage.onStatus = (text) => hud.setStatus(text);
-  stage.onSnapped = (tag) => pulseController(tag);
   const xr = await initXr(scene, env.ground);
   if (xr) {
-    attachXrGrab(xr, stage, scene);
+    attachXrGrab(xr, stage, driver, scene);
+    attachXrLocomotion(xr, settings, scene, reportCamera);
     hud.hideDesktopOnly();
     hud.setReady('xr');
     hud.setEnterVr(() => {
@@ -127,9 +174,10 @@ async function boot(): Promise<void> {
     hud.setStatus(uaQuest ?
         'WebXR is missing in this browser even though this looks like ' +
         'a Quest. Reload the page, or open a private window and try again.' :
-        'Grab the red part. Slot it into the blue outline.');
+        'Assemble the hand. Grab the part waiting on the printer bed.');
   }
-  attachDesktopGrab(scene, camera, stage);
+  attachDesktopControls(scene, camera, reportCamera);
+  attachDesktopGrab(scene, camera, stage, driver);
 
   document.getElementById('boot-fallback')?.remove();
   engine.runRenderLoop(() => scene.render());

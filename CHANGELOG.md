@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.10.5] - 2026-11-10
+
+### Added
+
+- The full yeah-hand assembly: a 13-part build queue (palm, servo base,
+  four finger servos, thumb base, four fingers, thumb segments, upper
+  cover), one part at a time, with a socket outline that follows the
+  player's view.
+- A 3D printer and a conveyor belt as spawn machines: printed parts drop
+  onto the printer bed, servos slide in on the conveyor, and every part
+  rests flat on its source machine. RESET returns parts to their machines.
+  Spawn animations respect `prefers-reduced-motion`.
+- Havok physics: dropped parts fall and land, and a watchdog returns
+  anything that ends up off the stage.
+- A screw-driving phase: pick up the orange screwdriver, point the tip at
+  a screw, and hold the trigger to drive it. Ratchet ticks and gentle
+  controller pulses play while driving, and the screw seats with a click.
+  The palm takes 4 screws, the upper cover takes 2, and every other part
+  takes 1. Screws can never be carried.
+- Turn settings: TURN swaps snap and smooth turning, ANGLE cycles the snap
+  angle (30, 45, 90 degrees), and both persist between visits. Smooth
+  turning rides the left thumbstick at 90 degrees per second.
+- Desktop movement: WASD or arrow keys move within a 1.25 m stage radius;
+  arrow keys also turn the camera.
+- Warehouse dressing: three-story walls, steel beams, a catwalk railing,
+  pendant lights, and crates, all generated in code.
+
+### Changed
+
+- UNDO and REDO now also revert screw drives, and RESET returns the part
+  to its own spawn machine instead of the pedestal.
+- Hand parts are the yeah-hand meshes (`public/models/hand/`), scaled into
+  game units in code, under CERN-OHL-S-2.0 with notices.
+
 ## [2026.11.10.4] - 2026-11-10
 
 ### Added

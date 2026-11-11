@@ -10,10 +10,15 @@ Assets and code not authored in this repository.
 - License: SIL Open Font License 1.1 (see `public/fonts/OFL.txt`)
 - Used for: all user-facing UI text (approved by Ryan for accessibility).
 
-## Yeah Hand (planned, milestone 3)
+## Yeah Hand
 
-- Derived mesh assets for the hand parts, based on the STL releases of the
-  Yeah Hand project (https://github.com/opsobot/yeah-hand).
+- Files: the five STL-derived meshes in `public/models/hand/`
+  (`palm.stl`, `finger.stl`, `thumb-base.stl`, `thumb-segments.stl`,
+  `upper-cover.stl`) with the upstream `LICENSE.txt` alongside them. The
+  13 game parts derive from these five meshes through code transforms
+  (scaling, merging, repositioning).
+- Source: the STL releases of the Yeah Hand project
+  (https://github.com/opsobot/yeah-hand).
 - License: CERN Open Hardware Licence Version 2 - Strongly Reciprocal
   (CERN-OHL-S-2.0). Derived mesh assets in this repository are provided under
   CERN-OHL-S-2.0 with the Yeah Hand project as the source location. Game code
@@ -24,5 +29,6 @@ Assets and code not authored in this repository.
 ## Packages
 
 Runtime dependencies are npm tooling and libraries, not assets:
-`@babylonjs/core`, `@babylonjs/gui`. Their licenses ship inside the installed
-packages and the built bundle retains license comments where present.
+`@babylonjs/core`, `@babylonjs/gui`, `@babylonjs/havok`. Their licenses ship
+inside the installed packages and the built bundle retains license comments
+where present.

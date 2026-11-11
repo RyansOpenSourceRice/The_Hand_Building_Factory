@@ -22,14 +22,17 @@ Operating rules for AI agents working in this repository. Distilled from Ryan's 
 - Default: **no third-party assets**. Everything visual or audible is generated in code by this project.
 - Approved third-party assets only:
   - Atkinson Hyperlegible font (OFL 1.1) in `public/fonts/`.
-  - yeah-hand STL-derived meshes (CERN-OHL-S-2.0) for hand parts, planned for a later milestone.
+  - yeah-hand STL-derived meshes (CERN-OHL-S-2.0) in `public/models/hand/`
+    for hand parts (notices in `docs/THIRD_PARTY_NOTICES.md`).
 - Any new third-party asset requires Ryan's explicit approval before use.
 - npm packages are tooling, not assets, but still follow the supply-chain rules above.
 
 ## VR rules (Meta Quest 3 / WebXR)
 
 - Controllers only. Hand tracking is never required; no feature may depend on it.
-- No locomotion. The experience is stationary (standing or seated).
+- Stationary-first. The full assembly must be reachable while standing in
+  one spot. Smooth turning and small clamped steps (1.25 m radius) exist
+  only as a comfort fallback, never required to reach anything.
 - Comfort: interactions stay within the 2-7 ft reach envelope; support height adaptation and seated play; no forced camera motion.
 - Target Quest 3 at 90 Hz. Instance repeated geometry (crowd). Avoid heavy post-processing.
 - No featureless voids: give the player something to look at, somewhere to stand, and a sense of place.

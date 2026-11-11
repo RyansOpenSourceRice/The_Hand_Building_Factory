@@ -4,6 +4,7 @@ import {
   Control,
   TextBlock,
 } from '@babylonjs/gui';
+import type {SnapAngle, TurnMode} from '../game/settings';
 
 const FONT = '\'Atkinson Hyperlegible\', system-ui, sans-serif';
 
@@ -11,6 +12,8 @@ export type HudActions = {
   reset: () => void;
   undo: () => void;
   redo: () => void;
+  cycleTurnMode: () => void;
+  cycleSnapAngle: () => void;
 };
 
 export class Hud {
@@ -19,6 +22,8 @@ export class Hud {
   private readonly xrNote: TextBlock;
   private enterVrButton: Button | null = null;
   private enterVrHandler: (() => void) | null = null;
+  private turnButton: Button | null = null;
+  private angleButton: Button | null = null;
 
   private readonly adt: AdvancedDynamicTexture;
 
@@ -119,6 +124,38 @@ export class Hud {
     undo.top = '-6%';
     undo.onPointerClickObservable.add(() => actions.undo());
     this.adt.addControl(undo);
+
+    const turn = Button.CreateSimpleButton('turn', 'TURN: SNAP');
+    turn.fontFamily = FONT;
+    turn.fontSize = '17px';
+    turn.color = '#f2f4ff';
+    turn.background = 'rgba(35, 45, 80, 0.85)';
+    turn.cornerRadius = 8;
+    turn.width = '130px';
+    turn.height = '44px';
+    turn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    turn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    turn.left = '3%';
+    turn.top = '-6%';
+    turn.onPointerClickObservable.add(() => actions.cycleTurnMode());
+    this.adt.addControl(turn);
+    this.turnButton = turn;
+
+    const angle = Button.CreateSimpleButton('angle', 'ANGLE: 45°');
+    angle.fontFamily = FONT;
+    angle.fontSize = '17px';
+    angle.color = '#f2f4ff';
+    angle.background = 'rgba(35, 45, 80, 0.85)';
+    angle.cornerRadius = 8;
+    angle.width = '104px';
+    angle.height = '44px';
+    angle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    angle.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    angle.left = '14%';
+    angle.top = '-6%';
+    angle.onPointerClickObservable.add(() => actions.cycleSnapAngle());
+    this.adt.addControl(angle);
+    this.angleButton = angle;
   }
 
   setStatus(text: string): void {
@@ -169,6 +206,34 @@ export class Hud {
           'data-xr',
           mode === 'xr' ? 'present' : 'missing',
       );
+    }
+  }
+
+  setSettings(turnMode: TurnMode, snapAngle: SnapAngle): void {
+    const turnLabel = this.turnButton?.textBlock;
+    if (turnLabel) {
+      turnLabel.text =
+          turnMode === 'snap' ? 'TURN: SNAP' : 'TURN: SMOOTH';
+    }
+    const angleLabel = this.angleButton?.textBlock;
+    if (angleLabel) {
+      angleLabel.text = `ANGLE: ${snapAngle}°`;
+    }
+    if (this.live) {
+      this.live.setAttribute('data-turn', turnMode);
+      this.live.setAttribute('data-angle', String(snapAngle));
+    }
+  }
+
+  setCameraInfo(x: number, z: number): void {
+    if (this.live) {
+      this.live.setAttribute('data-cam', `${x.toFixed(2)},${z.toFixed(2)}`);
+    }
+  }
+
+  setPartInfo(info: string): void {
+    if (this.live) {
+      this.live.setAttribute('data-part', info);
     }
   }
 

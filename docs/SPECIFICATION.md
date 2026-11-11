@@ -2,11 +2,46 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (milestone 1)
+## Current behavior (release 2026.11.10.5)
 
-- A stage scene loads: floor, lit pedestal, spot light, curtain backdrop.
-- A red part rests on the pedestal. A translucent blue outline floats to its
-  upper right, showing where the part belongs.
+- A warehouse stage loads, generated entirely in code: a lit pedestal with
+  the assembly slab, a 3D printer on the left, a conveyor belt on the
+  right, and three-story dressing (walls, steel beams, a catwalk railing,
+  pendant lights, crates).
+- The game builds a yeah-hand robotic hand, one part at a time: palm,
+  servo base, four finger servos, thumb base, four fingers, thumb
+  segments, and the upper cover. The current part shows a translucent blue
+  outline at its socket, and the outline follows the player's view so it
+  stays in sight.
+- Printed parts (palm, fingers, thumb pieces, upper cover) appear on the
+  printer bed with a short drop-in animation. Servos arrive on the
+  conveyor and slide into reach. Every part spawns resting flat on its
+  machine, sized for the 2-7 ft reach envelope. RESET returns the current
+  part to its own machine.
+- Havok physics runs the stage: dropped parts fall and land, and a
+  watchdog quietly returns anything that ends up off the play area.
+- Quest 3: point at the part with a controller and hold the trigger to
+  grab it. Release the trigger with the part inside the outline and it
+  locks in place with a chime and a controller pulse. Grip squeeze drops
+  a held item; squeezing with empty hands resets the current part.
+- After a part snaps in, screws stick out of it. Grab the orange
+  screwdriver from its holster beside the pedestal, point the tip at a
+  screw, and hold the trigger to drive it. A ratchet tick plays while
+  driving and the controller pulses gently; the screw sinks in with a
+  click. The palm takes 4 screws, the upper cover takes 2, every other
+  part takes 1. The queue advances only once a part's screws are all
+  driven. Screws can never be carried; the screwdriver or a part can.
+- UNDO and REDO step back and forward through every committed part move,
+  snap, reset, and screw drive (stack capped at 50 entries). HUD buttons
+  work on desktop and are also pressable in-headset via the controller
+  pointer rays. Desktop players can also use Ctrl+Z, Ctrl+Shift+Z, and
+  Ctrl+Y. Carrying anything blocks undo and redo until the move finishes.
+- TURN switches between snap turn and smooth turn; ANGLE cycles the snap
+  angle through 30, 45, and 90 degrees. Both persist between visits.
+  Smooth turning uses the left thumbstick at a gentle 90 degrees per
+  second; small clamped steps stay within 1.25 m of the stage.
+- Desktop: click and drag parts and the screwdriver; WASD or arrow keys
+  move within the stage radius, arrow keys also turn the camera.
 - Any browser that exposes `navigator.xr` (Quest browsers included) is
   treated as XR-capable: a large ENTER VR button appears bottom-center.
   Pressing it starts an immersive-vr session with a local-floor reference
@@ -19,23 +54,6 @@ What HANDS ON! does, milestone by milestone.
   open a private window. The `#live-status` element carries machine-readable
   `data-ready`, `data-xr`, `data-ua-quest`, and `data-secure` attributes for
   remote diagnosis.
-- Quest 3: point at the part with a controller and hold the trigger to grab
-  it. The part follows the controller. Release the trigger with the part
-  inside the outline and the part locks in place, the outline disappears, and
-  the controller pulses. Grip squeeze resets the demo.
-- The HUD buttons (UNDO, REDO, RESET) work on desktop and are also pressable
-  in-headset via the controller pointer rays, so VR players get menu-based
-  undo and redo without extra controller bindings. Triggers stay reserved for
-  moving items.
-- UNDO and REDO step back and forward through every committed part move,
-  snap, and reset (stack capped at 50 entries). Desktop players can also use
-  Ctrl+Z, Ctrl+Shift+Z, and Ctrl+Y. Carrying the part blocks undo and redo
-  until the move finishes.
-- RESET always returns the part to its starting spot on the pedestal, even
-  before the first snap.
-- Desktop: click and drag the part across the floor plane at its height.
-  Release inside the outline to complete; the RESET button always restores
-  it to the pedestal.
 - When WebXR is not available, the scene still renders with a desktop
   preview notice. HUD status text mirrors into a hidden live region for
   screen readers and automated tests.
@@ -50,10 +68,11 @@ What HANDS ON! does, milestone by milestone.
 
 ## Milestone 3: import the real hand
 
-- Hand part meshes derived from the yeah-hand release STLs replace the red
-  box placeholder, converted under CERN-OHL-S-2.0 with credit and notices.
-- Conversion pipeline: timeboxed Blender headless test on Qubes (CPU only);
-  fallback is Babylon's STL loader plus built-in mesh decimation.
+- Hand part meshes derived from the yeah-hand release STLs
+  (`public/models/hand/`, CERN-OHL-S-2.0 with credit and notices) replace
+  the red box placeholder, scaled into game units in code.
+- Conversion pipeline: Babylon's STL loader at runtime plus code-built
+  additions (servo housings, screws, screwdriver).
 - The snap service generalizes from one part to a list of parts so the hand
   assembles socket by socket.
 
@@ -79,6 +98,6 @@ What HANDS ON! does, milestone by milestone.
 ## Non-goals
 
 - Hand tracking support (controllers only).
-- Locomotion of any kind.
+- Free-roam locomotion beyond the small stage area.
 - Multiplayer.
 - Mobile or native desktop targets.
