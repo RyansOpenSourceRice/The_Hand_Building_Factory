@@ -13,11 +13,14 @@ import {makeBoxBody} from '../scene/physics';
 const HOLSTER = new Vector3(0, 1.08, 0.5);
 const HANDLE_HEIGHT = 0.11;
 const SHAFT_HEIGHT = 0.06;
+const REST_GAP = 0.01;
+const DROP_FRAMES = 36;
 
 export class Screwdriver {
   readonly mesh: Mesh;
   private readonly tip: TransformNode;
   private heldBy: string | null = null;
+  private dropStep: (() => void) | null = null;
   private body: ReturnType<typeof makeBoxBody> = null;
 
   constructor(scene: Scene) {
@@ -66,6 +69,7 @@ export class Screwdriver {
       return false;
     }
     this.heldBy = tag;
+    this.cancelDrop();
     if (this.body) {
       this.body.setMotionType(PhysicsMotionType.ANIMATED);
       this.body.disablePreStep = false;
@@ -103,6 +107,33 @@ export class Screwdriver {
       this.body.disablePreStep = true;
       this.body.setLinearVelocity(Vector3.Zero());
       this.body.setAngularVelocity(Vector3.Zero());
+    } else {
+      this.dropToFloor();
+    }
+  }
+
+  private dropToFloor(): void {
+    const {min} = this.mesh.getHierarchyBoundingVectors();
+    const startY = this.mesh.position.y;
+    const targetY = startY - min.y + REST_GAP;
+    let t = 0;
+    this.dropStep = (): void => {
+      t += 1 / DROP_FRAMES;
+      const k = Math.min(1, t);
+      this.mesh.position.y = startY + (targetY - startY) * k;
+      if (k >= 1) {
+        this.cancelDrop();
+      }
+    };
+    this.mesh.getScene().onBeforeRenderObservable.add(this.dropStep);
+  }
+
+  private cancelDrop(): void {
+    if (this.dropStep) {
+      this.mesh.getScene().onBeforeRenderObservable.removeCallback(
+          this.dropStep,
+      );
+      this.dropStep = null;
     }
   }
 
