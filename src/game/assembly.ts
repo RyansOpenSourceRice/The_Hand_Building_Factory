@@ -1,4 +1,5 @@
 import {Animation} from '@babylonjs/core/Animations/animation';
+import '@babylonjs/core/Animations/animatable';
 import '@babylonjs/core/Rendering/edgesRenderer';
 import {Color3, Color4} from '@babylonjs/core/Maths/math.color';
 import {Matrix, Quaternion, Vector3} from '@babylonjs/core/Maths/math.vector';
@@ -383,7 +384,7 @@ export class AssemblyStage {
           TWEEN_FRAMES,
           screw.position.clone(),
           this.screwPos(state, index),
-          0,
+          Animation.ANIMATIONLOOPMODE_CONSTANT,
       );
     }
     this.stopDrive();
@@ -575,7 +576,7 @@ export class AssemblyStage {
         SPAWN_FRAMES,
         base.scale(EMISSIVE_FLASH),
         base.scale(0.06),
-        0,
+        Animation.ANIMATIONLOOPMODE_CONSTANT,
     );
   }
 
@@ -678,7 +679,7 @@ export class AssemblyStage {
         TWEEN_FRAMES,
         state.mesh.position.clone(),
         position,
-        0,
+        Animation.ANIMATIONLOOPMODE_CONSTANT,
     );
     Animation.CreateAndStartAnimation(
         'partRotate',
@@ -688,7 +689,7 @@ export class AssemblyStage {
         TWEEN_FRAMES,
         state.mesh.rotationQuaternion?.clone() ?? Quaternion.Identity(),
         rotation,
-        0,
+        Animation.ANIMATIONLOOPMODE_CONSTANT,
     );
   }
 
