@@ -2,27 +2,42 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.10.6)
+## Current behavior (release 2026.11.10.7)
 
-- A warehouse stage loads, generated almost entirely in code: a lit
-  pedestal with the assembly slab, a detailed 3D printer on the left, a
-  conveyor belt on the right, and three-story dressing (walls, steel
-  beams, a catwalk railing, pendant lights, high-bay fixtures, crates).
-  The floor is AI-generated polished concrete and the roof carries
-  AI-generated corrugated metal, purlins, and frosted skylight
-  diffusers (both textures disclosed in `docs/AI_USAGE.md`).
+- A warehouse workshop opens through a low north sill onto a grand
+  factory hall, generated almost entirely in code. The workshop keeps the
+  lit assembly pedestal, the 3D printer bench on the west, and the
+  conveyor station on the east. The hall carries painted floor lanes,
+  pallet racks with boxed loads, pallet stacks, a parked and a patrolling
+  forklift, five giant yellow robot arms, a demo stage with screens,
+  podium, and a branded band, an audience of about 155 seated and
+  standing figures with palette variations, aisle walkers, hanging tube
+  fixtures, and garage doors on the south wall. The floor and roof are
+  AI-generated surfaces (disclosed in `docs/AI_USAGE.md`), and the bench
+  pegboard, steel top, rack loads, and garage doors use four more
+  generated detail tiles.
 - A filament color menu: the COLORS button opens three rows of eight
   calm colors for the primary, secondary, and tertiary roles. The
-  palette applies to hand parts only, updates the build live, and
-  persists between visits.
+  palette applies to hand parts and the controller hands, updates the
+  build live, and persists between visits.
+- Controllers wear low-poly yeah-hand representations tinted with the
+  theme's primary color, semi-transparent so the hardware stays visible.
+- A yellow safety barrier ring with a hazard-striped top rail marks the
+  1.25 m locomotion boundary; dropped parts bounce off its rails.
+- Pressing either thumbstick in VR raises the rig through three comfort
+  heights (0, +0.4, +0.8 m) with a soft haptic tick, gliding at a calm
+  rate and snapping instantly under reduced motion.
 - The game builds a yeah-hand robotic hand, one part at a time: palm,
   servo base, four finger servos, thumb base, four fingers, thumb
   segments, and the upper cover. The current part shows a translucent blue
   outline at its socket, and the outline follows the player's view so it
   stays in sight.
 - Printed parts (palm, fingers, thumb pieces, upper cover) appear on the
-  printer bed with a short drop-in animation. Servos arrive on the
-  conveyor and slide into reach. Every part spawns resting flat on its
+  printer bed with a short drop-in animation. Servos ride the conveyor:
+  they rise out of a floor pit past the workshop sill, run level, turn
+  ninety degrees, climb a supported slope, and glide into reach on the
+  receiving belt. The belt surface scrolls; a roof hatch with a soft
+  light shaft opens above the pit. Every part spawns resting flat on its
   machine, sized for the 2-7 ft reach envelope. RESET returns the current
   part to its own machine.
 - Havok physics runs the stage: dropped parts fall and land, and a
