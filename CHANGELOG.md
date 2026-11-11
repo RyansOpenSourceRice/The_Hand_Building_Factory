@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.11.1] - 2026-11-11
+
+### Fixed
+
+- Tweens now actually play. The tree-shakable Babylon build ships scene
+  animation behind a side-effect module the game never imported, so
+  `beginDirectAnimation` was a silent stub: spawn drop-ins, snap tweens,
+  resets, undos, screw sinks, and the conveyor ride moved nothing. The
+  game reads the new `@babylonjs/core/Animations/animatable` side-effect
+  import, and all tween creators now pass `ANIMATIONLOOPMODE_CONSTANT`
+  so each tween plays once instead of looping forever. Caught by the
+  new embodied QA pass; regressions are covered by
+  `tests/unit/tweens.test.ts`.
+
+### Added
+
+- An embodied QA MCP server (`scripts/qa-mcp-server.mjs`, see
+  `docs/QA_AGENT.md`) that serves the built game on port 4174, drives
+  headless Chromium with the XR mock, and exposes tools for posing
+  controllers, squeezing triggers, and reading state, screenshots, and
+  console errors, so sessions can be QA'd without a headset.
+- The XR mock controller script exposes `snapshot()` for raw
+  controller state.
+
 ## [2026.11.10.7] - 2026-11-10
 
 ### Added
