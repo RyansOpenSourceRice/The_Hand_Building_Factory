@@ -24,6 +24,17 @@ const SERVO_BACK_Z = -0.19;
 
 export const PRINTER_HOME: Vec3Literal = {x: -0.75, y: 1.265, z: 0.3};
 export const CONVEYOR_HOME: Vec3Literal = {x: 0.62, y: 1.16, z: 0.35};
+export const CONVEYOR_PATH: readonly [
+  Vec3Literal,
+  Vec3Literal,
+  Vec3Literal,
+  Vec3Literal,
+] = [
+  {x: 1.75, y: -0.06, z: 1.4},
+  {x: 1.1, y: 0.14, z: 1.4},
+  {x: 0.75, y: 0.55, z: 1.28},
+  {x: 0.62, y: 1.16, z: 0.55},
+];
 export const PRINTER_BED_TOP = 1.24;
 export const CONVEYOR_BELT_TOP = 1.13;
 
