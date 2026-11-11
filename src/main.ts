@@ -6,6 +6,9 @@ import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import '@babylonjs/core/Helpers/sceneHelpers';
 import {WebXRState} from '@babylonjs/core/XR/webXRTypes';
 import type {
+  StandardMaterial,
+} from '@babylonjs/core/Materials/standardMaterial';
+import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import {
@@ -30,6 +33,12 @@ import {
   pulseControllerSoft,
 } from './input/xrGrab';
 import {attachXrLocomotion} from './input/locomotion';
+import {attachHeightControl} from './input/height';
+import {
+  attachControllerHands,
+  handRepTint,
+  setHandTint,
+} from './input/handRep';
 import {attachDesktopControls} from './input/desktopControls';
 import {attachDesktopGrab} from './input/desktopGrab';
 
@@ -86,6 +95,7 @@ async function boot(): Promise<void> {
   const settings = new SettingsStore();
   const theme = createThemeMaterials(scene, settings.get());
   const prototypes = await loadPrototypes(scene, theme);
+  let handRepMaterial: StandardMaterial | null = null;
   const reducedMotion =
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const stage = new AssemblyStage(
@@ -118,6 +128,9 @@ async function boot(): Promise<void> {
     const current = settings.get();
     hud.setSettings(current.turnMode, current.snapAngle);
     applyTheme(theme, current);
+    if (handRepMaterial) {
+      setHandTint(handRepMaterial, handRepTint(current.themePrimary));
+    }
     hud.setThemeSelection({
       primary: current.themePrimary,
       secondary: current.themeSecondary,
@@ -160,6 +173,9 @@ async function boot(): Promise<void> {
   if (xr) {
     attachXrGrab(xr, stage, driver, scene);
     attachXrLocomotion(xr, settings, scene, reportCamera);
+    attachHeightControl(xr, scene, reducedMotion);
+    handRepMaterial = attachControllerHands(
+        xr, scene, settings.get().themePrimary);
     hud.hideDesktopOnly();
     hud.setReady('xr');
     hud.setEnterVr(() => {

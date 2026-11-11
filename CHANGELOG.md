@@ -6,7 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
-## [2026.11.10.6] - 2026-11-10
+## [2026.11.10.7] - 2026-11-10
+
+### Added
+
+- In VR, pressing either thumbstick raises the rig through three
+  comfort heights (0, +0.4, +0.8 m) with a soft haptic tick, for
+  seated or shorter players. The lift glides and snaps instantly
+  under reduced motion.
+- Low-poly controller hands: each controller carries a semi-
+  transparent hand tinted with the theme's primary filament color.
+- A visible yellow safety barrier ring with a hazard-striped top
+  rail marks the 1.25 m locomotion boundary, and dropped parts now
+  bounce off it.
+- Distinct stations: a circular polished pedestal with an emissive
+  ring, a printer bench with steel top, shelf, and pegboard to the
+  west, and the conveyor on the east.
+- A supply conveyor that starts in a floor pit, runs level, turns
+  ninety degrees, and climbs a supported slope into the receiving
+  belt, under an opened roof hatch with a soft light shaft. New
+  parts ride this path into reach.
+- A grand factory hall beyond the workshop's north sill: painted
+  floor lanes, pallet racks, pallet stacks, a parked and a patrolling
+  forklift, five giant yellow robot arms, a demo stage with screens
+  and podium, an audience of about 155 seated and standing figures,
+  aisle walkers, hanging tube fixtures, and garage doors on the south
+  wall.
+- Four generated detail textures: pegboard, brushed steel, rack
+  boxes, and garage door (see `docs/AI_USAGE.md`).
+
+### Fixed
+
+- Thumbstick movement no longer feels inverted on Quest controllers;
+  stick direction now matches the desktop controls on both sticks.
+
+### Changed
+
+- The workshop's north wall is now a low sill overlooking the hall;
+  the ground plane and its collider cover the whole venue.
 
 ### Added
 

@@ -17,11 +17,18 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
        daylight warehouse (bay lights, skylights, AI concrete and metal
        roof textures), filament color menu, detailed printer and
        conveyor. (2026.11.10.6)
-7. [ ] Test on the actual Quest 3 via the Pages staging URL and in an
+7. [x] VR reflections round: thumbstick axis fix, comfort height raise
+       (thumbstick click), low-poly controller hands, visible safety
+       barrier ring, distinct station tables, supply conveyor from a
+       floor pit with a 90-degree curve and roof hatch, grand factory
+       hall (robot arms, racks, forklifts, stage, ~155-person instanced
+       audience, walkers), four generated detail textures.
+       (2026.11.10.7)
+8. [ ] Test on the actual Quest 3 via the Pages staging URL and in an
        itch-style iframe (pending Ryan pushing `dev`/`main`).
-8. [ ] Add an audience (instanced crowd, cheer swell, audio from OpenRouter
-       generation direction to be provided by Ryan).
-9. [ ] Fine tuning (90 Hz budget, seated/height adaptation, pause menu,
-       mirror, itch upload, on-device validation, rate other entries).
+9. [ ] Add a cheer swell (instanced crowd shipped in 2026.11.10.7; audio
+       from OpenRouter generation direction to be provided by Ryan).
+10. [ ] Fine tuning (90 Hz budget, seated/height adaptation, pause menu,
+        mirror, itch upload, on-device validation, rate other entries).
 
 Definition of done for every item: the four gates in AGENTS.md.

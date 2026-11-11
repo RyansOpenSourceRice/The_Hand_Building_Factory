@@ -14,6 +14,7 @@ import {makeBoxBody} from '../scene/physics';
 import type {PartDef} from './handParts';
 import {
   CONVEYOR_BELT_TOP,
+  CONVEYOR_PATH,
   PART_DEFS,
   PRINTER_BED_TOP,
 } from './handParts';
@@ -53,8 +54,8 @@ type PartState = {
 const STANDING_TILT = Math.PI / 2;
 const FALLEN_Y = -1;
 const SPAWN_DROP = 0.04;
-const SPAWN_SLIDE = 0.3;
 const SPAWN_FRAMES = 14;
+const SPAWN_RIDE_FRAMES = 72;
 const EMISSIVE_FLASH = 0.45;
 
 export class AssemblyStage {
@@ -510,19 +511,41 @@ export class AssemblyStage {
     state.mesh.rotationQuaternion = state.homeQuat.clone();
     const printer = state.def.source === 'printer';
     if (!this.reducedMotion) {
-      const from = state.home.clone();
       if (printer) {
+        const from = state.home.clone();
         from.y += SPAWN_DROP;
+        state.mesh.position.copyFrom(from);
+        this.tweenTo(state, state.home, state.homeQuat);
       } else {
-        from.z -= SPAWN_SLIDE;
+        this.rideConveyor(state);
       }
-      state.mesh.position.copyFrom(from);
-      this.tweenTo(state, state.home, state.homeQuat);
       this.flash(state);
     }
     const source = printer ? 'printer' : 'conveyor';
     this.report(`Next part: the ${state.def.label}, at the ${source}.`);
     this.reportPartInfo(state);
+  }
+
+  private rideConveyor(state: PartState): void {
+    const frames = SPAWN_RIDE_FRAMES + SPAWN_FRAMES;
+    const keys = CONVEYOR_PATH.map((point, index) => ({
+      frame: Math.round((index / CONVEYOR_PATH.length) * SPAWN_RIDE_FRAMES),
+      value: new Vector3(point.x, point.y, point.z),
+    }));
+    keys.push({
+      frame: frames,
+      value: state.home.clone(),
+    });
+    const ride = new Animation(
+        'partRide',
+        'position',
+        60,
+        Animation.ANIMATIONTYPE_VECTOR3,
+        Animation.ANIMATIONLOOPMODE_CONSTANT,
+    );
+    ride.setKeys(keys);
+    state.mesh.getScene().beginDirectAnimation(
+        state.mesh, [ride], 0, frames, false);
   }
 
   private flash(state: PartState): void {

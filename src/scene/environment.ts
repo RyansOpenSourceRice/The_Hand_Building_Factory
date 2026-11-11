@@ -1,5 +1,10 @@
 import {Color3, Color4} from '@babylonjs/core/Maths/math.color';
-import {Vector3} from '@babylonjs/core/Maths/math.vector';
+import {
+  Matrix,
+  Quaternion,
+  Vector3,
+} from '@babylonjs/core/Maths/math.vector';
+import {TransformNode} from '@babylonjs/core/Meshes/transformNode';
 import {Engine} from '@babylonjs/core/Engines/engine';
 import {Constants} from '@babylonjs/core/Engines/constants';
 import {Scene} from '@babylonjs/core/scene';
@@ -7,19 +12,25 @@ import {HemisphericLight} from '@babylonjs/core/Lights/hemisphericLight';
 import {SpotLight} from '@babylonjs/core/Lights/spotLight';
 import {PointLight} from '@babylonjs/core/Lights/pointLight';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
+import '@babylonjs/core/Meshes/instancedMesh';
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import {Texture} from '@babylonjs/core/Materials/Textures/texture';
 import {
   DynamicTexture,
 } from '@babylonjs/core/Materials/Textures/dynamicTexture';
-import {addStaticCollider} from './physics';
+import {addStaticCollider, makeBoxBody} from './physics';
+import {
+  PhysicsMotionType,
+} from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import {
   CONVEYOR_BELT_TOP,
   CONVEYOR_HOME,
+  CONVEYOR_PATH,
   PRINTER_BED_TOP,
   PRINTER_HOME,
 } from '../game/handParts';
+import {PLAY_RADIUS} from '../input/locomotion';
 import {FILAMENT_COLORS, FALLBACK_HEX} from '../game/palette';
 
 export interface Environment {
@@ -30,6 +41,7 @@ export interface Environment {
   slab: Mesh;
   printerBed: Mesh;
   conveyorBelt: Mesh;
+  barrierRails: readonly Mesh[];
   pedestalTop: number;
 }
 
@@ -305,6 +317,737 @@ function buildConveyor(scene: Scene): Mesh {
   return belt;
 }
 
+const BARRIER_SEGMENTS = 16;
+const BARRIER_HEIGHTS = [0.5, 0.95] as const;
+
+function chevronTexture(scene: Scene): DynamicTexture {
+  const size = 64;
+  const texture = new DynamicTexture('beltChevronTex', size, scene, false);
+  const ctx = texture.getContext();
+  ctx.fillStyle = '#10141d';
+  ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = '#58e0c8';
+  ctx.lineWidth = 6;
+  for (let i = -1; i < 3; i++) {
+    const y = i * 32;
+    ctx.beginPath();
+    ctx.moveTo(0, y + 22);
+    ctx.lineTo(32, y + 6);
+    ctx.lineTo(64, y + 22);
+    ctx.stroke();
+  }
+  texture.update();
+  texture.wrapU = Texture.WRAP_ADDRESSMODE;
+  return texture;
+}
+
+function buildConveyorRun(scene: Scene): void {
+  const frameMat = machineMat(scene, 'beltRunFrameMat', '#2a2f3e', '#05070c');
+  const runMat = new StandardMaterial('beltRunMat', scene);
+  const chevrons = chevronTexture(scene);
+  runMat.diffuseTexture = chevrons;
+  runMat.specularColor = new Color3(0.05, 0.05, 0.06);
+  const [pitHome, floorStop, curveStop, beltSouth] = CONVEYOR_PATH;
+
+  scene.onBeforeRenderObservable.add(() => {
+    chevrons.uOffset -= scene.getEngine().getDeltaTime() / 4000;
+  });
+
+  const pitMat = machineMat(scene, 'beltRunPitMat', '#0c1016', '#02040a');
+  const pit = MeshBuilder.CreateBox(
+      'beltRunPit', {width: 0.9, depth: 0.7, height: 0.1}, scene);
+  pit.position.set(pitHome.x, 0.05, pitHome.z);
+  pit.material = pitMat;
+  const rimSpec = {width: 0.12, depth: 0.86, height: 0.06};
+  for (const dx of [-0.51, 0.51]) {
+    const rim = MeshBuilder.CreateBox('beltRunRim', rimSpec, scene);
+    rim.position.set(pitHome.x + dx, 0.03, pitHome.z);
+    rim.material = frameMat;
+  }
+
+  const hatchFrame =
+      machineMat(scene, 'beltRunHatchMat', '#333a48', '#0b0e14');
+  const hatchSpec = {width: 1.3, depth: 0.16, height: 0.1};
+  for (const dz of [-0.48, 0.48]) {
+    const beam = MeshBuilder.CreateBox('beltRunHatch', hatchSpec, scene);
+    beam.position.set(pitHome.x, 10.02, pitHome.z + dz);
+    beam.material = hatchFrame;
+  }
+  const hatchSideSpec = {width: 0.14, depth: 0.8, height: 0.1};
+  for (const dx of [-0.6, 0.6]) {
+    const beam =
+        MeshBuilder.CreateBox('beltRunHatch', hatchSideSpec, scene);
+    beam.position.set(pitHome.x + dx, 10.02, pitHome.z);
+    beam.material = hatchFrame;
+  }
+  const shaft = MeshBuilder.CreateBox(
+      'beltRunShaft', {width: 1.05, depth: 0.75, height: 9.6}, scene);
+  shaft.position.set(pitHome.x, 5.05, pitHome.z);
+  const shaftMat = new StandardMaterial('beltRunShaftMat', scene);
+  shaftMat.emissiveColor = new Color3(1, 0.97, 0.9);
+  shaftMat.diffuseColor = Color3.Black();
+  shaftMat.alpha = 0.07;
+  shaft.material = shaftMat;
+  shaft.isPickable = false;
+
+  const floorLen = Math.abs(floorStop.x - pitHome.x);
+  const floorBelt = MeshBuilder.CreateBox(
+      'beltRunFloor', {width: floorLen, depth: 0.5, height: 0.14}, scene);
+  floorBelt.position.set((pitHome.x + floorStop.x) / 2, 0.17, floorStop.z);
+  floorBelt.material = runMat;
+  const legSpec = {width: 0.04, depth: 0.04, height: 0.2};
+  for (const dx of [-0.2, 0.2]) {
+    const leg = MeshBuilder.CreateBox('beltRunLeg', legSpec, scene);
+    leg.position.set(floorStop.x + dx, 0.1, floorStop.z);
+    leg.material = frameMat;
+  }
+
+  const curve = MeshBuilder.CreateBox(
+      'beltRunCurve', {width: 0.55, depth: 0.45, height: 0.06}, scene);
+  curve.position.set(curveStop.x, 0.32, curveStop.z);
+  curve.rotation.y = Math.PI / 4;
+  curve.material = runMat;
+
+  const rise = beltSouth.y - curveStop.y;
+  const run = beltSouth.z - curveStop.z;
+  const slopeLen = Math.hypot(rise, run);
+  const slopeAngle = Math.atan2(rise, Math.abs(run));
+  const slope = MeshBuilder.CreateBox(
+      'beltRunSlope', {width: 0.5, height: 0.06, depth: slopeLen}, scene);
+  slope.position.set(
+      (curveStop.x + beltSouth.x) / 2,
+      (curveStop.y + beltSouth.y) / 2,
+      (curveStop.z + beltSouth.z) / 2,
+  );
+  slope.rotation.x = slopeAngle;
+  slope.material = runMat;
+  const slopeRailSpec = {width: 0.02, height: 0.08, depth: slopeLen};
+  for (const dx of [-0.26, 0.26]) {
+    const rail = MeshBuilder.CreateBox(
+        'beltRunSlopeRail', slopeRailSpec, scene);
+    rail.position.set(slope.position.x + dx, slope.position.y + 0.05,
+        slope.position.z);
+    rail.rotation.x = slopeAngle;
+    rail.material = frameMat;
+  }
+  for (const dz of [1.05, 0.85, 0.65]) {
+    const t = (1.25 - dz) / 0.7;
+    const legX = curveStop.x + t * (beltSouth.x - curveStop.x);
+    const supportY = curveStop.y + t * rise;
+    const leg = MeshBuilder.CreateBox(
+        'beltRunSlopeLeg', {width: 0.04, depth: 0.04, height: supportY},
+        scene);
+    leg.position.set(legX, supportY / 2, dz);
+    leg.material = frameMat;
+  }
+}
+
+const HALL_Z_NEAR = -8.2;
+const HALL_Z_FAR = -28;
+const HALL_HALF_WIDTH = 16;
+
+function markingsTexture(scene: Scene): DynamicTexture {
+  const size = 512;
+  const texture = new DynamicTexture('hallMarkingsTex', size, scene, false);
+  const ctx = texture.getContext();
+  ctx.fillStyle = '#70757d';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#7a7f87';
+  for (let i = 0; i < 40; i++) {
+    const x = (i * 197) % size;
+    const y = (i * 331) % size;
+    ctx.fillRect(x, y, 3 + (i % 3), 2 + (i % 4));
+  }
+  ctx.strokeStyle = '#d9a622';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(14, 14, size - 28, size - 28);
+  ctx.setLineDash([26, 20]);
+  ctx.beginPath();
+  ctx.moveTo(size / 2, 0);
+  ctx.lineTo(size / 2, size);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#e8e2d4';
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(60 + i * 80, size / 2 - 40, 44, 80);
+  }
+  texture.update();
+  return texture;
+}
+
+function stageScreenTexture(scene: Scene): DynamicTexture {
+  const texture = new DynamicTexture('stageScreenTex', 256, scene, false);
+  const ctx = texture.getContext();
+  ctx.fillStyle = '#0c1016';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = '#2e8d7c';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(8, 8, 240, 60);
+  ctx.fillStyle = '#2e8d7c';
+  ctx.font = 'bold 30px monospace';
+  ctx.fillText('LIVE BUILD', 26, 50);
+  ctx.strokeStyle = '#d9a622';
+  for (let i = 0; i < 4; i++) {
+    const y = 110 + i * 36;
+    ctx.beginPath();
+    ctx.moveTo(20, y);
+    for (let x = 20; x < 236; x += 8) {
+      ctx.lineTo(x, y - 10 - 14 * Math.abs(Math.sin(x / 28 + i)));
+    }
+    ctx.stroke();
+  }
+  texture.update();
+  return texture;
+}
+
+function buildRobotArm(
+    scene: Scene,
+    yellowMat: StandardMaterial,
+    jointMat: StandardMaterial,
+    x: number,
+    z: number,
+    face: number,
+): TransformNode {
+  const root = new TransformNode(`robotArm${x}_${z}`, scene);
+  root.position.set(x, 0, z);
+  root.rotation.y = face;
+  const base = MeshBuilder.CreateCylinder(
+      `armBase${x}_${z}`, {diameter: 1.0, height: 0.5, tessellation: 16},
+      scene);
+  base.position.y = 0.25;
+  base.parent = root;
+  base.material = jointMat;
+  const column = MeshBuilder.CreateBox(
+      `armColumn${x}_${z}`, {width: 0.5, height: 1.3, depth: 0.5}, scene);
+  column.position.y = 1.15;
+  column.parent = root;
+  column.material = yellowMat;
+  const shoulder = MeshBuilder.CreateSphere(
+      `armShoulder${x}_${z}`, {diameter: 0.6, segments: 8}, scene);
+  shoulder.position.y = 1.95;
+  shoulder.parent = root;
+  shoulder.material = jointMat;
+  const boomPivot = new TransformNode(`armBoom${x}_${z}`, scene);
+  boomPivot.position.y = 1.95;
+  boomPivot.parent = root;
+  const boom1 = MeshBuilder.CreateBox(
+      `armBoomA${x}_${z}`, {width: 0.36, height: 0.36, depth: 2.6}, scene);
+  boom1.position.set(0, 0, 1.3);
+  boom1.parent = boomPivot;
+  boom1.material = yellowMat;
+  const elbow = MeshBuilder.CreateSphere(
+      `armElbow${x}_${z}`, {diameter: 0.5, segments: 8}, scene);
+  elbow.position.set(0, 0, 2.6);
+  elbow.parent = boomPivot;
+  elbow.material = jointMat;
+  const forePivot = new TransformNode(`armFore${x}_${z}`, scene);
+  forePivot.position.set(0, 0, 2.6);
+  forePivot.parent = boomPivot;
+  forePivot.rotation.x = 1.25;
+  const boom2 = MeshBuilder.CreateBox(
+      `armBoomB${x}_${z}`, {width: 0.28, height: 0.28, depth: 1.9}, scene);
+  boom2.position.set(0, 0, 0.95);
+  boom2.parent = forePivot;
+  boom2.material = yellowMat;
+  const wrist = MeshBuilder.CreateSphere(
+      `armWrist${x}_${z}`, {diameter: 0.36, segments: 8}, scene);
+  wrist.position.set(0, 0, 1.9);
+  wrist.parent = forePivot;
+  wrist.material = jointMat;
+  for (const side of [-0.09, 0.09]) {
+    const finger = MeshBuilder.CreateBox(
+        `armFinger${x}_${z}${side}`,
+        {width: 0.07, height: 0.07, depth: 0.5}, scene);
+    finger.position.set(side, side > 0 ? 0.1 : -0.1, 2.25);
+    finger.rotation.x = side > 0 ? 0.35 : -0.35;
+    finger.parent = forePivot;
+    finger.material = jointMat;
+  }
+  return boomPivot;
+}
+
+function buildForklift(
+    scene: Scene,
+    yellowMat: StandardMaterial,
+    darkMat: StandardMaterial,
+    name: string,
+): TransformNode {
+  const root = new TransformNode(name, scene);
+  const body = MeshBuilder.CreateBox(
+      `${name}Body`, {width: 1.0, height: 0.7, depth: 1.8}, scene);
+  body.position.y = 0.65;
+  body.parent = root;
+  body.material = yellowMat;
+  const counterweight = MeshBuilder.CreateBox(
+      `${name}Weight`, {width: 1.0, height: 0.5, depth: 0.5}, scene);
+  counterweight.position.set(0, 0.55, -1.05);
+  counterweight.parent = root;
+  counterweight.material = darkMat;
+  for (const dx of [-0.3, 0.3]) {
+    const mast = MeshBuilder.CreateBox(
+        `${name}Mast`, {width: 0.1, height: 2.0, depth: 0.1}, scene);
+    mast.position.set(dx, 1.0, 0.95);
+    mast.parent = root;
+    mast.material = darkMat;
+    const tine = MeshBuilder.CreateBox(
+        `${name}Tine`, {width: 0.1, height: 0.05, depth: 0.9}, scene);
+    tine.position.set(dx, 0.12, 1.45);
+    tine.parent = root;
+    tine.material = darkMat;
+  }
+  const roof = MeshBuilder.CreateBox(
+      `${name}Roof`, {width: 1.0, height: 0.06, depth: 0.9}, scene);
+  roof.position.set(0, 2.05, -0.3);
+  roof.parent = root;
+  roof.material = darkMat;
+  for (const [dx, dz] of [[-0.4, -0.6], [0.4, -0.6], [-0.4, 0.1],
+    [0.4, 0.1]] as const) {
+    const post = MeshBuilder.CreateBox(
+        `${name}Cage`, {width: 0.06, height: 1.0, depth: 0.06}, scene);
+    post.position.set(dx, 1.55, dz);
+    post.parent = root;
+    post.material = darkMat;
+  }
+  const wheelSpec = {diameter: 0.42, height: 0.22, tessellation: 12};
+  for (const [dx, dz] of [[-0.52, 0.55], [0.52, 0.55], [-0.52, -0.55],
+    [0.52, -0.55]] as const) {
+    const wheel = MeshBuilder.CreateCylinder(
+        `${name}Wheel`, wheelSpec, scene);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(dx, 0.21, dz);
+    wheel.parent = root;
+    wheel.material = darkMat;
+  }
+  return root;
+}
+
+function buildRack(
+    scene: Scene,
+    steelMat: StandardMaterial,
+    loadMat: StandardMaterial,
+    x: number,
+    z: number,
+    flip: boolean,
+): void {
+  const frame = new TransformNode(`rack${x}_${z}`, scene);
+  frame.position.set(x, 0, z);
+  frame.rotation.y = flip ? Math.PI / 2 : 0;
+  const uprightSpec = {width: 0.1, height: 4.2, depth: 0.1};
+  for (const dx of [-1.4, 1.4]) {
+    const upright = MeshBuilder.CreateBox(`rackPost${x}_${z}`, uprightSpec,
+        scene);
+    upright.position.set(dx, 2.1, 0);
+    upright.parent = frame;
+    upright.material = steelMat;
+  }
+  for (const y of [1.2, 2.4, 3.6]) {
+    const beam = MeshBuilder.CreateBox(
+        `rackBeam${x}_${z}`, {width: 2.9, height: 0.09, depth: 0.09}, scene);
+    beam.position.set(0, y, -0.55);
+    beam.parent = frame;
+    beam.material = steelMat;
+    const beamBack = MeshBuilder.CreateBox(
+        `rackBeamBack${x}_${z}`, {width: 2.9, height: 0.09, depth: 0.09},
+        scene);
+    beamBack.position.set(0, y, 0.55);
+    beamBack.parent = frame;
+    beamBack.material = steelMat;
+    const load = MeshBuilder.CreateBox(
+        `rackLoad${x}_${z}${y}`, {width: 2.7, height: 1.0, depth: 1.0},
+        scene);
+    load.position.set(0, y + 0.55, 0);
+    load.parent = frame;
+    load.material = loadMat;
+  }
+}
+
+function buildGrandHall(scene: Scene): void {
+  const wallMat = machineMat(scene, 'hallWallMat', '#aeb6c0', '#363c44');
+  const steelMat = machineMat(scene, 'hallSteelMat', '#7c8694', '#20252d');
+  const yellowMat = machineMat(scene, 'hallYellowMat', '#d9a622', '#4a3a0c');
+  const darkMat = machineMat(scene, 'hallDarkMat', '#2a2f3e', '#05070c');
+  const crowdMat = new StandardMaterial('crowdMat', scene);
+  crowdMat.diffuseColor = new Color3(0.75, 0.72, 0.66);
+  crowdMat.specularColor = Color3.Black();
+
+  const floor = MeshBuilder.CreateGround(
+      'hallFloor', {width: HALL_HALF_WIDTH * 2, height: 19.8}, scene);
+  floor.position.set(0, 0.012, (HALL_Z_NEAR + HALL_Z_FAR) / 2);
+  const floorMat = new StandardMaterial('hallFloorMat', scene);
+  const markings = markingsTexture(scene);
+  markings.uScale = 8;
+  markings.vScale = 5;
+  floorMat.diffuseTexture = markings;
+  floorMat.specularColor = new Color3(0.04, 0.04, 0.05);
+  floor.material = floorMat;
+
+  const sideSpec = {width: 0.3, depth: 19.8, height: WALL_HEIGHT};
+  for (const [name, x] of [['hallLeft', -HALL_HALF_WIDTH],
+    ['hallRight', HALL_HALF_WIDTH]] as const) {
+    const side = MeshBuilder.CreateBox(name, sideSpec, scene);
+    side.position.set(x, WALL_HEIGHT / 2, (HALL_Z_NEAR + HALL_Z_FAR) / 2);
+    side.material = wallMat;
+  }
+  const endWall = MeshBuilder.CreateBox(
+      'hallEnd', {width: HALL_HALF_WIDTH * 2, depth: 0.3, height: WALL_HEIGHT},
+      scene);
+  endWall.position.set(0, WALL_HEIGHT / 2, HALL_Z_FAR);
+  endWall.material = wallMat;
+  const hallRoof = MeshBuilder.CreateBox(
+      'hallRoof', {width: HALL_HALF_WIDTH * 2, depth: 19.8, height: 0.06},
+      scene);
+  hallRoof.rotation.x = Math.PI / 2;
+  hallRoof.position.set(0, 9.97, (HALL_Z_NEAR + HALL_Z_FAR) / 2);
+  hallRoof.material =
+      imageMat(scene, 'hallRoofMat', 'textures/metal-roof.png', 8, 5);
+  for (const x of [-12, -6, 6, 12]) {
+    const column = MeshBuilder.CreateBox(
+        `hallColumn${x}`, {width: 0.5, depth: 0.5, height: WALL_HEIGHT},
+        scene);
+    column.position.set(x, WALL_HEIGHT / 2, HALL_Z_NEAR + 0.4);
+    column.material = steelMat;
+    const backColumn = MeshBuilder.CreateBox(
+        `hallColumnBack${x}`, {width: 0.5, depth: 0.5, height: WALL_HEIGHT},
+        scene);
+    backColumn.position.set(x, WALL_HEIGHT / 2, HALL_Z_FAR + 0.5);
+    backColumn.material = steelMat;
+  }
+  const fixtureSpec = {width: 1.3, height: 0.07, depth: 0.2};
+  const tubeMat = machineMat(scene, 'hallTubeMat', '#fff3d6', '#c9b98a');
+  for (const x of [-10, -4, 4, 10]) {
+    for (const z of [-13, -19, -25]) {
+      const tube = MeshBuilder.CreateBox('hallTube', fixtureSpec, scene);
+      tube.position.set(x, 8.4, z);
+      tube.material = tubeMat;
+      const rod = MeshBuilder.CreateCylinder(
+          'hallTubeRod', {diameter: 0.02, height: 1.5}, scene);
+      rod.position.set(x, 9.2, z);
+      rod.material = steelMat;
+    }
+  }
+
+  const boomPivots: TransformNode[] = [];
+  boomPivots.push(
+      buildRobotArm(scene, yellowMat, darkMat, -6, -26.5, 0),
+      buildRobotArm(scene, yellowMat, darkMat, 0, -26.5, 0),
+      buildRobotArm(scene, yellowMat, darkMat, 6, -26.5, 0),
+      buildRobotArm(scene, yellowMat, darkMat, 9, -20, -Math.PI / 4),
+      buildRobotArm(scene, yellowMat, darkMat, -9, -20, Math.PI / 4),
+  );
+  scene.onBeforeRenderObservable.add(() => {
+    const t = performance.now() / 1000;
+    boomPivots.forEach((pivot, index) => {
+      if (index > 2) {
+        return;
+      }
+      pivot.rotation.x = 0.5 + Math.sin(t * 0.45 + index * 2.1) * 0.14;
+    });
+  });
+
+  const loadMat =
+      imageMat(scene, 'rackLoadMat', 'textures/rack-boxes.png', 1, 1);
+  buildRack(scene, steelMat, loadMat, -13, -13, true);
+  buildRack(scene, steelMat, loadMat, -13, -17, true);
+  buildRack(scene, steelMat, loadMat, -13, -22, true);
+  buildRack(scene, steelMat, loadMat, 13, -13, true);
+  buildRack(scene, steelMat, loadMat, 13, -17, true);
+  buildRack(scene, steelMat, loadMat, 13, -22, true);
+
+  const pallet = Mesh.MergeMeshes([
+    MeshBuilder.CreateBox('palletSlat', {width: 1.2, height: 0.04, depth: 1},
+        scene),
+    MeshBuilder.CreateBox('palletFoot', {width: 1.0, height: 0.1, depth: 0.8},
+        scene),
+  ], true, true);
+  const crateMat = machineMat(scene, 'hallCrateMat', '#8a6f4d', '#2a2118');
+  const palletSpots: Array<[number, number]> = [
+    [-14.5, -11], [-11.8, -12.2], [-14.2, -19.5], [14.5, -11.5],
+    [11.5, -14.5], [14.2, -20], [-10, -25], [10.5, -25.2],
+  ];
+  palletSpots.forEach(([x, z], i) => {
+    if (pallet) {
+      const stack = pallet.createInstance(`palletStack${i}`);
+      stack.position.set(x, 0.07, z);
+      stack.rotation.y = (i % 4) * 0.4;
+    }
+    const load = MeshBuilder.CreateBox(
+        `palletLoad${i}`, {width: 0.9, height: 0.7, depth: 0.75}, scene);
+    load.position.set(x, 0.47, z);
+    load.rotation.y = (i % 4) * 0.4;
+    load.material = crateMat;
+  });
+  if (pallet) {
+    pallet.setEnabled(false);
+  }
+
+  const parked = buildForklift(scene, yellowMat, darkMat, 'forkliftParked');
+  parked.position.set(-12.5, 0, -24);
+  parked.rotation.y = Math.PI / 2;
+  const moving = buildForklift(scene, yellowMat, darkMat, 'forkliftMoving');
+  moving.position.set(12.5, 0, -11);
+  scene.onBeforeRenderObservable.add(() => {
+    const t = performance.now() / 1000;
+    const leg = Math.floor(t / 15) % 2;
+    const phase = (t % 15) / 15;
+    const eased = phase < 0.5 ? 2 * phase * phase :
+        1 - Math.pow(-2 * phase + 2, 2) / 2;
+    moving.position.z = leg === 0 ? -11 - eased * 13 : -24 + eased * 13;
+    moving.rotation.y = leg === 0 ? 0 : Math.PI;
+  });
+
+  const stage = MeshBuilder.CreateBox(
+      'stagePlatform', {width: 10, height: 0.6, depth: 4}, scene);
+  stage.position.set(0, 0.3, -22.5);
+  stage.material = darkMat;
+  const stageFront = MeshBuilder.CreateBox(
+      'stageFace', {width: 10, height: 0.12, depth: 0.05}, scene);
+  stageFront.position.set(0, 0.42, -20.47);
+  stageFront.material = yellowMat;
+  const backdrop = MeshBuilder.CreateBox(
+      'stageBackdrop', {width: 10, height: 4.5, depth: 0.2}, scene);
+  backdrop.position.set(0, 2.85, -24.6);
+  backdrop.material = machineMat(scene, 'backdropMat', '#1d2129', '#05070c');
+  const bandMat = new StandardMaterial('stageBandMat', scene);
+  const bandTex = new DynamicTexture('stageBandTex', 256, scene, false);
+  const bandCtx = bandTex.getContext();
+  bandCtx.fillStyle = '#101820';
+  bandCtx.fillRect(0, 0, 256, 256);
+  bandCtx.fillStyle = '#d9a622';
+  bandCtx.font = 'bold 42px monospace';
+  bandCtx.fillText('HANDS ON!', 30, 150);
+  bandTex.update();
+  bandMat.diffuseTexture = bandTex;
+  bandMat.emissiveTexture = bandTex;
+  bandMat.emissiveColor = new Color3(0.7, 0.6, 0.35);
+  const band = MeshBuilder.CreatePlane(
+      'stageBand', {width: 6.5, height: 0.75}, scene);
+  band.position.set(0, 4.35, -24.48);
+  band.material = bandMat;
+  const screenSpec = {width: 2.3, height: 1.5};
+  const screenMat = new StandardMaterial('stageScreenMat', scene);
+  const screen = stageScreenTexture(scene);
+  screenMat.diffuseTexture = screen;
+  screenMat.emissiveTexture = screen;
+  screenMat.emissiveColor = new Color3(0.55, 0.6, 0.58);
+  for (const x of [-3.4, 0, 3.4]) {
+    const panel = MeshBuilder.CreatePlane(`stageScreen${x}`, screenSpec, scene);
+    panel.position.set(x, 2.6, -24.48);
+    panel.material = screenMat;
+  }
+  const podium = MeshBuilder.CreateBox(
+      'stagePodium', {width: 0.6, height: 1.1, depth: 0.45}, scene);
+  podium.position.set(1.6, 1.15, -21.6);
+  podium.material = machineMat(scene, 'podiumMat', '#333a48', '#0b0e14');
+  const podiumTop = MeshBuilder.CreateBox(
+      'stagePodiumTop', {width: 0.7, height: 0.05, depth: 0.55}, scene);
+  podiumTop.position.set(1.6, 1.72, -21.6);
+  podiumTop.material = yellowMat;
+
+  const seat = Mesh.MergeMeshes([
+    MeshBuilder.CreateBox('crowdSeat', {width: 0.44, height: 0.05, depth: 0.42},
+        scene),
+    MeshBuilder.CreateBox('crowdBack', {width: 0.44, height: 0.5, depth: 0.05},
+        scene),
+  ], true, true);
+  const figure = Mesh.MergeMeshes([
+    MeshBuilder.CreateSphere('crowdHead', {diameter: 0.16, segments: 6},
+        scene),
+    MeshBuilder.CreateBox(
+        'crowdTorse', {width: 0.3, height: 0.44, depth: 0.2}, scene),
+  ], true, true);
+  if (seat && figure) {
+    seat.setEnabled(false);
+    figure.setEnabled(false);
+    seat.material = machineMat(scene, 'crowdSeatMat', '#3e5a78', '#101c2a');
+    figure.material = crowdMat;
+    const colors: number[] = [];
+    const palette = FILAMENT_COLORS.map((color) => {
+      const c = Color3.FromHexString(color.hex);
+      return [c.r, c.g, c.b];
+    });
+    const toneAt = (index: number): [number, number, number] => {
+      const tone = palette[index % palette.length] ?? [0.6, 0.6, 0.6];
+      return [tone[0] ?? 0.6, tone[1] ?? 0.6, tone[2] ?? 0.6];
+    };
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 15; col++) {
+        const x = -5.25 + col * 0.75 + (row % 2) * 0.15;
+        const z = -12.6 - row * 0.85;
+        seat.thinInstanceAdd(Matrix.Compose(
+            Vector3.One(),
+            Quaternion.Identity(),
+            new Vector3(x, 0.28, z),
+        ));
+        figure.thinInstanceAdd(Matrix.Compose(
+            Vector3.One(),
+            Quaternion.Identity(),
+            new Vector3(x, 0.78, z - 0.06),
+        ));
+        const [tr, tg, tb] = toneAt(row * 7 + col * 3);
+        const shade = 0.75 + ((row * 13 + col * 5) % 5) * 0.08;
+        colors.push(tr * shade, tg * shade, tb * shade, 1);
+      }
+    }
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 10; col++) {
+        const x = -4 + col * 0.85;
+        const z = -20.6 - row * 0.85;
+        figure.thinInstanceAdd(Matrix.Compose(
+            Vector3.One(),
+            Quaternion.Identity(),
+            new Vector3(x, 0.62, z),
+        ));
+        const [tr, tg, tb] = toneAt(row * 5 + col * 7);
+        const shade = 0.7 + ((row * 11 + col * 3) % 5) * 0.08;
+        colors.push(tr * shade, tg * shade, tb * shade, 1);
+      }
+    }
+    figure.thinInstanceSetBuffer('color', new Float32Array(colors), 4);
+  }
+
+  const walkers: Mesh[] = [];
+  if (figure) {
+    for (let i = 0; i < 3; i++) {
+      const walker = figure.createInstance(`crowdWalker${i}`);
+      walkers.push(walker as unknown as Mesh);
+    }
+  }
+  scene.onBeforeRenderObservable.add(() => {
+    const t = performance.now() / 1000;
+    walkers.forEach((walker, i) => {
+      const phase = (t * 0.35 + i * 0.33) % 1;
+      const z = -9.5 - phase * 2.5;
+      const x = i === 0 ? -6.8 : i === 1 ? 6.6 : -0.4 + Math.sin(t + i) * 0.3;
+      walker.position.set(x, 0.62, z);
+    });
+  });
+
+  const barrierRunMat = yellowMat;
+  const runRailSpec = {width: 4.2, depth: 0.05, height: 0.06};
+  for (const [x, z] of [[-8, -25.2], [8, -25.2]] as const) {
+    const rail = MeshBuilder.CreateBox('hallBarrierRail', runRailSpec, scene);
+    rail.position.set(x, 0.55, z);
+    rail.material = barrierRunMat;
+    for (const dx of [-2, 0, 2]) {
+      const post = MeshBuilder.CreateBox(
+          'hallBarrierPost', {width: 0.05, height: 1.0, depth: 0.05}, scene);
+      post.position.set(x + dx, 0.5, z);
+      post.material = barrierRunMat;
+    }
+  }
+  for (const x of [-6.6, 6.6]) {
+    const rail = MeshBuilder.CreateBox(
+        'hallAisleRail', {width: 0.05, height: 0.06, depth: 3.2}, scene);
+    rail.position.set(x, 0.55, -10.8);
+    rail.material = barrierRunMat;
+    for (const dz of [-1.4, 0, 1.4]) {
+      const post = MeshBuilder.CreateBox(
+          'hallAislePost', {width: 0.05, height: 1.0, depth: 0.05}, scene);
+      post.position.set(x, 0.5, -10.8 + dz);
+      post.material = barrierRunMat;
+    }
+  }
+
+  const doorMat =
+      imageMat(scene, 'garageDoorMat', 'textures/garage-door.png', 1, 1);
+  for (const x of [-5.5, 0, 5.5]) {
+    const door = MeshBuilder.CreateBox(
+        `garageDoor${x}`, {width: 3.4, height: 3.2, depth: 0.1}, scene);
+    door.position.set(x, 1.6, WALL_Z - 0.16);
+    door.material = doorMat;
+  }
+  const personnel = MeshBuilder.CreateBox(
+      'personnelDoor', {width: 1.0, height: 2.2, depth: 0.08}, scene);
+  personnel.position.set(8.6, 1.1, WALL_Z - 0.14);
+  personnel.material = machineMat(scene, 'personnelDoorMat', '#3e5a78',
+      '#101c2a');
+}
+
+function buildPrinterBench(scene: Scene): void {
+  const frameMat = machineMat(scene, 'benchFrameMat', '#3a4149', '#0b0e14');
+  const steelMat =
+      imageMat(scene, 'benchSteelMat', 'textures/brushed-steel.png', 2, 2);
+  const pegMat =
+      imageMat(scene, 'benchPegMat', 'textures/pegboard.png', 3, 3);
+  const cx = PRINTER_HOME.x;
+  const cz = PRINTER_HOME.z;
+  const top = MeshBuilder.CreateBox(
+      'benchTop', {width: 0.6, depth: 0.55, height: 0.05}, scene);
+  top.position.set(cx, 1.033, cz);
+  top.material = frameMat;
+  const plate = MeshBuilder.CreateBox(
+      'benchPlate', {width: 0.58, depth: 0.53, height: 0.012}, scene);
+  plate.position.set(cx, 1.064, cz);
+  plate.material = steelMat;
+  const legSpec = {width: 0.05, depth: 0.05, height: 1.008};
+  const legSpots: Array<[number, number]> = [
+    [-0.24, -0.21], [0.24, -0.21], [-0.24, 0.21], [0.24, 0.21],
+  ];
+  legSpots.forEach(([dx, dz], i) => {
+    const leg = MeshBuilder.CreateBox(`benchLeg${i}`, legSpec, scene);
+    leg.position.set(cx + dx, 0.504, cz + dz);
+    leg.material = frameMat;
+  });
+  const shelf = MeshBuilder.CreateBox(
+      'benchShelf', {width: 0.5, depth: 0.45, height: 0.03}, scene);
+  shelf.position.set(cx, 0.38, cz);
+  shelf.material = frameMat;
+  const pegboard = MeshBuilder.CreateBox(
+      'benchPegboard', {width: 0.6, depth: 0.03, height: 0.5}, scene);
+  pegboard.position.set(cx, 1.32, cz + 0.26);
+  pegboard.material = pegMat;
+}
+
+function buildBarrierRing(scene: Scene): Mesh[] {
+  const yellowMat = machineMat(scene, 'barrierYellowMat', '#d9a622', '#4a3a0c');
+  const footMat = machineMat(scene, 'barrierFootMat', '#2a2f3e', '#05070c');
+  const stripeMat = machineMat(scene, 'barrierStripeMat', '#d9a622', '#4a3a0c');
+  stripeMat.diffuseTexture = hazardTexture(scene);
+
+  const radius = PLAY_RADIUS;
+  const chord = (2 * Math.PI * radius) / BARRIER_SEGMENTS;
+  const rails: Mesh[] = [];
+  const trims: Mesh[] = [];
+  for (let i = 0; i < BARRIER_SEGMENTS; i++) {
+    const angle = (i / BARRIER_SEGMENTS) * Math.PI * 2;
+    const mid = angle + Math.PI / BARRIER_SEGMENTS;
+    const px = Math.cos(angle) * radius;
+    const pz = Math.sin(angle) * radius;
+    const post = MeshBuilder.CreateBox(
+        `barrierPost${i}`, {width: 0.05, height: 1.0, depth: 0.05}, scene);
+    post.position.set(px, 0.5, pz);
+    post.material = yellowMat;
+    trims.push(post);
+    const foot = MeshBuilder.CreateBox(
+        `barrierFoot${i}`, {width: 0.16, height: 0.04, depth: 0.16}, scene);
+    foot.position.set(px, 0.02, pz);
+    foot.material = footMat;
+    trims.push(foot);
+    BARRIER_HEIGHTS.forEach((y, j) => {
+      const rail = MeshBuilder.CreateBox(
+          `barrierRail${i}-${j}`, {width: chord, height: 0.06, depth: 0.05},
+          scene);
+      rail.position.set(
+          Math.cos(mid) * radius,
+          y,
+          Math.sin(mid) * radius,
+      );
+      rail.rotation.y = mid + Math.PI / 2;
+      rail.material = y > 0.9 ? stripeMat : yellowMat;
+      rails.push(rail);
+    });
+  }
+  const trim = Mesh.MergeMeshes(trims, true, true);
+  if (trim) {
+    trim.name = 'barrierTrims';
+    trim.isPickable = false;
+  }
+  for (const rail of rails) {
+    rail.isPickable = false;
+  }
+  return rails;
+}
+
 const WALL_Z = 8.2;
 const WALL_HEIGHT = 10;
 const BEAM_LEVELS = [3.2, 6.4, 9.2];
@@ -318,12 +1061,13 @@ function buildWarehouse(scene: Scene): void {
       machineMat(scene, 'warehouseFixtureMat', '#f5f8ff', '#c9d2e0');
 
   const wallSpec = {width: 24, depth: 0.2, height: WALL_HEIGHT};
-  const back = MeshBuilder.CreateBox('warehouseBack', wallSpec, scene);
-  back.position.set(0, WALL_HEIGHT / 2, -WALL_Z);
-  back.material = wallMat;
   const front = MeshBuilder.CreateBox('warehouseFront', wallSpec, scene);
   front.position.set(0, WALL_HEIGHT / 2, WALL_Z);
   front.material = wallMat;
+  const opening = MeshBuilder.CreateBox(
+      'warehouseBack', {width: 24, depth: 0.2, height: 1.1}, scene);
+  opening.position.set(0, 0.55, -WALL_Z);
+  opening.material = wallMat;
   const sideSpec = {width: 0.2, depth: 16.6, height: WALL_HEIGHT};
   for (const [name, x] of [['warehouseLeft', -12],
     ['warehouseRight', 12]] as const) {
@@ -464,24 +1208,36 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   }
 
   const ground =
-      MeshBuilder.CreateGround('ground', {width: 24, height: 24}, scene);
+      MeshBuilder.CreateGround('ground', {width: 80, height: 44}, scene);
+  ground.position.z = -6;
   const groundMat =
-      imageMat(scene, 'groundMat', 'textures/concrete-floor.png', 6, 6);
+      imageMat(scene, 'groundMat', 'textures/concrete-floor.png', 20, 11);
   ground.material = groundMat;
 
-  const column = MeshBuilder.CreateBox(
-      'pedestalColumn', {width: 0.9, depth: 0.9, height: 1.0}, scene);
+  const column = MeshBuilder.CreateCylinder(
+      'pedestalColumn', {diameter: 0.6, height: 1.0, tessellation: 24}, scene);
   column.position.y = 0.5;
-  const slab = MeshBuilder.CreateBox(
-      'pedestalSlab', {width: 1.15, depth: 1.15, height: 0.07}, scene);
+  const baseRing = MeshBuilder.CreateCylinder(
+      'pedestalBase', {diameter: 0.8, height: 0.06, tessellation: 24}, scene);
+  baseRing.position.y = 0.03;
+  const slab = MeshBuilder.CreateCylinder(
+      'pedestalSlab', {diameter: 0.72, height: 0.07, tessellation: 24}, scene);
   const pedestalTop = 1.0 + 0.07;
   slab.position.y = 1.0 + 0.035;
+  const accentRing = MeshBuilder.CreateCylinder(
+      'pedestalAccent', {diameter: 0.78, height: 0.02, tessellation: 24},
+      scene);
+  accentRing.position.y = 0.995;
   const benchMat = new StandardMaterial('benchMat', scene);
   benchMat.diffuseColor = new Color3(0.62, 0.65, 0.72);
   benchMat.emissiveColor = new Color3(0.1, 0.11, 0.13);
-  benchMat.specularColor = new Color3(0.08, 0.08, 0.1);
+  benchMat.specularColor = new Color3(0.3, 0.3, 0.34);
   column.material = benchMat;
   slab.material = benchMat;
+  baseRing.material =
+      machineMat(scene, 'pedestalBaseMat', '#2a2f3e', '#05070c');
+  accentRing.material =
+      machineMat(scene, 'pedestalAccentMat', '#2e8d7c', '#0b4a3e');
 
   const curtainMat = new StandardMaterial('curtainMat', scene);
   curtainMat.diffuseColor = new Color3(0.42, 0.1, 0.14);
@@ -493,8 +1249,12 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
   curtain.material = curtainMat;
 
   const printerBed = buildPrinter(scene);
+  buildPrinterBench(scene);
   const conveyorBelt = buildConveyor(scene);
+  buildConveyorRun(scene);
   buildWarehouse(scene);
+  buildGrandHall(scene);
+  const barrierRails = buildBarrierRing(scene);
 
   return {
     engine,
@@ -504,6 +1264,7 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
     slab,
     printerBed,
     conveyorBelt,
+    barrierRails,
     pedestalTop,
   };
 }
@@ -512,20 +1273,26 @@ export function attachEnvironmentColliders(env: Environment): void {
   addStaticCollider(
       env.scene,
       env.ground,
-      new Vector3(0, -0.05, 0),
-      new Vector3(24, 0.1, 24),
+      new Vector3(0, -0.05, -6),
+      new Vector3(80, 0.1, 44),
   );
   addStaticCollider(
       env.scene,
       env.column,
       Vector3.Zero(),
-      new Vector3(0.9, 1.0, 0.9),
+      new Vector3(0.6, 1.0, 0.6),
   );
   addStaticCollider(
       env.scene,
       env.slab,
       Vector3.Zero(),
-      new Vector3(1.15, 0.07, 1.15),
+      new Vector3(0.72, 0.07, 0.72),
+  );
+  addStaticCollider(
+      env.scene,
+      env.column,
+      new Vector3(PRINTER_HOME.x, 0.535, PRINTER_HOME.z),
+      new Vector3(0.6, 1.07, 0.55),
   );
   addStaticCollider(
       env.scene,
@@ -549,4 +1316,7 @@ export function attachEnvironmentColliders(env: Environment): void {
       new Vector3(CONVEYOR_HOME.x, CONVEYOR_BELT_TOP - 0.01, 0.25),
       new Vector3(0.3, 0.02, 0.7),
   );
+  for (const rail of env.barrierRails) {
+    makeBoxBody(rail, PhysicsMotionType.STATIC, 0);
+  }
 }
