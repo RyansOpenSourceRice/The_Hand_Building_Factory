@@ -36,4 +36,10 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
         screws, yellow screw arrows, render-loop error guard and perf
         readout. (2026.11.12.3)
 
+12. [x] Second on-device feedback round: grouped phase narration with
+        host names, interrupt/watchdog voice playback, a three-line
+        in-world status board, a soft host glow while placing, x-ray
+        guide arrows on the part and its destination, and screws
+        anchored to the printed surfaces. (2026.11.12.4)
+
 Definition of done for every item: the four gates in AGENTS.md.

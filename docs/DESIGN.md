@@ -50,8 +50,10 @@ two tiered rows of six facing the player, so the performer reads as the one
 being watched. Instanced geometry keeps the room light; the small crowd is a
 deliberate choice to protect the Quest frame budget.
 
-Guidance is diegetic: bobbing yellow arrows over the remaining screws and over
-the next part, plus a quiet narrator that names each part and where it goes.
+Guidance is diegetic: a small status board above the hand stand, bobbing
+yellow arrows on the part and its destination (always drawn on top), a soft
+glow on the host while a part is waiting, and a grouped narrator that names
+the host at each step.
 The controller hands are stylized fists wrapped around the grip, so the tool
 and the hand agree with the hardware the player is holding.
 

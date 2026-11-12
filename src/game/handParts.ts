@@ -1,5 +1,13 @@
 export type PartSource = 'printer' | 'conveyor';
 
+export type PartPhase =
+    | 'palm'
+    | 'motors'
+    | 'thumb-base'
+    | 'fingers'
+    | 'thumb-segments'
+    | 'cover';
+
 export type Vec3Literal = {x: number; y: number; z: number};
 
 export type PartDef = {
@@ -8,6 +16,9 @@ export type PartDef = {
   file: string | null;
   primitive: 'servo' | null;
   source: PartSource;
+  phase: PartPhase;
+  hostId: string;
+  hostLabel: string;
   scale: number;
   home: Vec3Literal;
   socket: Vec3Literal;
@@ -53,6 +64,9 @@ export const PART_DEFS: readonly PartDef[] = [
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: 0, y: PALM_CENTER_Y, z: 0},
+    phase: 'palm',
+    hostId: 'stand',
+    hostLabel: 'the stand',
     socketYaw: 0,
     snapRadius: 0.24,
     screwCount: 4,
@@ -69,6 +83,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: null,
     primitive: 'servo',
     source: 'conveyor',
+    phase: 'motors',
+    hostId: 'palm',
+    hostLabel: 'the back of the hand',
     scale: 1,
     home: CONVEYOR_HOME,
     socket: {x: 0, y: 1.1, z: SERVO_BACK_Z},
@@ -83,6 +100,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: null,
     primitive: 'servo',
     source: 'conveyor',
+    phase: 'motors',
+    hostId: 'palm',
+    hostLabel: 'the back of the hand',
     scale: 1,
     home: CONVEYOR_HOME,
     socket: {x: -0.062, y: 1.27, z: SERVO_BACK_Z},
@@ -97,6 +117,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: null,
     primitive: 'servo',
     source: 'conveyor',
+    phase: 'motors',
+    hostId: 'palm',
+    hostLabel: 'the back of the hand',
     scale: 1,
     home: CONVEYOR_HOME,
     socket: {x: 0.062, y: 1.27, z: SERVO_BACK_Z},
@@ -111,6 +134,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: null,
     primitive: 'servo',
     source: 'conveyor',
+    phase: 'motors',
+    hostId: 'palm',
+    hostLabel: 'the back of the hand',
     scale: 1,
     home: CONVEYOR_HOME,
     socket: {x: -0.062, y: 1.16, z: SERVO_BACK_Z},
@@ -125,6 +151,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: null,
     primitive: 'servo',
     source: 'conveyor',
+    phase: 'motors',
+    hostId: 'palm',
+    hostLabel: 'the back of the hand',
     scale: 1,
     home: CONVEYOR_HOME,
     socket: {x: 0.062, y: 1.16, z: SERVO_BACK_Z},
@@ -142,6 +171,9 @@ export const PART_DEFS: readonly PartDef[] = [
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: -0.155, y: 1.21, z: 0.02},
+    phase: 'thumb-base',
+    hostId: 'palm',
+    hostLabel: 'the side of the palm',
     socketYaw: 0.7,
     snapRadius: 0.16,
     screwCount: 1,
@@ -153,6 +185,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: 'finger.stl',
     primitive: null,
     source: 'printer',
+    phase: 'fingers',
+    hostId: 'palm',
+    hostLabel: 'the top of the palm',
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: -0.0945, y: FINGER_CENTER_Y, z: 0},
@@ -167,6 +202,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: 'finger.stl',
     primitive: null,
     source: 'printer',
+    phase: 'fingers',
+    hostId: 'palm',
+    hostLabel: 'the top of the palm',
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: -0.0315, y: FINGER_CENTER_Y, z: 0},
@@ -181,6 +219,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: 'finger.stl',
     primitive: null,
     source: 'printer',
+    phase: 'fingers',
+    hostId: 'palm',
+    hostLabel: 'the top of the palm',
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: 0.0315, y: FINGER_CENTER_Y, z: 0},
@@ -195,6 +236,9 @@ export const PART_DEFS: readonly PartDef[] = [
     file: 'finger.stl',
     primitive: null,
     source: 'printer',
+    phase: 'fingers',
+    hostId: 'palm',
+    hostLabel: 'the top of the palm',
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: 0.0945, y: FINGER_CENTER_Y, z: 0},
@@ -212,6 +256,9 @@ export const PART_DEFS: readonly PartDef[] = [
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: -0.21, y: 1.3, z: 0.08},
+    phase: 'thumb-segments',
+    hostId: 'thumb-base',
+    hostLabel: 'the thumb base',
     socketYaw: 0.7,
     snapRadius: 0.14,
     screwCount: 1,
@@ -226,6 +273,9 @@ export const PART_DEFS: readonly PartDef[] = [
     scale: 0.00313,
     home: PRINTER_HOME,
     socket: {x: 0, y: PALM_CENTER_Y, z: -0.095},
+    phase: 'cover',
+    hostId: 'palm',
+    hostLabel: 'the back of the hand',
     socketYaw: 0,
     snapRadius: 0.22,
     screwCount: 2,

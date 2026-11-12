@@ -41,6 +41,9 @@ jobs:
             playwright-report
             test-results
           if-no-files-found: ignore
+      - name: Annotate e2e failures
+        if: failure()
+        run: node scripts/e2e-annotate.mjs
 
   deploy-pages:
     if: >-

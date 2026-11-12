@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.12.4] - 2026-11-12
+
+### Added
+
+- A compact in-world status board above the hand stand. It shows the
+  current action, the pickup and destination, and progress such as
+  `MOTORS 2 OF 5` or `3 SCREWS LEFT`. It hides during splashes and the
+  in-headset menu.
+- A soft amber host glow while a part is waiting to be placed. The stand
+  glows for the palm; the palm glows for motors, fingers, and the cover;
+  the thumb base glows for the thumb segments. The glow stops at the snap.
+
+### Changed
+
+- Narration is grouped by build phase: palm, five motors, thumb base,
+  four fingers, thumb segments, cover. Each phase names its host once
+  ("Drive the four screws into the stand"), and switching the screwdriver
+  on during a screw step repeats that host. If the player waits 25
+  seconds, the current line repeats once.
+- The voice player now stops the current clip and starts the new one
+  immediately. It has no queue and a watchdog clears a line whose end
+  event never arrives. The intro can no longer hold the player silent.
+- Guide arrows always draw over the scene. One arrow marks the part to
+  move and one marks its blue destination; both keep one fixed size and
+  the source arrow follows the part while it is carried.
+- Screws are anchored to the mesh's local center, so they sit on the
+  printed palm, fingers, thumb, and cover instead of floating beside the
+  part. Servo screws are unchanged.
+
 ## [2026.11.12.3] - 2026-11-12
 
 ### Added
