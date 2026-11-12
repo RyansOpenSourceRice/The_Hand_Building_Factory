@@ -9,6 +9,7 @@ export type GameSettings = {
   themePrimary: number;
   themeSecondary: number;
   themeTertiary: number;
+  muted: boolean;
 };
 
 export interface StorageLike {
@@ -23,6 +24,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   themePrimary: DEFAULT_THEME.primary,
   themeSecondary: DEFAULT_THEME.secondary,
   themeTertiary: DEFAULT_THEME.tertiary,
+  muted: false,
 };
 const ANGLE_CYCLE: readonly SnapAngle[] = [30, 45, 90];
 
@@ -73,7 +75,17 @@ function parseStored(raw: string | null): GameSettings {
     const themeTertiary = isValidColorIndex(parsed.themeTertiary) ?
         parsed.themeTertiary :
         DEFAULT_SETTINGS.themeTertiary;
-    return {turnMode, snapAngle, themePrimary, themeSecondary, themeTertiary};
+    const muted = typeof parsed.muted === 'boolean' ?
+        parsed.muted :
+        DEFAULT_SETTINGS.muted;
+    return {
+      turnMode,
+      snapAngle,
+      themePrimary,
+      themeSecondary,
+      themeTertiary,
+      muted,
+    };
   } catch {
     return {...DEFAULT_SETTINGS};
   }
@@ -111,6 +123,10 @@ export class SettingsStore {
       return;
     }
     this.apply({[THEME_KEYS[slot]]: colorIndex} as Partial<GameSettings>);
+  }
+
+  toggleMuted(): void {
+    this.apply({muted: !this.data.muted});
   }
 
   onChange(listener: (settings: GameSettings) => void): void {

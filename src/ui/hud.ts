@@ -19,6 +19,7 @@ export type HudActions = {
   cycleTurnMode: () => void;
   cycleSnapAngle: () => void;
   setTheme: (slot: ThemeSlot, colorIndex: number) => void;
+  toggleMuted: () => void;
 };
 
 const ROW_LABELS: Readonly<Array<[ThemeSlot, string]>> = [
@@ -36,6 +37,7 @@ export class Hud {
   private enterVrHandler: (() => void) | null = null;
   private turnButton: Button | null = null;
   private angleButton: Button | null = null;
+  private soundButton: Button | null = null;
   private themePanel: Rectangle | null = null;
   private readonly swatches: Array<{
     button: Button;
@@ -176,6 +178,22 @@ export class Hud {
     angle.onPointerClickObservable.add(() => actions.cycleSnapAngle());
     this.adt.addControl(angle);
     this.angleButton = angle;
+
+    const sound = Button.CreateSimpleButton('sound', 'SOUND: ON');
+    sound.fontFamily = FONT;
+    sound.fontSize = '17px';
+    sound.color = '#f2f4ff';
+    sound.background = 'rgba(35, 45, 80, 0.85)';
+    sound.cornerRadius = 8;
+    sound.width = '118px';
+    sound.height = '44px';
+    sound.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    sound.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    sound.left = '36%';
+    sound.top = '-6%';
+    sound.onPointerClickObservable.add(() => actions.toggleMuted());
+    this.adt.addControl(sound);
+    this.soundButton = sound;
 
     const colors = Button.CreateSimpleButton('colors', 'COLORS');
     colors.fontFamily = FONT;
@@ -324,6 +342,16 @@ export class Hud {
     if (this.live) {
       this.live.setAttribute('data-turn', turnMode);
       this.live.setAttribute('data-angle', String(snapAngle));
+    }
+  }
+
+  setMutedLabel(muted: boolean): void {
+    const label = this.soundButton?.textBlock;
+    if (label) {
+      label.text = muted ? 'SOUND: OFF' : 'SOUND: ON';
+    }
+    if (this.live) {
+      this.live.setAttribute('data-muted', muted ? 'yes' : 'no');
     }
   }
 
