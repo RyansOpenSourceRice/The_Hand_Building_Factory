@@ -8,6 +8,7 @@ const DEFAULTS = {
   themePrimary: DEFAULT_THEME.primary,
   themeSecondary: DEFAULT_THEME.secondary,
   themeTertiary: DEFAULT_THEME.tertiary,
+  muted: false,
 };
 
 class FakeStorage implements StorageLike {
@@ -147,5 +148,39 @@ describe('SettingsStore', () => {
     const store = new SettingsStore(new FakeStorage());
     store.get().snapAngle = 30;
     expect(store.get().snapAngle).toBe(45);
+  });
+
+  it('starts with sound unmuted', () => {
+    const store = new SettingsStore(new FakeStorage());
+    expect(store.get().muted).toBe(false);
+  });
+
+  it('toggles muted and notifies listeners', () => {
+    const store = new SettingsStore(new FakeStorage());
+    const listener = vi.fn();
+    store.onChange(listener);
+    store.toggleMuted();
+    expect(store.get().muted).toBe(true);
+    expect(listener).toHaveBeenCalledWith({...DEFAULTS, muted: true});
+    store.toggleMuted();
+    expect(store.get().muted).toBe(false);
+  });
+
+  it('restores muted state for the next session', () => {
+    const storage = new FakeStorage();
+    const store = new SettingsStore(storage);
+    store.toggleMuted();
+    const reloaded = new SettingsStore(storage);
+    expect(reloaded.get().muted).toBe(true);
+  });
+
+  it('falls back to unmuted when stored muted is not a boolean', () => {
+    const storage = new FakeStorage();
+    storage.setItem(
+        'hands-on-settings',
+        '{"turnMode":"snap","snapAngle":45,"muted":"loud"}',
+    );
+    const store = new SettingsStore(storage);
+    expect(store.get().muted).toBe(false);
   });
 });

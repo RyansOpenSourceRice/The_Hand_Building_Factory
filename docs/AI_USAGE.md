@@ -47,6 +47,29 @@ and makes no AI service calls.
   textures had Ryan's explicit approval before being wired into the
   scene, and they are listed as jam-disclosed AI content below.
 
+### Runware music generation
+
+- Model: `minimax:music@2.6` (MiniMax Music 2.6, instrumental mode),
+  accessed through Runware.
+- Used for: the background music loop `public/audio/music-loop.ogg` — a
+  calm ambient factory soundscape, generated once by
+  `scripts/gen-audio.mjs` and committed as a static mono OGG with a
+  loop crossfade applied by ffmpeg. The game never calls the service
+  at runtime.
+
+### Replicate sound-effect generation
+
+- Model: `stability-ai/stable-audio-2.5`, accessed through Replicate.
+- Used for: five committed sound effects in `public/audio/` —
+  `screw-ratchet.ogg` (ratchet clicks while driving a screw),
+  `screw-driven.ogg` (a screw seating tight),
+  `part-snap.ogg` (a part snapping into its socket),
+  `part-drop.ogg` (a part landing on the bench), and
+  `crowd-cheer.ogg` (a short distant cheer for the completion
+  celebration). Generated once by `scripts/gen-audio.mjs`, then
+  trimmed and compressed to mono OGG with ffmpeg. The game never
+  calls the service at runtime.
+
 ## Disclosure summary (for the jam page)
 
 - Code: vibe coded — written by OpenCode (GLM-5.3-Flash) under Ryan's
@@ -55,6 +78,10 @@ and makes no AI service calls.
 - In-game media: generated in code by this project, except six AI
   texture images (`concrete-floor.png`, `metal-roof.png`, `pegboard.png`,
   `brushed-steel.png`, `rack-boxes.png`, `garage-door.png`) generated
-  with `bytedance-seed/seedream-5-0-flash` via OpenRouter and committed
-  as static files. Listed here and on the itch.io page before submission.
+  with `bytedance-seed/seedream-5-0-flash` via OpenRouter, and six AI
+  audio files (`music-loop.ogg`, `screw-ratchet.ogg`, `screw-driven.ogg`,
+  `part-snap.ogg`, `part-drop.ogg`, `crowd-cheer.ogg`) generated with
+  `minimax:music@2.6` via Runware and `stability-ai/stable-audio-2.5`
+  via Replicate. All are listed here and on the itch.io page before
+  submission.
 - Runtime: static build, no AI service calls.

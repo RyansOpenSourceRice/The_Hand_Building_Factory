@@ -19,7 +19,16 @@ import {
 import {enableGamePhysics} from './scene/physics';
 import {AssemblyStage} from './game/assembly';
 import {Screwdriver} from './game/screwdriver';
-import {ratchet, screwClick, snap} from './audio/sfx';
+import {
+  cheer,
+  initSfx,
+  partDrop,
+  ratchet,
+  screwClick,
+  setSfxMuted,
+  snap,
+} from './audio/sfx';
+import {MusicLoop} from './audio/music';
 import {SettingsStore} from './game/settings';
 import {
   applyTheme,
@@ -109,15 +118,38 @@ async function boot(): Promise<void> {
   );
   const driver = new Screwdriver(scene);
   driver.show();
+  initSfx(scene);
+  const music = new MusicLoop(scene);
+  let audioArmed = false;
+  const armAudio = (): void => {
+    if (audioArmed) {
+      return;
+    }
+    audioArmed = true;
+    music.start();
+  };
+  window.addEventListener('pointerdown', armAudio);
+  window.addEventListener('keydown', armAudio);
   stage.onRatchet = (tag) => {
+    armAudio();
     ratchet();
     pulseControllerSoft(tag);
   };
-  stage.onScrewDriven = () => screwClick();
+  stage.onScrewDriven = () => {
+    armAudio();
+    screwClick();
+  };
   stage.onSnapped = (tag) => {
     pulseController(tag);
+    armAudio();
     snap();
   };
+  stage.onProgress = (done, total) => {
+    if (total > 0 && done >= total) {
+      cheer();
+    }
+  };
+  driver.onDropped = () => partDrop();
   const hud = new Hud({
     reset: () => stage.reset(),
     undo: () => stage.undo(),
@@ -125,6 +157,10 @@ async function boot(): Promise<void> {
     cycleTurnMode: () => settings.cycleTurnMode(),
     cycleSnapAngle: () => settings.cycleSnapAngle(),
     setTheme: (slot, colorIndex) => settings.setTheme(slot, colorIndex),
+    toggleMuted: () => {
+      armAudio();
+      settings.toggleMuted();
+    },
   });
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onPartInfo = (info) => hud.setPartInfo(info);
@@ -132,6 +168,9 @@ async function boot(): Promise<void> {
   const applySettings = (): void => {
     const current = settings.get();
     hud.setSettings(current.turnMode, current.snapAngle);
+    setSfxMuted(current.muted);
+    music.setMuted(current.muted);
+    hud.setMutedLabel(current.muted);
     applyTheme(theme, current);
     if (handRepMaterial) {
       setHandTint(handRepMaterial, handRepTint(current.themePrimary));

@@ -18,6 +18,7 @@ const DROP_FRAMES = 36;
 
 export class Screwdriver {
   readonly mesh: Mesh;
+  onDropped: (() => void) | null = null;
   private readonly tip: TransformNode;
   private heldBy: string | null = null;
   private dropStep: (() => void) | null = null;
@@ -110,6 +111,7 @@ export class Screwdriver {
     } else {
       this.dropToFloor();
     }
+    this.onDropped?.();
   }
 
   private dropToFloor(): void {

@@ -105,8 +105,10 @@ What HANDS ON! does, milestone by milestone.
 - An instanced crowd fills tiered seating around the stage: varied heights
   (5 ft to 6 ft 4 in), varied palettes, adult figures only.
 - Crowd animation and cheer intensity scale with assembly progress.
-- Audio replaces the silent loop (Ryan supplies OpenRouter audio generation
-  direction at this milestone). No autoplaying sound before interaction.
+- Audio: a calm ambient music loop (`minimax:music@2.6` via Runware) and
+  committed sound effects (`stability-ai/stable-audio-2.5` via Replicate;
+  see `docs/AI_USAGE.md`). Audio arms only after the first player
+  interaction — no autoplaying sound — and a HUD toggle mutes everything.
 - Completion triggers a hand gesture routine and a celebration that respects
   `prefers-reduced-motion`.
 
