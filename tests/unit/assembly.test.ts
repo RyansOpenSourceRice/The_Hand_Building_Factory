@@ -179,4 +179,85 @@ describe('AssemblyStage', () => {
     const y = stage.currentPart.position.y;
     expect(y).toBeCloseTo(PRINTER_BED_TOP + 0.095, 2);
   });
+
+  it('reports zero undo and redo depth on a fresh stage', () => {
+    expect(stage.undoDepth()).toBe(0);
+    expect(stage.redoDepth()).toBe(0);
+  });
+
+  it('grows undo depth as screws are driven', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    expect(stage.undoDepth()).toBeGreaterThanOrEqual(4);
+    expect(stage.redoDepth()).toBe(0);
+  });
+
+  it('undoMany ignores broken counts', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    const depth = stage.undoDepth();
+    stage.undoMany(Number.NaN);
+    stage.undoMany(-5);
+    stage.undoMany(0);
+    expect(stage.undoDepth()).toBe(depth);
+  });
+
+  it('undoMany applies floored counts', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    const depth = stage.undoDepth();
+    stage.undoMany(2.7);
+    expect(stage.undoDepth()).toBe(depth - 2);
+    expect(stage.screwSites()).toHaveLength(2);
+    expect(statuses.at(-1)).toBe('Undone 2 steps.');
+  });
+
+  it('undoMany with a huge count undoes everything available', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    const depth = stage.undoDepth();
+    stage.undoMany(9999);
+    expect(stage.undoDepth()).toBe(0);
+    expect(stage.currentPart.isEnabled()).toBe(true);
+    expect(statuses.at(-1)).toBe(`Undone ${depth} steps.`);
+  });
+
+  it('redoMany with a huge count redoes everything available', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    stage.undoMany(9999);
+    const depth = stage.redoDepth();
+    stage.redoMany(9999);
+    expect(stage.redoDepth()).toBe(0);
+    expect(stage.undoDepth()).toBe(depth);
+    expect(stage.screwSites()).toHaveLength(0);
+    expect(statuses.at(-1)).toBe(`Redone ${depth} steps.`);
+  });
+
+  it('redoMany ignores broken counts', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    stage.undoMany(2);
+    const depth = stage.redoDepth();
+    stage.redoMany(Number.NaN);
+    stage.redoMany(-1.5);
+    expect(stage.redoDepth()).toBe(depth);
+  });
+
+  it('blocks undoMany while carrying', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    const depth = stage.undoDepth();
+    stage.startGrab('xr');
+    stage.undoMany(5);
+    expect(stage.undoDepth()).toBe(depth);
+    expect(statuses.at(-1)).toBe('Finish carrying the part first.');
+  });
 });

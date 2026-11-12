@@ -29,6 +29,13 @@ const DRIVE_RADIUS = 0.09;
 const RATCHET_EVERY = 0.12;
 const STICK_OUT = 0.012;
 
+function clampSteps(count: number, max: number): number {
+  if (!Number.isFinite(count) || count <= 0) {
+    return 0;
+  }
+  return Math.min(Math.floor(count), max);
+}
+
 type Snapshot = {
   pos: Vector3;
   quat: Quaternion;
@@ -303,6 +310,44 @@ export class AssemblyStage {
     this.syncVisibility();
     this.report('Redo.');
     this.reportPartInfo(state);
+  }
+
+  undoDepth(): number {
+    const state = this.states[this.lastTouched];
+    return state ? Math.max(0, state.history.length - 1) : 0;
+  }
+
+  redoDepth(): number {
+    const state = this.states[this.lastTouched];
+    return state ? state.future.length : 0;
+  }
+
+  undoMany(count: number): void {
+    if (this.grabbing) {
+      this.report('Finish carrying the part first.');
+      return;
+    }
+    const steps = clampSteps(count, this.undoDepth());
+    for (let i = 0; i < steps; i++) {
+      this.undo();
+    }
+    if (steps > 0) {
+      this.report(`Undone ${steps} step${steps === 1 ? '' : 's'}.`);
+    }
+  }
+
+  redoMany(count: number): void {
+    if (this.grabbing) {
+      this.report('Finish carrying the part first.');
+      return;
+    }
+    const steps = clampSteps(count, this.redoDepth());
+    for (let i = 0; i < steps; i++) {
+      this.redo();
+    }
+    if (steps > 0) {
+      this.report(`Redone ${steps} step${steps === 1 ? '' : 's'}.`);
+    }
   }
 
   private resolveRoot(mesh: unknown): Mesh | null {
