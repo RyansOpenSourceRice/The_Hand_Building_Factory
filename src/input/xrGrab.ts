@@ -114,14 +114,9 @@ export function attachXrGrab(
 
   const onSqueezeStart = (event: XRInputSourceEvent): void => {
     const ctrl = controllerFor(event.inputSource);
-    if (ctrl === holder && holderMode === 'tool') {
-      release();
-      return;
-    }
-    if (ctrl === holder && holderMode === 'part') {
+    if (ctrl === holder) {
       release();
     }
-    stage.reset();
   };
 
   const addSessionListeners = (session: XRSession): void => {

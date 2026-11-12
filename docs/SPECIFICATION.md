@@ -44,8 +44,9 @@ What HANDS ON! does, milestone by milestone.
   watchdog quietly returns anything that ends up off the play area.
 - Quest 3: point at the part with a controller and hold the trigger to
   grab it. Release the trigger with the part inside the outline and it
-  locks in place with a chime and a controller pulse. Grip squeeze drops
-  a held item; squeezing with empty hands resets the current part.
+  locks in place with a chime and a controller pulse. Grip squeeze only
+  drops a held item; squeezing empty hands does nothing. Reset lives in
+  the in-headset menu, never on the grip.
 - After a part snaps in, screws stick out of it. Grab the orange
   screwdriver from its holster beside the pedestal, point the tip at a
   screw, and hold the trigger to drive it. A ratchet tick plays while

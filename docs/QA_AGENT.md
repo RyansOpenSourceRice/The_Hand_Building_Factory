@@ -43,7 +43,7 @@ an error instead of guessing.
 | `pose`        | `side` (`left`/`right`), `pos` `[x,y,z]`, `yaw`, `pitch` | Move a controller in world space. |
 | `stick`       | `side`, `x`, `y` | Push a thumbstick (locomotion / turn snap). |
 | `trigger`     | `side`, `value` | Squeeze a trigger (grab / drive screws). |
-| `squeeze`     | `side`    | Full grip squeeze (drop tool / reset active part). |
+| `squeeze`     | `side`    | Full grip squeeze (drops a held item only). |
 | `page_errors` | none      | Console errors and uncaught page errors since the session started. |
 
 A session starts on `tool` launch, loads the page, waits for XR readiness,
@@ -69,8 +69,9 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
 - The tool takes trigger priority: pressing trigger while holding the
   screwdriver drives screws, it never grabs parts. Carry parts with the
   **left** hand while the right hand holds the driver.
-- Gripping (`squeeze`) drops the held tool and resets the active part to
-  its machine. Both effects land at once; wait ~1.5 s before reading state.
+- Gripping (`squeeze`) only drops a held item. Squeezing empty hands
+  does nothing — reset lives in the menu, not on the grip. Drops still
+  settle; wait ~1.5 s before reading state.
 - Screws need the tip inside the screw site, within a few centimeters.
   Announcements report progress per screw.
 
@@ -82,5 +83,6 @@ A full pass lives in the repository history and follows this shape:
 2. Empty trigger on the left — nothing should move.
 3. `pose` right hand to the bench tool slot, `trigger` right, `wait_ms`.
 4. Carry the palm with the left hand to its socket, release with trigger.
-5. `squeeze` right to check reset behavior, `wait_ms`, `read_state`.
+5. `squeeze` right to drop the tool, `wait_ms`, `read_state` — the
+   mounted part must stay mounted.
 6. `page_errors` — should be empty at every step.
