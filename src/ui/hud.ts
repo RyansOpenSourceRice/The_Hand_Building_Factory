@@ -48,6 +48,18 @@ export class Hud {
 
   private readonly adt: AdvancedDynamicTexture;
 
+  private hoverize(
+      button: Button,
+      base = 'rgba(35, 45, 80, 0.85)',
+  ): void {
+    button.onPointerEnterObservable.add(() => {
+      button.background = 'rgba(78, 94, 150, 0.95)';
+    });
+    button.onPointerOutObservable.add(() => {
+      button.background = base;
+    });
+  }
+
   constructor(actions: HudActions) {
     this.live = document.getElementById('live-status');
     this.actions = actions;
@@ -116,6 +128,7 @@ export class Hud {
     reset.top = '-6%';
     reset.onPointerClickObservable.add(() => actions.reset());
     this.adt.addControl(reset);
+    this.hoverize(reset);
 
     const redo = Button.CreateSimpleButton('redo', 'REDO');
     redo.fontFamily = FONT;
@@ -131,6 +144,7 @@ export class Hud {
     redo.top = '-6%';
     redo.onPointerClickObservable.add(() => actions.redo());
     this.adt.addControl(redo);
+    this.hoverize(redo);
 
     const undo = Button.CreateSimpleButton('undo', 'UNDO');
     undo.fontFamily = FONT;
@@ -146,6 +160,7 @@ export class Hud {
     undo.top = '-6%';
     undo.onPointerClickObservable.add(() => actions.undo());
     this.adt.addControl(undo);
+    this.hoverize(undo);
 
     const turn = Button.CreateSimpleButton('turn', 'TURN: SNAP');
     turn.fontFamily = FONT;
@@ -161,6 +176,7 @@ export class Hud {
     turn.top = '-6%';
     turn.onPointerClickObservable.add(() => actions.cycleTurnMode());
     this.adt.addControl(turn);
+    this.hoverize(turn);
     this.turnButton = turn;
 
     const angle = Button.CreateSimpleButton('angle', 'ANGLE: 45°');
@@ -177,6 +193,7 @@ export class Hud {
     angle.top = '-6%';
     angle.onPointerClickObservable.add(() => actions.cycleSnapAngle());
     this.adt.addControl(angle);
+    this.hoverize(angle);
     this.angleButton = angle;
 
     const sound = Button.CreateSimpleButton('sound', 'SOUND: ON');
@@ -193,6 +210,7 @@ export class Hud {
     sound.top = '-6%';
     sound.onPointerClickObservable.add(() => actions.toggleMuted());
     this.adt.addControl(sound);
+    this.hoverize(sound);
     this.soundButton = sound;
 
     const colors = Button.CreateSimpleButton('colors', 'COLORS');
@@ -209,6 +227,7 @@ export class Hud {
     colors.top = '-6%';
     colors.onPointerClickObservable.add(() => this.toggleThemePanel());
     this.adt.addControl(colors);
+    this.hoverize(colors);
     this.buildThemePanel();
   }
 
@@ -253,6 +272,12 @@ export class Hud {
         swatch.onPointerClickObservable.add(() => {
           this.actions.setTheme(slot, index);
         });
+        swatch.onPointerEnterObservable.add(() => {
+          swatch.thickness = 3;
+        });
+        swatch.onPointerOutObservable.add(() => {
+          swatch.thickness = this.theme[slot] === index ? 3 : 1;
+        });
         panel.addControl(swatch);
         this.swatches.push({button: swatch, slot, index});
       });
@@ -276,6 +301,22 @@ export class Hud {
   setThemeSelection(theme: HudTheme): void {
     this.theme = {...theme};
     this.refreshSwatches();
+  }
+
+  buttonBackgrounds(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const name of ['reset', 'redo', 'undo', 'turn', 'angle', 'sound',
+      'colors', 'enterVr']) {
+      const control = this.adt.getControlByName(name);
+      if (control instanceof Button) {
+        out[name] = control.background;
+      }
+    }
+    return out;
+  }
+
+  setSuppressed(value: boolean): void {
+    this.adt.rootContainer.isVisible = !value;
   }
 
   setStatus(text: string): void {
@@ -304,6 +345,7 @@ export class Hud {
     enter.top = '-14%';
     enter.onPointerClickObservable.add(() => this.enterVrHandler?.());
     this.adt.addControl(enter);
+    this.hoverize(enter, 'rgba(35, 45, 80, 0.9)');
     this.enterVrButton = enter;
   }
 

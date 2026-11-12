@@ -260,4 +260,60 @@ describe('AssemblyStage', () => {
     expect(stage.undoDepth()).toBe(depth);
     expect(statuses.at(-1)).toBe('Finish carrying the part first.');
   });
+
+  it('restart returns every part home and rewinds progress', () => {
+    const progress: Array<[number, number]> = [];
+    stage.onProgress = (done, total) => progress.push([done, total]);
+    const palm = stage.currentPart;
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(ghost.position);
+    driveAll();
+    expect(stage.currentIndex).toBe(1);
+    const servo = scene.getMeshByName('part:servo-base') as Mesh;
+    expect(servo.isEnabled()).toBe(true);
+    stage.restart();
+    expect(progress.at(-1)).toEqual([0, 13]);
+    expect(stage.currentIndex).toBe(0);
+    expect(stage.currentPart).toBe(palm);
+    expect(palm.position.x).toBeCloseTo(PRINTER_HOME.x, 2);
+    expect(palm.isEnabled()).toBe(true);
+    expect(servo.isEnabled()).toBe(false);
+    expect(stage.isGrabCandidate(palm)).toBe(true);
+    expect(statuses.at(-1)).toContain('Starting over');
+  });
+
+  it('restart clears undo and redo history', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    grabTo(new Vector3(2, 2, 2));
+    grabTo(ghost.position);
+    driveAll();
+    expect(stage.undoDepth()).toBeGreaterThan(0);
+    stage.restart();
+    expect(stage.undoDepth()).toBe(0);
+    expect(stage.redoDepth()).toBe(0);
+    stage.undoMany(9999);
+    expect(stage.currentPart.position.x).toBeCloseTo(PRINTER_HOME.x, 2);
+  });
+
+  it('blocks restart while carrying', () => {
+    const palm = stage.currentPart;
+    stage.startGrab('xr');
+    stage.moveGrabbed(new Vector3(2, 2, 2));
+    stage.restart();
+    expect(statuses.at(-1)).toBe('Finish carrying the part first.');
+    expect(stage.currentIndex).toBe(0);
+    expect(palm.position.x).toBeCloseTo(2, 2);
+    stage.endGrab('xr', false);
+    expect(stage.currentPart).toBe(palm);
+  });
+
+  it('endGrab without allowSnap never mounts', () => {
+    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    stage.startGrab('xr');
+    stage.moveGrabbed(ghost.position);
+    stage.endGrab('xr', false);
+    expect(stage.currentIndex).toBe(0);
+    expect(stage.screwSites()).toHaveLength(0);
+    expect(statuses.join(' ')).not.toContain('mounted');
+  });
 });

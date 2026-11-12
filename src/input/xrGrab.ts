@@ -41,7 +41,7 @@ export function attachXrGrab(
     stage: AssemblyStage,
     driver: Screwdriver,
     scene: Scene,
-): void {
+): {releaseAll: () => void} {
   const ray = new Ray(Vector3.Zero(), Vector3.Forward());
   const tipScratch = new Vector3();
   let holder: WebXRInputSource | null = null;
@@ -56,6 +56,17 @@ export function attachXrGrab(
       driver.endGrab('xr');
     } else if (holderMode === 'part') {
       stage.endGrab('xr');
+    }
+    holder = null;
+    holderMode = null;
+    driving = false;
+  };
+
+  const releaseAll = (): void => {
+    if (holderMode === 'tool') {
+      driver.endGrab('xr');
+    } else if (holderMode === 'part') {
+      stage.endGrab('xr', false);
     }
     holder = null;
     holderMode = null;
@@ -157,4 +168,6 @@ export function attachXrGrab(
     const dt = scene.getEngine().getDeltaTime() / 1000;
     stage.driveTick(dt, driver.tipWorld(tipScratch), true, 'xr');
   });
+
+  return {releaseAll};
 }

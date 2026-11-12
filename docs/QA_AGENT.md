@@ -44,7 +44,7 @@ an error instead of guessing.
 | `stick`       | `side`, `x`, `y` | Push a thumbstick (locomotion / turn snap). |
 | `trigger`     | `side`, `value` | Squeeze a trigger (grab / drive screws). |
 | `squeeze`     | `side`    | Full grip squeeze (drops a held item only). |
-| `a_button`    | `side`, `value` | Press the menu button (A right / X left). Toggles the in-headset menu panel. |
+| `a_button`    | `side`, `value` | Press the menu button (A right / X left). While a credits splash is up this skips it (only after its 4 second hold); otherwise it toggles the in-headset menu panel. |
 | `page_errors` | none      | Console errors and uncaught page errors since the session started. |
 
 A session starts on `tool` launch, loads the page, waits for XR readiness,
@@ -65,6 +65,9 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
 
 ## Gotchas
 
+- A credits splash covers the view right after boot for at least 4
+  seconds; A/X before that does nothing, after that it dismisses. The
+  in-headset menu stays locked until the splash is dismissed.
 - `data-part` on a mesh does not update after a mount. Trust the status
   text in `read_state` (`statusText`) instead.
 - The tool takes trigger priority: pressing trigger while holding the
@@ -80,7 +83,9 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
 
 A full pass lives in the repository history and follows this shape:
 
-1. `read_state` — confirm boot, XR ready, palm at the printer.
+1. `read_state` — confirm boot, XR ready, credits splash up. Wait out
+   the 4 second hold, then `a_button` to dismiss it. The splash must
+   list the Yeah Hand credit lines.
 2. Empty trigger on the left — nothing should move.
 3. `pose` right hand to the bench tool slot, `trigger` right, `wait_ms`.
 4. Carry the palm with the left hand to its socket, release with trigger.
@@ -88,5 +93,9 @@ A full pass lives in the repository history and follows this shape:
    mounted part must stay mounted.
 6. `a_button` right press + release to open the menu, `screenshot`,
    press again to close. The menu exposes reset, undo and redo with
-   step counts, movement settings, and the filament palette.
-6. `page_errors` — should be empty at every step.
+   step counts, movement settings, and the filament palette. Hovering
+   each button with a pointer ray must brighten it.
+7. If a full build was completed, wait for the completion splash with
+   REBUILD, hold out its gate, press REBUILD with the pointer ray and
+   trigger, and confirm the queue restarts at the palm.
+8. `page_errors` — should be empty at every step.

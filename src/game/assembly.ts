@@ -215,7 +215,7 @@ export class AssemblyStage {
     }
   }
 
-  endGrab(tag: string): void {
+  endGrab(tag: string, allowSnap = true): void {
     if (!this.grabbing || this.grabbedBy !== tag) {
       return;
     }
@@ -233,7 +233,7 @@ export class AssemblyStage {
     }
 
     this.lastTouched = this.current;
-    if (state.snap.trySnap(state.mesh.position)) {
+    if (allowSnap && state.snap.trySnap(state.mesh.position)) {
       this.placePart(state, tag);
     } else {
       this.setBodyMotion(state, PhysicsMotionType.DYNAMIC);
@@ -265,6 +265,32 @@ export class AssemblyStage {
         'Grab it and slot it into the blue outline.',
     );
     this.reportPartInfo(state);
+  }
+
+  restart(): void {
+    if (this.grabbing) {
+      this.report('Finish carrying the part first.');
+      return;
+    }
+    this.stopDrive();
+    for (const state of this.states) {
+      state.snap.reset();
+      state.screwsDone = 0;
+      state.history.length = 0;
+      state.future.length = 0;
+      this.setBodyMotion(state, PhysicsMotionType.STATIC);
+      state.mesh.position.copyFrom(state.home);
+      state.mesh.rotationQuaternion = state.homeQuat.clone();
+      if (state.screws) {
+        this.refreshScrews(state);
+      }
+      state.history.push(this.capture(state));
+    }
+    this.lastTouched = 0;
+    this.syncVisibility();
+    this.spawnCurrent();
+    this.onProgress?.(0, this.states.length);
+    this.report('Starting over. The first part is waiting.');
   }
 
   undo(): void {

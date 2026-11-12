@@ -38,6 +38,7 @@ import {
 } from './scene/partMeshes';
 import {Hud} from './ui/hud';
 import {VrMenu} from './ui/vrMenu';
+import {CreditSplash} from './ui/splash';
 import {
   attachXrGrab,
   pulseController,
@@ -147,6 +148,7 @@ async function boot(): Promise<void> {
   stage.onProgress = (done, total) => {
     if (total > 0 && done >= total) {
       cheer();
+      window.setTimeout(() => splash.show(true), 2500);
     }
   };
   driver.onDropped = () => partDrop();
@@ -165,6 +167,23 @@ async function boot(): Promise<void> {
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onPartInfo = (info) => hud.setPartInfo(info);
   let vrMenu: VrMenu | null = null;
+  let xrGrabControls: {releaseAll: () => void} | null = null;
+  const splash = new CreditSplash(scene, {
+    rebuild: () => {
+      xrGrabControls?.releaseAll();
+      stage.restart();
+      armAudio();
+    },
+  });
+  splash.onDismissed = () => {
+    scene.onBeforeRenderObservable.addOnce(() => {
+      vrMenu?.setSuppressed(false);
+    });
+    hud.setSuppressed(false);
+    armAudio();
+  };
+  splash.onShown = () => hud.setSuppressed(true);
+  splash.setCamera(camera);
   stage.announceCurrent();
   const applySettings = (): void => {
     const current = settings.get();
@@ -222,11 +241,12 @@ async function boot(): Promise<void> {
   });
   const xr = await initXr(scene, env.ground);
   if (xr) {
-    attachXrGrab(xr, stage, driver, scene);
+    xrGrabControls = attachXrGrab(xr, stage, driver, scene);
     attachXrLocomotion(xr, settings, scene, reportCamera);
     attachHeightControl(xr, scene, reducedMotion);
     handRepMaterial = attachControllerHands(
         xr, scene, settings.get().themePrimary);
+    splash.attach(xr);
     const menu = new VrMenu(scene, {
       reset: () => stage.reset(),
       undo: (count) => stage.undoMany(count),
@@ -240,6 +260,7 @@ async function boot(): Promise<void> {
     menu.attach(xr);
     menu.onToggled = () => armAudio();
     vrMenu = menu;
+    vrMenu.setSuppressed(splash.isVisible());
     hud.hideDesktopOnly();
     hud.setReady('xr');
     hud.setEnterVr(() => {
@@ -291,6 +312,15 @@ async function boot(): Promise<void> {
       menu: () => boolean;
       menuToggle: () => void;
       menuPlace: () => void;
+      splashVisible: () => boolean;
+      splashGated: () => boolean;
+      splashSkip: () => void;
+      splashRebuild: () => void;
+      splashBg: () => string;
+      splashPos: () => number[];
+      splashCam: () => number[];
+      hudBg: () => Record<string, string>;
+      menuBg: () => Record<string, string>;
     };
   };
   bridgeWindow.factoryDebug = {
@@ -351,8 +381,19 @@ async function boot(): Promise<void> {
     menu: () => vrMenu?.isVisible() ?? false,
     menuToggle: () => vrMenu?.debugToggle(),
     menuPlace: () => vrMenu?.debugPlaceInFrontOfActiveCamera(),
+    splashVisible: () => splash.isVisible(),
+    splashGated: () => splash.gateElapsed(),
+    splashSkip: () => splash.debugSkip(),
+    splashRebuild: () => splash.debugRebuild(),
+    splashBg: () => splash.buttonBackground(),
+    splashPos: () => splash.debugPosition(),
+    splashCam: () => splash.debugCam(),
+    hudBg: () => hud.buttonBackgrounds(),
+    menuBg: () => vrMenu?.buttonBackgrounds() ?? {},
   };
 
+  splash.show();
+  vrMenu?.setSuppressed(true);
   document.getElementById('boot-fallback')?.remove();
   engine.runRenderLoop(() => scene.render());
   window.addEventListener('resize', () => engine.resize());

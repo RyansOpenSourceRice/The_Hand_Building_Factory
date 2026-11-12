@@ -30,6 +30,7 @@ test('reports nothing to undo before any action', async ({page}) => {
   await expect(status).toHaveAttribute('data-ready', 'desktop', {
     timeout: 20_000,
   });
+  await page.evaluate(() => window.factoryDebug!.splashSkip());
 
   await page.mouse.click(915, 655);
   await expect(status).toContainText('Nothing to undo', {timeout: 5_000});
@@ -45,6 +46,7 @@ test('reset returns the part', async ({page}) => {
   await expect(status).toHaveAttribute('data-ready', 'desktop', {
     timeout: 20_000,
   });
+  await page.evaluate(() => window.factoryDebug!.splashSkip());
 
   await page.mouse.click(1187, 655);
   await expect(status).toContainText('returned', {timeout: 5_000});
@@ -61,6 +63,7 @@ test('settings buttons flip turn mode and snap angle', async ({page}) => {
   await expect(status).toHaveAttribute('data-ready', 'desktop', {
     timeout: 20_000,
   });
+  await page.evaluate(() => window.factoryDebug!.splashSkip());
   await expect(status).toHaveAttribute('data-turn', 'snap');
   await expect(status).toHaveAttribute('data-angle', '45');
 
@@ -85,6 +88,7 @@ test('WASD moves the desktop camera', async ({page}) => {
   await expect(status).toHaveAttribute('data-ready', 'desktop', {
     timeout: 20_000,
   });
+  await page.evaluate(() => window.factoryDebug!.splashSkip());
   await expect(status).toHaveAttribute('data-cam', '0.00,2.20');
 
   await page.keyboard.down('KeyW');
@@ -108,6 +112,7 @@ test('enter VR fails gracefully without a device', async ({page}) => {
   await expect(status).toHaveAttribute('data-ready', 'xr', {
     timeout: 20_000,
   });
+  await page.evaluate(() => window.factoryDebug!.splashSkip());
   await expect(status).toHaveAttribute('data-xr', 'present');
 
   await page.mouse.click(640, 587);
