@@ -1,5 +1,6 @@
 import {Sound} from '@babylonjs/core/Audio';
 import type {Scene} from '@babylonjs/core/scene';
+import {audioPath} from './audioPath';
 
 const GAIN = 0.8;
 const FILE_BY_KEY = {
@@ -19,7 +20,7 @@ function make(scene: Scene, key: SfxKey): Sound | null {
   try {
     return new Sound(
         `sfx:${key}`,
-        `/audio/${FILE_BY_KEY[key]}.ogg`,
+        audioPath(`${FILE_BY_KEY[key]}.ogg`),
         scene,
         undefined,
         {volume: GAIN},

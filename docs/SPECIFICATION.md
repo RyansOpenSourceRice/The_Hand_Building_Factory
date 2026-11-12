@@ -2,7 +2,7 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.12.2)
+## Current behavior (release 2026.11.12.3)
 
 - A warehouse workshop opens through a low north sill onto a grand
   factory hall, generated almost entirely in code. The workshop keeps the
@@ -10,11 +10,11 @@ What HANDS ON! does, milestone by milestone.
   conveyor station on the east. The hall carries painted floor lanes,
   pallet racks with boxed loads, pallet stacks, a parked and a patrolling
   forklift, five giant yellow robot arms, a demo stage with screens,
-  podium, and a branded band, tiered seating with an audience of about
-  155 golden-yellow mannequins in blue hard hats and grey chairs facing
-  the player, aisle walkers, raised pendant lights, hanging tube
-  fixtures, and garage doors on the south wall. The floor and roof are
-  AI-generated surfaces (disclosed in `docs/AI_USAGE.md`), and the bench
+  podium, and a branded band, and two tiers of grey chairs holding an
+  audience of twelve golden-yellow mannequins in blue hard hats, seated
+  in two rows of six and facing the player. Raised pendant lights,
+  hanging tube fixtures, and garage doors sit on the south wall. The
+  floor and roof are AI-generated surfaces (disclosed in `docs/AI_USAGE.md`), and the bench
   pegboard, steel top, rack loads, and garage doors use four more
   generated detail tiles.
 - A filament color menu: the COLORS button opens three rows of eight
@@ -23,18 +23,25 @@ What HANDS ON! does, milestone by milestone.
   build live, and persists between visits.
 - Controllers wear low-poly yeah-hand representations tinted with the
   theme's primary color, semi-transparent so the hardware stays visible.
+  The hand is built as a vertical fist around the controller grip: four
+  fingers stack along the handle and curl around it, with the thumb over
+  the top. The screwdriver shares that grip, so its handle sits inside
+  the fist and the shaft leaves from the thumb side.
+- Printed parts and the controller hands use the filament palette. A
+  color change updates every mounted part and the controller hands
+  immediately.
 - A yellow safety barrier ring with a hazard-striped top rail marks the
   1.25 m locomotion boundary; dropped parts bounce off its rails.
 - Pressing either thumbstick in VR raises the rig through three comfort
   heights (0, +0.4, +0.8 m) with a soft haptic tick, gliding at a calm
   rate and snapping instantly under reduced motion.
 - The game builds a yeah-hand robotic hand, one part at a time: palm,
-  servo base, four finger servos, thumb base, four fingers, thumb
+  wrist motor, four finger motors, thumb base, four fingers, thumb
   segments, and the upper cover. The current part shows a soft,
   pulsing translucent blue hologram at its socket, and the hologram
   follows the player's view so it stays in sight.
 - Printed parts (palm, fingers, thumb pieces, upper cover) appear on the
-  printer bed with a short drop-in animation. Servos ride the conveyor:
+  printer bed with a short drop-in animation. Motors ride the conveyor:
   they rise out of a floor pit past the workshop sill, run level, turn
   ninety degrees, climb a supported slope, and glide into reach on the
   receiving belt. The belt surface scrolls; a roof hatch with a soft
@@ -61,6 +68,10 @@ What HANDS ON! does, milestone by milestone.
   the menu names the trigger, grip, B/Y tool, and A/X menu bindings.
   While a splash is up, A and X skip the splash instead of toggling the
   menu.
+- The game speaks short pre-rendered lines: a welcome, each part's name
+  and destination, the mount prompt, tool on and off, the arrow hint,
+  completion, rebuild, and the menu hint. Music ducks under speech. All
+  narration is muted by the SOUND button with the sound effects.
 - A credits splash shows right after boot and again after the hand is
   complete. It lists the Yeah Hand model source, its CERN Open Hardware
   Licence 2 - Strongly Reciprocal licence, and the modification credit.
@@ -72,9 +83,12 @@ What HANDS ON! does, milestone by milestone.
   dismisses a splash never also toggles the menu. The completion splash
   adds REBUILD, which drops anything held and starts the build over
   from the palm with an empty undo and redo history.
-- After a part snaps in, screws stick out of it. Press B (right) or Y
-  (left) to summon the orange screwdriver into that hand; press again or
-  squeeze to stow it. The screwdriver never falls, so it cannot be lost.
+- After a part snaps in, screws stick out of it. A bobbing yellow arrow
+  hovers over each screw that still needs driving, and another floats
+  over the next part at the printer or conveyor until it is picked up.
+  Press B (right) or Y (left) to summon the orange screwdriver into that
+  hand; press again or squeeze to stow it. The screwdriver never falls,
+  so it cannot be lost.
   Its tip is magnetic: touching it to a screw drives the screw
   automatically. A ratchet tick plays while driving and the controller
   pulses gently; the screw sinks in with a click and the tool stays in
@@ -125,7 +139,7 @@ What HANDS ON! does, milestone by milestone.
   (`public/models/hand/`, CERN-OHL-S-2.0 with credit and notices) replace
   the red box placeholder, scaled into game units in code.
 - Conversion pipeline: Babylon's STL loader at runtime plus code-built
-  additions (servo housings, screws, screwdriver).
+  additions (motor housings, screws, screwdriver).
 - The snap service generalizes from one part to a list of parts so the hand
   assembles socket by socket.
 

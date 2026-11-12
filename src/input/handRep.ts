@@ -21,13 +21,15 @@ import {
 
 export const HAND_REP_ALPHA = 0.55;
 const EMISSIVE_SHARE = 0.12;
-const CURL_REST = 0.18;
-const CURL_RANGE = [0.82, 0.92, 0.98, 0.78] as const;
-const FINGER_X = [-0.028, -0.0095, 0.0095, 0.028];
+const CURL_REST = 0.6;
+const CURL_RANGE = 0.32;
+const DISTAL_REST = 1.05;
+const DISTAL_RANGE = 0.35;
+const FINGER_Y = [0.036, 0.012, -0.012, -0.036];
 
 type HandPose = (trigger: number, squeeze: number) => void;
 
-type Finger = {pivot: TransformNode; distal: TransformNode; range: number};
+type Finger = {pivot: TransformNode; distal: TransformNode};
 
 function box(
     name: string,
@@ -48,52 +50,79 @@ function box(
 
 function buildFinger(
     index: number,
-    x: number,
+    y: number,
+    side: number,
     root: TransformNode,
 ): Finger {
   const pivot = new TransformNode(`handRep-finger${index}`, root.getScene());
   pivot.parent = root;
-  pivot.position.set(x, -0.052, 0.03);
-  box(`handRep-proximal${index}`, [0.017, 0.042, 0.017], pivot, [0, -0.021, 0]);
+  pivot.position.set(side * 0.034, y, 0.022);
+  box(`handRep-proximal${index}`, [0.019, 0.019, 0.036], pivot, [0, 0, 0.018]);
   const distal = new TransformNode(`handRep-distal${index}`, root.getScene());
   distal.parent = pivot;
-  distal.position.set(0, -0.042, 0);
-  box(`handRep-tip${index}`, [0.015, 0.036, 0.015], distal, [0, -0.018, 0]);
-  return {pivot, distal, range: CURL_RANGE[index] ?? 1.1};
+  distal.position.set(0, 0, 0.036);
+  box(`handRep-tip${index}`, [0.016, 0.016, 0.028], distal, [0, 0, 0.014]);
+  return {pivot, distal};
 }
 
 function buildHand(
-    thumbSide: number,
+    side: number,
     material: StandardMaterial,
     scene: Scene,
 ): {root: TransformNode; pose: HandPose; dispose: () => void} {
   const root = new TransformNode('handRep-root', scene);
-  box('handRep-wrist', [0.055, 0.03, 0.045], root, [0, -0.055, -0.045])
+  const palm = box(
+      'handRep-palm', [0.026, 0.095, 0.082], root,
+      [side * 0.034, 0, 0.004]);
+  palm.material = material;
+  box('handRep-wrist', [0.032, 0.05, 0.055], root,
+      [side * 0.032, -0.075, -0.004])
       .material = material;
-  box('handRep-palm', [0.075, 0.035, 0.085], root, [0, -0.035, 0])
+  box('handRep-knuckle', [0.024, 0.088, 0.024], root,
+      [side * 0.03, 0, 0.045])
       .material = material;
-  const fingers = FINGER_X.map((x, i) => buildFinger(i, x, root));
+
+  const fingers = FINGER_Y.map((y, i) => buildFinger(i, y, side, root));
 
   const thumbPivot = new TransformNode('handRep-thumb', scene);
   thumbPivot.parent = root;
-  thumbPivot.position.set(thumbSide * 0.04, -0.03, 0.005);
-  box('handRep-thumbSeg', [0.02, 0.02, 0.05], thumbPivot, [0, 0, 0.026])
+  thumbPivot.position.set(side * 0.024, 0.055, 0.026);
+  box('handRep-thumbSeg', [0.021, 0.021, 0.052], thumbPivot, [0, 0, 0.026])
       .material = material;
+
+  if (new URLSearchParams(window.location.search).has('handDebug')) {
+    const proxy = MeshBuilder.CreateCylinder(
+        'handRep-controllerProxy',
+        {height: 0.12, diameter: 0.036, tessellation: 12},
+        scene,
+    );
+    proxy.parent = root;
+    proxy.position.set(0, 0, 0.005);
+    const proxyMat = new StandardMaterial('handRepProxyMat', scene);
+    proxyMat.diffuseColor = new Color3(0.12, 0.13, 0.16);
+    proxy.material = proxyMat;
+  }
 
   const pose: HandPose = (trigger, squeeze) => {
     const grip = Math.max(trigger, squeeze);
     const fist = squeeze;
     for (const finger of fingers) {
-      const bend = CURL_REST + finger.range * 0.8 * grip + 0.15 * fist;
-      finger.pivot.rotation.x = bend;
-      finger.distal.rotation.x = finger.range * 0.4 * grip + 0.18 * fist;
+      finger.pivot.rotation.y = -side * (CURL_REST + CURL_RANGE * grip +
+          0.12 * fist);
+      finger.distal.rotation.y = -side * (DISTAL_REST + DISTAL_RANGE * grip +
+          0.1 * fist);
     }
-    thumbPivot.rotation.y = thumbSide * (0.32 + 0.3 * fist);
-    thumbPivot.rotation.x = 0.2 * fist;
+    thumbPivot.rotation.y = -side * (0.7 + 0.2 * fist);
+    thumbPivot.rotation.x = 0.18 + 0.12 * fist;
   };
   pose(0.12, 0);
 
   const dispose = (): void => {
+    for (const child of root.getChildMeshes()) {
+      if (!child.name.startsWith('handRep-')) {
+        child.setParent(null);
+      }
+    }
     root.dispose(false, true);
   };
   return {root, pose, dispose};
@@ -121,11 +150,27 @@ type ActiveHand = {
   hand: {root: TransformNode; pose: HandPose; dispose: () => void};
 };
 
+export function createDebugHand(
+    scene: Scene,
+    colorIndex: number,
+): TransformNode {
+  const material = new StandardMaterial('handRepDebugMat', scene);
+  material.specularColor = Color3.Black();
+  material.alpha = 0.85;
+  setHandTint(material, handRepTint(colorIndex));
+  return buildHand(1, material, scene).root;
+}
+
+export type ControllerHands = {
+  material: StandardMaterial;
+  rootFor: (controller: WebXRInputSource) => TransformNode | null;
+};
+
 export function attachControllerHands(
     xr: WebXRDefaultExperience,
     scene: Scene,
     colorIndex: number,
-): StandardMaterial {
+): ControllerHands {
   const material = new StandardMaterial('handRepMat', scene);
   material.specularColor = Color3.Black();
   material.alpha = HAND_REP_ALPHA;
@@ -140,8 +185,8 @@ export function attachControllerHands(
       if (previous) {
         previous.hand.dispose();
       }
-      const thumbSide = handedness === 'left' ? 1 : -1;
-      const hand = buildHand(thumbSide, material, scene);
+      const side = handedness === 'left' ? -1 : 1;
+      const hand = buildHand(side, material, scene);
       hand.root.name = `handRep-${handedness}`;
       active.set(handedness, {controller, motion, hand});
     });
@@ -181,5 +226,15 @@ export function attachControllerHands(
     }
   });
 
-  return material;
+  return {
+    material,
+    rootFor: (controller) => {
+      for (const entry of active.values()) {
+        if (entry.controller === controller) {
+          return entry.hand.root;
+        }
+      }
+      return null;
+    },
+  };
 }

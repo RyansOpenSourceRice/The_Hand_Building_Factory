@@ -23,6 +23,25 @@ interface FactoryDebug {
   splashCam: () => number[];
   toolEquipped: () => boolean;
   toolVisible: () => boolean;
+  toolParent: () => string;
+  arrowCount: () => number;
+  audienceCount: () => number;
+  partColor: (id: string) => string;
+  selectTheme: (slot: 'primary' | 'secondary' | 'tertiary',
+    index: number) => void;
+  perf: () => {
+    fps: number;
+    meshes: number;
+    activeMeshes: number;
+    materials: number;
+  };
+  audio: () => {
+    base: string;
+    state: string;
+    unlocked: boolean;
+    musicReady: boolean;
+  };
+  lastError: () => string;
   hudBg: () => Record<string, string>;
   menuBg: () => Record<string, string>;
 }

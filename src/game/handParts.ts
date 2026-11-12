@@ -15,7 +15,6 @@ export type PartDef = {
   snapRadius: number;
   screwCount: number;
   screwOffsets: Vec3Literal[];
-  color: string;
 };
 
 const PALM_CENTER_Y = 1.2155;
@@ -63,11 +62,10 @@ export const PART_DEFS: readonly PartDef[] = [
       {x: -0.1, y: -0.11, z: 0.05},
       {x: 0.1, y: -0.11, z: 0.05},
     ],
-    color: '#e8e4d8',
   },
   {
     id: 'servo-base',
-    label: 'wrist servo',
+    label: 'wrist motor',
     file: null,
     primitive: 'servo',
     source: 'conveyor',
@@ -78,11 +76,10 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.14,
     screwCount: 1,
     screwOffsets: [servoScrew(0, 0)],
-    color: '#3a4a6b',
   },
   {
     id: 'servo-f1',
-    label: 'index servo',
+    label: 'index motor',
     file: null,
     primitive: 'servo',
     source: 'conveyor',
@@ -93,11 +90,10 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.14,
     screwCount: 1,
     screwOffsets: [servoScrew(0, 0)],
-    color: '#3a4a6b',
   },
   {
     id: 'servo-f2',
-    label: 'middle servo',
+    label: 'middle motor',
     file: null,
     primitive: 'servo',
     source: 'conveyor',
@@ -108,11 +104,10 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.14,
     screwCount: 1,
     screwOffsets: [servoScrew(0, 0)],
-    color: '#3a4a6b',
   },
   {
     id: 'servo-f3',
-    label: 'ring servo',
+    label: 'ring motor',
     file: null,
     primitive: 'servo',
     source: 'conveyor',
@@ -123,11 +118,10 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.14,
     screwCount: 1,
     screwOffsets: [servoScrew(0, 0)],
-    color: '#3a4a6b',
   },
   {
     id: 'servo-f4',
-    label: 'little servo',
+    label: 'little motor',
     file: null,
     primitive: 'servo',
     source: 'conveyor',
@@ -138,7 +132,6 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.14,
     screwCount: 1,
     screwOffsets: [servoScrew(0, 0)],
-    color: '#3a4a6b',
   },
   {
     id: 'thumb-base',
@@ -153,7 +146,6 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.16,
     screwCount: 1,
     screwOffsets: [{x: 0, y: 0.02, z: 0.075}],
-    color: '#d0cab8',
   },
   {
     id: 'finger-index',
@@ -168,7 +160,6 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.16,
     screwCount: 1,
     screwOffsets: [{x: 0, y: 0.06, z: 0.03}],
-    color: '#dcd7c9',
   },
   {
     id: 'finger-middle',
@@ -183,7 +174,6 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.16,
     screwCount: 1,
     screwOffsets: [{x: 0, y: 0.06, z: 0.03}],
-    color: '#dcd7c9',
   },
   {
     id: 'finger-ring',
@@ -198,7 +188,6 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.16,
     screwCount: 1,
     screwOffsets: [{x: 0, y: 0.06, z: 0.03}],
-    color: '#dcd7c9',
   },
   {
     id: 'finger-little',
@@ -213,7 +202,6 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.16,
     screwCount: 1,
     screwOffsets: [{x: 0, y: 0.06, z: 0.03}],
-    color: '#dcd7c9',
   },
   {
     id: 'thumb-segments',
@@ -228,7 +216,6 @@ export const PART_DEFS: readonly PartDef[] = [
     snapRadius: 0.14,
     screwCount: 1,
     screwOffsets: [{x: 0, y: 0, z: 0.03}],
-    color: '#dcd7c9',
   },
   {
     id: 'upper-cover',
@@ -246,7 +233,6 @@ export const PART_DEFS: readonly PartDef[] = [
       {x: -0.09, y: 0, z: -0.095},
       {x: 0.09, y: 0, z: -0.095},
     ],
-    color: '#e8e4d8',
   },
 ];
 

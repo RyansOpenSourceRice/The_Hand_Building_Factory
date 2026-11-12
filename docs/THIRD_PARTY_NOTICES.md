@@ -26,6 +26,16 @@ Assets and code not authored in this repository.
 - Naming: this project says it is "based on the Yeah Hand" as permitted by the
   Yeah Hand TRADEMARK.md. It is not affiliated with or endorsed by OPSOBOT.
 
+## Narrator voice clips
+
+- Files: `public/audio/voice/*.ogg`
+- Generated for this project with Speechify Simba 3.5
+  (`speechify/simba-3.5`, voice `geffen_32`) through OpenRouter, at
+  Ryan's request. They are committed as static audio; the game makes no
+  runtime service calls. Generated output is used under the Speechify
+  API terms applicable to this project.
+- Used for: short spoken part names, destinations, and event cues.
+
 ## Packages
 
 Runtime dependencies are npm tooling and libraries, not assets:

@@ -45,10 +45,15 @@ this repository. Two exceptions, both approved by Ryan:
   CERN-OHL-S-2.0 with credit.
 
 The crowd, stage, and lighting are procedural and stay procedural. The crowd
-is a set of golden-yellow mannequins in blue hard hats, seated on grey chairs
-in tiered rows facing the player, so the performer reads as the one being
-watched. Instanced geometry keeps the room full without high-polygon
-modeling.
+is twelve golden-yellow mannequins in blue hard hats, seated on grey chairs in
+two tiered rows of six facing the player, so the performer reads as the one
+being watched. Instanced geometry keeps the room light; the small crowd is a
+deliberate choice to protect the Quest frame budget.
+
+Guidance is diegetic: bobbing yellow arrows over the remaining screws and over
+the next part, plus a quiet narrator that names each part and where it goes.
+The controller hands are stylized fists wrapped around the grip, so the tool
+and the hand agree with the hardware the player is holding.
 
 ## Structure decisions
 
