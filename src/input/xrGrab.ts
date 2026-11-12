@@ -13,6 +13,11 @@ const PULSE_DURATION_MS = 60;
 const PULSE_SOFT_VALUE = 0.05;
 const PULSE_SOFT_DURATION_MS = 40;
 
+export type XrGrabHooks = {
+  blocked: () => boolean;
+  onToolChanged: (equipped: boolean) => void;
+};
+
 let liveControllers: WebXRInputSource[] = [];
 
 export function pulseController(tag: string): void {
@@ -41,69 +46,74 @@ export function attachXrGrab(
     stage: AssemblyStage,
     driver: Screwdriver,
     scene: Scene,
+    hooks: XrGrabHooks,
 ): {releaseAll: () => void} {
   const ray = new Ray(Vector3.Zero(), Vector3.Forward());
   const tipScratch = new Vector3();
-  let holder: WebXRInputSource | null = null;
-  let holderMode: 'part' | 'tool' | null = null;
-  let driving = false;
+  let partHolder: WebXRInputSource | null = null;
+  let toolHolder: WebXRInputSource | null = null;
 
   const controllerFor = (source: XRInputSource): WebXRInputSource | undefined =>
     xr.input.controllers.find((ctrl) => ctrl.inputSource === source);
 
-  const release = (): void => {
-    if (holderMode === 'tool') {
-      driver.endGrab('xr');
-    } else if (holderMode === 'part') {
-      stage.endGrab('xr');
+  const releasePart = (allowSnap = true): void => {
+    if (partHolder) {
+      stage.endGrab('xr', allowSnap);
     }
-    holder = null;
-    holderMode = null;
-    driving = false;
+    partHolder = null;
+  };
+
+  const stowTool = (): void => {
+    if (!toolHolder) {
+      return;
+    }
+    toolHolder = null;
+    driver.holster();
+    hooks.onToolChanged(false);
   };
 
   const releaseAll = (): void => {
-    if (holderMode === 'tool') {
-      driver.endGrab('xr');
-    } else if (holderMode === 'part') {
-      stage.endGrab('xr', false);
+    releasePart(false);
+    stowTool();
+  };
+
+  const toggleTool = (ctrl: WebXRInputSource): void => {
+    if (hooks.blocked()) {
+      return;
     }
-    holder = null;
-    holderMode = null;
-    driving = false;
+    if (driver.isEquipped()) {
+      stowTool();
+      return;
+    }
+    if (ctrl === partHolder) {
+      return;
+    }
+    if (driver.equip(ctrl.pointer)) {
+      toolHolder = ctrl;
+      hooks.onToolChanged(true);
+    }
   };
 
   const grabAt = (ctrl: WebXRInputSource): void => {
+    if (partHolder) {
+      return;
+    }
     ctrl.getWorldPointerRayToRef(ray);
     const pick = scene.pickWithRay(ray, (mesh) =>
-      stage.isGrabCandidate(mesh) || driver.isGrabCandidate(mesh));
+      stage.isGrabCandidate(mesh));
     const root = pick?.pickedMesh;
     if (!root) {
       return;
     }
-    if (driver.isGrabCandidate(root) && driver.startGrab('xr')) {
-      holder = ctrl;
-      holderMode = 'tool';
-      driver.attachTo(ctrl.pointer);
-      return;
-    }
     if (stage.isGrabCandidate(root) && stage.startGrab('xr')) {
-      holder = ctrl;
-      holderMode = 'part';
+      partHolder = ctrl;
       stage.attachTo(ctrl.pointer);
     }
   };
 
   const onSelectStart = (event: XRInputSourceEvent): void => {
     const ctrl = controllerFor(event.inputSource);
-    if (!ctrl) {
-      return;
-    }
-    if (ctrl === holder && holderMode === 'tool') {
-      driving = true;
-      return;
-    }
-    if (holder) {
+    if (!ctrl || ctrl === toolHolder) {
       return;
     }
     grabAt(ctrl);
@@ -111,22 +121,22 @@ export function attachXrGrab(
 
   const onSelectEnd = (event: XRInputSourceEvent): void => {
     const ctrl = controllerFor(event.inputSource);
-    if (!ctrl) {
-      return;
-    }
-    if (ctrl === holder && holderMode === 'tool') {
-      driving = false;
-      return;
-    }
-    if (ctrl === holder && holderMode === 'part') {
-      release();
+    if (ctrl && ctrl === partHolder) {
+      releasePart();
     }
   };
 
   const onSqueezeStart = (event: XRInputSourceEvent): void => {
     const ctrl = controllerFor(event.inputSource);
-    if (ctrl === holder) {
-      release();
+    if (!ctrl) {
+      return;
+    }
+    if (ctrl === toolHolder) {
+      stowTool();
+      return;
+    }
+    if (ctrl === partHolder) {
+      releasePart();
     }
   };
 
@@ -144,25 +154,36 @@ export function attachXrGrab(
 
   xr.input.onControllerAddedObservable.add((ctrl) => {
     liveControllers.push(ctrl);
+    ctrl.onMotionControllerInitObservable.add((motion) => {
+      for (const id of ['b-button', 'y-button']) {
+        const component = motion.components[id];
+        component?.onButtonStateChangedObservable.add(() => {
+          if (component.pressed) {
+            toggleTool(ctrl);
+          }
+        });
+      }
+    });
   });
 
   xr.input.onControllerRemovedObservable.add((removed) => {
     liveControllers = liveControllers.filter((ctrl) => ctrl !== removed);
-    if (removed === holder) {
-      release();
+    if (removed === partHolder) {
+      releasePart();
+    }
+    if (removed === toolHolder) {
+      stowTool();
     }
   });
 
   xr.baseExperience.sessionManager.onXRSessionInit.add(addSessionListeners);
   xr.baseExperience.sessionManager.onXRSessionEnded.add((session) => {
     removeSessionListeners(session);
-    if (holder) {
-      release();
-    }
+    releaseAll();
   });
 
   scene.onBeforeRenderObservable.add(() => {
-    if (holderMode !== 'tool' || !driving) {
+    if (!toolHolder) {
       return;
     }
     const dt = scene.getEngine().getDeltaTime() / 1000;

@@ -1,6 +1,7 @@
 import {
   AdvancedDynamicTexture,
   Button,
+  Control,
   Rectangle,
   TextBlock,
 } from '@babylonjs/gui';
@@ -106,6 +107,16 @@ export class CreditSplash {
     gate.top = '215px';
     this.adt.addControl(gate);
     this.gateLabel = gate;
+
+    const buildTag = new TextBlock('splash-build', `v${__APP_VERSION__}`);
+    buildTag.fontFamily = FONT;
+    buildTag.fontSize = '16px';
+    buildTag.color = '#8fa0d8';
+    buildTag.resizeToFit = true;
+    buildTag.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    buildTag.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    buildTag.top = '-34px';
+    this.adt.addControl(buildTag);
 
     this.continueButton = this.makeAction(
         'splash-continue', 'CONTINUE', -130, '250px');
@@ -235,6 +246,12 @@ export class CreditSplash {
     this.gate.reset(performance.now() - SPLASH_GATE_MS - 1);
     this.tickGate();
     this.skip();
+  }
+
+  debugRegate(): void {
+    this.gate.reset(performance.now());
+    this.setGate(this.continueButton, false);
+    this.setGate(this.rebuildButton, false);
   }
 
   debugRebuild(): void {

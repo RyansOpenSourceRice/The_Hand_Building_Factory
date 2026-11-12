@@ -118,6 +118,16 @@ export class VrMenu {
     this.adt.addControl(backing);
 
     this.buildTabBar();
+    const controls = new TextBlock(
+        'menu-controls',
+        'TRIGGER grab  ·  GRIP put away  ·  B / Y screwdriver  ·  A / X menu',
+    );
+    controls.fontFamily = FONT;
+    controls.fontSize = '19px';
+    controls.color = '#8f9cc4';
+    controls.resizeToFit = true;
+    controls.top = '300px';
+    this.adt.addControl(controls);
     this.buildMainPage();
     this.buildMovePage();
     this.buildLooksPage();

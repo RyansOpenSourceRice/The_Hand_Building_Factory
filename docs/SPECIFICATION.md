@@ -2,7 +2,7 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.10.7)
+## Current behavior (release 2026.11.12.2)
 
 - A warehouse workshop opens through a low north sill onto a grand
   factory hall, generated almost entirely in code. The workshop keeps the
@@ -10,8 +10,9 @@ What HANDS ON! does, milestone by milestone.
   conveyor station on the east. The hall carries painted floor lanes,
   pallet racks with boxed loads, pallet stacks, a parked and a patrolling
   forklift, five giant yellow robot arms, a demo stage with screens,
-  podium, and a branded band, an audience of about 155 seated and
-  standing figures with palette variations, aisle walkers, hanging tube
+  podium, and a branded band, tiered seating with an audience of about
+  155 golden-yellow mannequins in blue hard hats and grey chairs facing
+  the player, aisle walkers, raised pendant lights, hanging tube
   fixtures, and garage doors on the south wall. The floor and roof are
   AI-generated surfaces (disclosed in `docs/AI_USAGE.md`), and the bench
   pegboard, steel top, rack loads, and garage doors use four more
@@ -29,9 +30,9 @@ What HANDS ON! does, milestone by milestone.
   rate and snapping instantly under reduced motion.
 - The game builds a yeah-hand robotic hand, one part at a time: palm,
   servo base, four finger servos, thumb base, four fingers, thumb
-  segments, and the upper cover. The current part shows a translucent blue
-  outline at its socket, and the outline follows the player's view so it
-  stays in sight.
+  segments, and the upper cover. The current part shows a soft,
+  pulsing translucent blue hologram at its socket, and the hologram
+  follows the player's view so it stays in sight.
 - Printed parts (palm, fingers, thumb pieces, upper cover) appear on the
   printer bed with a short drop-in animation. Servos ride the conveyor:
   they rise out of a floor pit past the workshop sill, run level, turn
@@ -44,8 +45,9 @@ What HANDS ON! does, milestone by milestone.
   watchdog quietly returns anything that ends up off the play area.
 - Quest 3: point at the part with a controller and hold the trigger to
   grab it. Release the trigger with the part inside the outline and it
-  locks in place with a chime and a controller pulse. Grip squeeze only
-  drops a held item; squeezing empty hands does nothing.
+  locks in place with a chime and a controller pulse. Grip squeeze
+  drops a held part or stows the screwdriver; squeezing empty hands
+  does nothing.
 - Pressing A (right controller) or X (left) toggles an in-headset menu
   about 0.75 m in front of the player. The MAIN tab holds reset, undo,
   and redo. Undo and redo apply an exact step count picked with a
@@ -55,23 +57,28 @@ What HANDS ON! does, milestone by milestone.
   palette. HUD buttons and menu buttons are pressable in-headset via
   the controller pointer rays. Hovering any HUD button, menu button,
   splash button, or color swatch with a pointer ray brightens it so the
-  player always sees where the pointer is aimed; while a splash is up,
-  A and X skip the splash instead of toggling the menu.
+  player always sees where the pointer is aimed. A controls footer in
+  the menu names the trigger, grip, B/Y tool, and A/X menu bindings.
+  While a splash is up, A and X skip the splash instead of toggling the
+  menu.
 - A credits splash shows right after boot and again after the hand is
   complete. It lists the Yeah Hand model source, its CERN Open Hardware
   Licence 2 - Strongly Reciprocal licence, and the modification credit.
   The splash cannot be dismissed for its first four seconds; a countdown
-  label shows when dismissal unlocks. After the gate, CONTINUE (or A/X)
+  label shows when dismissal unlocks, and a build tag in the corner
+  shows the running version. After the gate, CONTINUE (or A/X)
   dismisses it. The in-headset menu stays suppressed and the desktop
   HUD is hidden until the splash is gone, and the same press that
   dismisses a splash never also toggles the menu. The completion splash
   adds REBUILD, which drops anything held and starts the build over
   from the palm with an empty undo and redo history.
-- After a part snaps in, screws stick out of it. Grab the orange
-  screwdriver from its holster beside the pedestal, point the tip at a
-  screw, and hold the trigger to drive it. A ratchet tick plays while
-  driving and the controller pulses gently; the screw sinks in with a
-  click. The palm takes 4 screws, the upper cover takes 2, every other
+- After a part snaps in, screws stick out of it. Press B (right) or Y
+  (left) to summon the orange screwdriver into that hand; press again or
+  squeeze to stow it. The screwdriver never falls, so it cannot be lost.
+  Its tip is magnetic: touching it to a screw drives the screw
+  automatically. A ratchet tick plays while driving and the controller
+  pulses gently; the screw sinks in with a click and the tool stays in
+  hand. The palm takes 4 screws, the upper cover takes 2, every other
   part takes 1. The queue advances only once a part's screws are all
   driven. Screws can never be carried; the screwdriver or a part can.
 - UNDO and REDO step back and forward through every committed part move,
@@ -83,10 +90,11 @@ What HANDS ON! does, milestone by milestone.
   angle through 30, 45, and 90 degrees. Both persist between visits.
   Smooth turning uses the left thumbstick at a gentle 90 degrees per
   second; small clamped steps stay within 1.25 m of the stage.
-- Desktop: click and drag parts and the screwdriver; WASD or arrow keys
-  move within the stage radius (A and D strafe relative to the view
-  direction), arrow keys also turn the camera. The start camera looks
-  level at the bench.
+- Desktop: click and drag parts; T or the TOOL button summons the
+  screwdriver, then click and drag it (releasing returns it to its dock
+  instead of dropping it). WASD or arrow keys move within the stage
+  radius (A and D strafe relative to the view direction), arrow keys also
+  turn the camera. The start camera looks level at the bench.
 - Any browser that exposes `navigator.xr` (Quest browsers included) is
   treated as XR-capable: a large ENTER VR button appears bottom-center.
   Pressing it starts an immersive-vr session with a local-floor reference

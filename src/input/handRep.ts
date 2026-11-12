@@ -21,8 +21,8 @@ import {
 
 export const HAND_REP_ALPHA = 0.55;
 const EMISSIVE_SHARE = 0.12;
-const CURL_REST = 0.3;
-const CURL_RANGE = [1.05, 1.2, 1.25, 1.0] as const;
+const CURL_REST = 0.18;
+const CURL_RANGE = [0.82, 0.92, 0.98, 0.78] as const;
 const FINGER_X = [-0.028, -0.0095, 0.0095, 0.028];
 
 type HandPose = (trigger: number, squeeze: number) => void;
@@ -84,12 +84,12 @@ function buildHand(
     const grip = Math.max(trigger, squeeze);
     const fist = squeeze;
     for (const finger of fingers) {
-      const bend = CURL_REST + finger.range * grip + 0.25 * fist;
+      const bend = CURL_REST + finger.range * 0.8 * grip + 0.15 * fist;
       finger.pivot.rotation.x = bend;
-      finger.distal.rotation.x = finger.range * 0.55 * grip + 0.3 * fist;
+      finger.distal.rotation.x = finger.range * 0.4 * grip + 0.18 * fist;
     }
-    thumbPivot.rotation.y = thumbSide * (0.5 + 0.45 * fist);
-    thumbPivot.rotation.x = 0.25 * fist;
+    thumbPivot.rotation.y = thumbSide * (0.32 + 0.3 * fist);
+    thumbPivot.rotation.x = 0.2 * fist;
   };
   pose(0.12, 0);
 

@@ -16,10 +16,13 @@ interface FactoryDebug {
   splashVisible: () => boolean;
   splashGated: () => boolean;
   splashSkip: () => void;
+  splashRegate: () => void;
   splashRebuild: () => void;
   splashBg: () => string;
   splashPos: () => number[];
   splashCam: () => number[];
+  toolEquipped: () => boolean;
+  toolVisible: () => boolean;
   hudBg: () => Record<string, string>;
   menuBg: () => Record<string, string>;
 }
@@ -39,6 +42,7 @@ interface XrMock {
       stickY: number;
       stickPressed: boolean;
       aButton: number;
+      bButton: number;
     }>,
   ) => void;
   setViewer: (patch: Partial<{

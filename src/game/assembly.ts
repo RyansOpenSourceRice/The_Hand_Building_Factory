@@ -23,7 +23,7 @@ import {SnapService} from './snap';
 
 const HISTORY_LIMIT = 50;
 const TWEEN_FRAMES = 11;
-const GHOST_ALPHA = 0.3;
+const GHOST_ALPHA = 0.24;
 const DRIVE_SECONDS = 1.5;
 const DRIVE_RADIUS = 0.09;
 const RATCHET_EVERY = 0.12;
@@ -84,6 +84,7 @@ export class AssemblyStage {
   onScrewDriven: ((tag: string) => void) | null = null;
   onPartInfo: ((info: string) => void) | null = null;
   onProgress: ((done: number, total: number) => void) | null = null;
+  onDropped: (() => void) | null = null;
 
   constructor(
       scene: Scene,
@@ -125,9 +126,11 @@ export class AssemblyStage {
           def.socketYaw,
           0,
       );
-      ghost.enableEdgesRendering();
-      ghost.edgesWidth = 3;
-      ghost.edgesColor = new Color4(0.35, 0.65, 1.0, 0.95);
+      if (!def.file) {
+        ghost.enableEdgesRendering();
+        ghost.edgesWidth = 2;
+        ghost.edgesColor = new Color4(0.35, 0.65, 1.0, 0.95);
+      }
 
       const state: PartState = {
         def,
@@ -149,6 +152,13 @@ export class AssemblyStage {
     }
     this.spawnCurrent();
     scene.onBeforeRenderObservable.add(() => this.recoverFallen());
+    scene.onBeforeRenderObservable.add(() => {
+      const state = this.states[this.current];
+      if (state?.ghost.isEnabled()) {
+        state.ghost.visibility =
+            0.78 + Math.sin(performance.now() / 480) * 0.12;
+      }
+    });
   }
 
   get currentPart(): Mesh {
@@ -240,6 +250,7 @@ export class AssemblyStage {
       this.report('Release inside the blue outline to place the part.');
       this.commit(state);
       this.reportPartInfo(state);
+      this.onDropped?.();
     }
   }
 
@@ -557,9 +568,9 @@ export class AssemblyStage {
     this.lastTouched = this.states.indexOf(state);
     this.report(count === 1 ?
         `${state.def.label} mounted. ` +
-        'Grab the screwdriver and drive its screw.' :
-        `${state.def.label} mounted. Grab the screwdriver and ` +
-        `drive its ${count} screws.`);
+        'Press B or Y for the screwdriver, then touch its tip to the screw.' :
+        `${state.def.label} mounted. Press B or Y for the screwdriver, ` +
+        `then touch its tip to each of the ${count} screws.`);
     this.onSnapped?.(tag);
   }
 
