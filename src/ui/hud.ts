@@ -78,7 +78,7 @@ export class Hud {
 
     const hint = new TextBlock('hint');
     hint.text =
-        'Trigger to grab - release inside the blue outline - grip to reset';
+        'Trigger to grab - release inside the blue outline - A opens the menu';
     hint.fontFamily = FONT;
     hint.fontSize = '18px';
     hint.color = '#8f9cc4';

@@ -25,14 +25,21 @@ function component(type, button, xAxis, yAxis) {
   return {type, gamepadIndices, visualResponses: {}};
 }
 
-function stickLayout() {
+function stickLayout(hand) {
+  const components = {
+    'xr-standard-trigger': component('trigger', 0),
+    'xr-standard-squeeze': component('squeeze', 1),
+    'xr-standard-thumbstick': component('thumbstick', 3, 2, 3),
+  };
+  if (hand === 'left') {
+    components['x-button'] = component('button', 4);
+  } else {
+    components['a-button'] = component('button', 4);
+  }
   return {
-    components: {
-      'xr-standard-trigger': component('trigger', 0),
-      'xr-standard-squeeze': component('squeeze', 1),
-      'xr-standard-thumbstick': component('thumbstick', 3, 2, 3),
-    },
+    components,
     gamepad: {mapping: 'xr-standard'},
+    selectComponentId: 'xr-standard-trigger',
     assetPath: 'controller.glb',
   };
 }
@@ -40,9 +47,9 @@ function stickLayout() {
 const PROFILE = {
   profileId: 'factory-mock',
   layouts: {
-    left: stickLayout(),
-    right: stickLayout(),
-    none: stickLayout(),
+    left: stickLayout('left'),
+    right: stickLayout('right'),
+    none: stickLayout('right'),
   },
 };
 
@@ -301,8 +308,21 @@ const TOOLS = [
   {
     name: 'squeeze',
     description: 'Set a grip value (1 = squeeze, 0 = release). ' +
-      'Squeezing while holding the tool drops it and re-announces ' +
-      'the current part.',
+      'Grip only drops a held item; empty-hand squeezes do nothing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        side: {enum: ['left', 'right']},
+        value: {type: 'number'},
+      },
+      required: ['side', 'value'],
+    },
+  },
+  {
+    name: 'a_button',
+    description: 'Press the menu button (A on the right controller, ' +
+      'X on the left): 1 = press, 0 = release. Toggles the in-headset ' +
+      'menu panel.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -375,6 +395,11 @@ async function callTool(name, args) {
       const side = sideArg(args);
       await setController(side, {squeeze: numberArg(args, 'value')});
       return {content: [{type: 'text', text: `${side} squeeze set`}]};
+    }
+    case 'a_button': {
+      const side = sideArg(args);
+      await setController(side, {aButton: numberArg(args, 'value')});
+      return {content: [{type: 'text', text: `${side} a-button set`}]};
     }
     default:
       throw new Error(`unknown tool: ${name}`);

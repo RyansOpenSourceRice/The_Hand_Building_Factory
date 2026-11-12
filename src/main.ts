@@ -37,6 +37,7 @@ import {
   loadPrototypes,
 } from './scene/partMeshes';
 import {Hud} from './ui/hud';
+import {VrMenu} from './ui/vrMenu';
 import {
   attachXrGrab,
   pulseController,
@@ -79,7 +80,6 @@ async function initXr(
   return scene.createDefaultXRExperienceAsync({
     floorMeshes: [ground],
     disableTeleportation: true,
-    disablePointerSelection: true,
     disableNearInteraction: true,
     disableHandTracking: true,
     disableDefaultUI: true,
@@ -164,10 +164,17 @@ async function boot(): Promise<void> {
   });
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onPartInfo = (info) => hud.setPartInfo(info);
+  let vrMenu: VrMenu | null = null;
   stage.announceCurrent();
   const applySettings = (): void => {
     const current = settings.get();
     hud.setSettings(current.turnMode, current.snapAngle);
+    vrMenu?.sync(current.turnMode, current.snapAngle);
+    vrMenu?.setThemeSelection({
+      primary: current.themePrimary,
+      secondary: current.themeSecondary,
+      tertiary: current.themeTertiary,
+    });
     setSfxMuted(current.muted);
     music.setMuted(current.muted);
     hud.setMutedLabel(current.muted);
@@ -220,6 +227,19 @@ async function boot(): Promise<void> {
     attachHeightControl(xr, scene, reducedMotion);
     handRepMaterial = attachControllerHands(
         xr, scene, settings.get().themePrimary);
+    const menu = new VrMenu(scene, {
+      reset: () => stage.reset(),
+      undo: (count) => stage.undoMany(count),
+      redo: (count) => stage.redoMany(count),
+      undoDepth: () => stage.undoDepth(),
+      redoDepth: () => stage.redoDepth(),
+      cycleTurnMode: () => settings.cycleTurnMode(),
+      cycleSnapAngle: () => settings.cycleSnapAngle(),
+      setTheme: (slot, colorIndex) => settings.setTheme(slot, colorIndex),
+    });
+    menu.attach(xr);
+    menu.onToggled = () => armAudio();
+    vrMenu = menu;
     hud.hideDesktopOnly();
     hud.setReady('xr');
     hud.setEnterVr(() => {
@@ -237,8 +257,10 @@ async function boot(): Promise<void> {
         hud.hideEnterVr();
       } else if (state === WebXRState.NOT_IN_XR) {
         hud.showEnterVr();
+        vrMenu?.hide();
       }
     });
+    applySettings();
   } else {
     const uaQuest = /Quest|OculusBrowser/i.test(navigator.userAgent);
     hud.showDesktopOnly(uaQuest);
@@ -266,6 +288,9 @@ async function boot(): Promise<void> {
       sites: () => number[][];
       tip: () => number[];
       driverCenter: () => number[];
+      menu: () => boolean;
+      menuToggle: () => void;
+      menuPlace: () => void;
     };
   };
   bridgeWindow.factoryDebug = {
@@ -323,6 +348,9 @@ async function boot(): Promise<void> {
       const c = driver.mesh.getBoundingInfo().boundingBox.centerWorld;
       return [c.x, c.y, c.z];
     },
+    menu: () => vrMenu?.isVisible() ?? false,
+    menuToggle: () => vrMenu?.debugToggle(),
+    menuPlace: () => vrMenu?.debugPlaceInFrontOfActiveCamera(),
   };
 
   document.getElementById('boot-fallback')?.remove();

@@ -10,6 +10,9 @@ interface FactoryDebug {
   sites: () => number[][];
   tip: () => number[];
   driverCenter: () => number[];
+  menu: () => boolean;
+  menuToggle: () => void;
+  menuPlace: () => void;
 }
 
 interface XrMock {
@@ -26,6 +29,7 @@ interface XrMock {
       stickX: number;
       stickY: number;
       stickPressed: boolean;
+      aButton: number;
     }>,
   ) => void;
   setViewer: (patch: Partial<{

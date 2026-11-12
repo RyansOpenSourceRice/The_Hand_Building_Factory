@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.11.3] - 2026-11-11
+
+### Added
+
+- In-headset menu (A on the right controller, X on the left) with
+  MAIN, MOVE, and LOOKS tabs. MAIN holds reset plus undo and redo
+  with an exact step count and an ALL shortcut; MOVE holds turn
+  mode and snap angle; LOOKS holds the filament palette. Counts
+  that are broken or too large clamp to the history that exists.
+- `a_button` tool in the QA MCP server, so scripted sessions can
+  drive the menu.
+
+### Changed
+
+- Grip squeeze now only drops a held item; squeezing empty hands
+  does nothing. Reset lives in the menu instead of the grip.
+- Controller pointer rays are enabled in XR, so HUD and menu
+  buttons are pressable in-headset.
+- The menu panel faces the player and carries a dark backing with
+  badged step counts for legibility.
+- The HUD hint reads "A opens the menu".
+
 ## [2026.11.11.2] - 2026-11-11
 
 ### Added
