@@ -20,6 +20,7 @@ export type HudActions = {
   cycleSnapAngle: () => void;
   setTheme: (slot: ThemeSlot, colorIndex: number) => void;
   toggleMuted: () => void;
+  toggleTool: () => void;
 };
 
 const ROW_LABELS: Readonly<Array<[ThemeSlot, string]>> = [
@@ -89,15 +90,15 @@ export class Hud {
     this.adt.addControl(this.statusBlock);
 
     const hint = new TextBlock('hint');
-    hint.text =
-        'Trigger to grab - release inside the blue outline - A opens the menu';
+    hint.text = 'Trigger to grab - release inside the blue outline - ' +
+        'T or TOOL for the screwdriver - A opens the menu';
     hint.fontFamily = FONT;
     hint.fontSize = '18px';
     hint.color = '#8f9cc4';
     hint.resizeToFit = true;
     hint.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     hint.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    hint.top = '-6%';
+    hint.top = '-13%';
     this.adt.addControl(hint);
 
     this.xrNote = new TextBlock('xrNote');
@@ -228,6 +229,23 @@ export class Hud {
     colors.onPointerClickObservable.add(() => this.toggleThemePanel());
     this.adt.addControl(colors);
     this.hoverize(colors);
+
+    const tool = Button.CreateSimpleButton('tool', 'TOOL');
+    tool.fontFamily = FONT;
+    tool.fontSize = '17px';
+    tool.color = '#f2f4ff';
+    tool.background = 'rgba(35, 45, 80, 0.85)';
+    tool.cornerRadius = 8;
+    tool.width = '90px';
+    tool.height = '44px';
+    tool.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    tool.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    tool.left = '47%';
+    tool.top = '-6%';
+    tool.onPointerClickObservable.add(() => actions.toggleTool());
+    this.adt.addControl(tool);
+    this.hoverize(tool);
+
     this.buildThemePanel();
   }
 
@@ -306,7 +324,7 @@ export class Hud {
   buttonBackgrounds(): Record<string, string> {
     const out: Record<string, string> = {};
     for (const name of ['reset', 'redo', 'undo', 'turn', 'angle', 'sound',
-      'colors', 'enterVr']) {
+      'colors', 'tool', 'enterVr']) {
       const control = this.adt.getControlByName(name);
       if (control instanceof Button) {
         out[name] = control.background;

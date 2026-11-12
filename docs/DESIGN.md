@@ -45,8 +45,10 @@ this repository. Two exceptions, both approved by Ryan:
   CERN-OHL-S-2.0 with credit.
 
 The crowd, stage, and lighting are procedural and stay procedural. The crowd
-reads as a crowd through stagecraft (dim house, backlit silhouettes, varied
-palettes and heights) rather than through high-polygon modeling.
+is a set of golden-yellow mannequins in blue hard hats, seated on grey chairs
+in tiered rows facing the player, so the performer reads as the one being
+watched. Instanced geometry keeps the room full without high-polygon
+modeling.
 
 ## Structure decisions
 

@@ -11,17 +11,14 @@ import {Scene} from '@babylonjs/core/scene';
 import {makeBoxBody} from '../scene/physics';
 
 const HOLSTER = new Vector3(0, 1.08, 0.5);
+const HAND_OFFSET = new Vector3(0, 0.005, 0.02);
 const HANDLE_HEIGHT = 0.11;
 const SHAFT_HEIGHT = 0.06;
-const REST_GAP = 0.01;
-const DROP_FRAMES = 36;
 
 export class Screwdriver {
   readonly mesh: Mesh;
-  onDropped: (() => void) | null = null;
   private readonly tip: TransformNode;
   private heldBy: string | null = null;
-  private dropStep: (() => void) | null = null;
   private body: ReturnType<typeof makeBoxBody> = null;
 
   constructor(scene: Scene) {
@@ -57,8 +54,45 @@ export class Screwdriver {
   }
 
   show(): void {
+    this.heldBy = null;
+    this.detach();
     this.mesh.setEnabled(true);
+    this.mesh.position.copyFrom(HOLSTER);
+    this.mesh.rotationQuaternion = Quaternion.Identity();
     this.settleStatic();
+  }
+
+  equip(node: TransformNode): boolean {
+    if (this.heldBy) {
+      return false;
+    }
+    this.heldBy = 'xr';
+    this.mesh.setEnabled(true);
+    this.mesh.setParent(node);
+    this.mesh.position.copyFrom(HAND_OFFSET);
+    this.mesh.rotationQuaternion = Quaternion.Identity();
+    if (this.body) {
+      this.body.setMotionType(PhysicsMotionType.ANIMATED);
+      this.body.disablePreStep = false;
+    }
+    return true;
+  }
+
+  holster(): void {
+    this.heldBy = null;
+    this.detach();
+    this.mesh.setEnabled(false);
+    this.mesh.position.copyFrom(HOLSTER);
+    this.mesh.rotationQuaternion = Quaternion.Identity();
+    this.settleStatic();
+  }
+
+  isEquipped(): boolean {
+    return this.heldBy !== null;
+  }
+
+  isVisible(): boolean {
+    return this.mesh.isEnabled();
   }
 
   isGrabCandidate(mesh: unknown): boolean {
@@ -70,7 +104,6 @@ export class Screwdriver {
       return false;
     }
     this.heldBy = tag;
-    this.cancelDrop();
     if (this.body) {
       this.body.setMotionType(PhysicsMotionType.ANIMATED);
       this.body.disablePreStep = false;
@@ -80,7 +113,7 @@ export class Screwdriver {
 
   attachTo(node: unknown): void {
     if (this.heldBy) {
-      this.mesh.setParent(node as Mesh | null);
+      this.mesh.setParent(node as TransformNode | null);
     }
   }
 
@@ -95,48 +128,12 @@ export class Screwdriver {
       return;
     }
     this.heldBy = null;
-    if (this.mesh.parent !== null) {
-      this.mesh.rotationQuaternion ??= Quaternion.FromEulerAngles(
-          this.mesh.rotation.x,
-          this.mesh.rotation.y,
-          this.mesh.rotation.z,
-      );
-      this.mesh.setParent(null);
+    this.detach();
+    if (tag === 'desktop') {
+      this.show();
+      return;
     }
-    if (this.body) {
-      this.body.setMotionType(PhysicsMotionType.DYNAMIC);
-      this.body.disablePreStep = true;
-      this.body.setLinearVelocity(Vector3.Zero());
-      this.body.setAngularVelocity(Vector3.Zero());
-    } else {
-      this.dropToFloor();
-    }
-    this.onDropped?.();
-  }
-
-  private dropToFloor(): void {
-    const {min} = this.mesh.getHierarchyBoundingVectors();
-    const startY = this.mesh.position.y;
-    const targetY = startY - min.y + REST_GAP;
-    let t = 0;
-    this.dropStep = (): void => {
-      t += 1 / DROP_FRAMES;
-      const k = Math.min(1, t);
-      this.mesh.position.y = startY + (targetY - startY) * k;
-      if (k >= 1) {
-        this.cancelDrop();
-      }
-    };
-    this.mesh.getScene().onBeforeRenderObservable.add(this.dropStep);
-  }
-
-  private cancelDrop(): void {
-    if (this.dropStep) {
-      this.mesh.getScene().onBeforeRenderObservable.removeCallback(
-          this.dropStep,
-      );
-      this.dropStep = null;
-    }
+    this.holster();
   }
 
   isHeld(tag: string): boolean {
@@ -147,6 +144,17 @@ export class Screwdriver {
     this.tip.computeWorldMatrix(true);
     result.copyFrom(this.tip.absolutePosition);
     return result;
+  }
+
+  private detach(): void {
+    if (this.mesh.parent) {
+      this.mesh.rotationQuaternion ??= Quaternion.FromEulerAngles(
+          this.mesh.rotation.x,
+          this.mesh.rotation.y,
+          this.mesh.rotation.z,
+      );
+      this.mesh.setParent(null);
+    }
   }
 
   private isDescendant(mesh: unknown): boolean {

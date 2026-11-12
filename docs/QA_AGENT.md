@@ -42,9 +42,10 @@ an error instead of guessing.
 | `wait_ms`     | `ms`      | Sleep up to 5000 ms. Use after squeezes to let drops settle. |
 | `pose`        | `side` (`left`/`right`), `pos` `[x,y,z]`, `yaw`, `pitch` | Move a controller in world space. |
 | `stick`       | `side`, `x`, `y` | Push a thumbstick (locomotion / turn snap). |
-| `trigger`     | `side`, `value` | Squeeze a trigger (grab / drive screws). |
-| `squeeze`     | `side`    | Full grip squeeze (drops a held item only). |
+| `trigger`     | `side`, `value` | Squeeze a trigger. Grabs the active part; screws drive themselves when the tip touches them. |
+| `squeeze`     | `side`    | Full grip squeeze. Drops a held part or stows the screwdriver. |
 | `a_button`    | `side`, `value` | Press the menu button (A right / X left). While a credits splash is up this skips it (only after its 4 second hold); otherwise it toggles the in-headset menu panel. |
+| `b_button`    | `side`, `value` | Press the tool button (B right / Y left). Summons the screwdriver into that hand, or stows it. |
 | `page_errors` | none      | Console errors and uncaught page errors since the session started. |
 
 A session starts on `tool` launch, loads the page, waits for XR readiness,
@@ -70,14 +71,19 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
   in-headset menu stays locked until the splash is dismissed.
 - `data-part` on a mesh does not update after a mount. Trust the status
   text in `read_state` (`statusText`) instead.
-- The tool takes trigger priority: pressing trigger while holding the
-  screwdriver drives screws, it never grabs parts. Carry parts with the
-  **left** hand while the right hand holds the driver.
-- Gripping (`squeeze`) only drops a held item. Squeezing empty hands
-  does nothing — reset lives in the menu, not on the grip. Drops still
+- The screwdriver never drops. It appears in the hand that pressed
+  `b_button` and disappears on the next press or on squeeze. Summon it
+  with `b_button`, not by picking it up off a surface.
+- The screwdriver tip is magnetic: when it comes within a few centimeters
+  of a screw site the screw drives itself. No trigger needed. The trigger
+  still grabs and releases parts.
+- Carry parts with the **left** hand while the right hand holds the
+  screwdriver; both can be held at once.
+- Gripping (`squeeze`) drops a held part. Squeezing empty hands does
+  nothing — reset lives in the menu, not on the grip. Drop physics still
   settle; wait ~1.5 s before reading state.
-- Screws need the tip inside the screw site, within a few centimeters.
-  Announcements report progress per screw.
+- Confirm the audience: look over the barrier and check for tiered rows
+  of yellow mannequins in blue hard hats on grey chairs, facing you.
 
 ## Example session
 
@@ -85,17 +91,21 @@ A full pass lives in the repository history and follows this shape:
 
 1. `read_state` — confirm boot, XR ready, credits splash up. Wait out
    the 4 second hold, then `a_button` to dismiss it. The splash must
-   list the Yeah Hand credit lines.
-2. Empty trigger on the left — nothing should move.
-3. `pose` right hand to the bench tool slot, `trigger` right, `wait_ms`.
-4. Carry the palm with the left hand to its socket, release with trigger.
-5. `squeeze` right to drop the tool, `wait_ms`, `read_state` — the
-   mounted part must stay mounted.
-6. `a_button` right press + release to open the menu, `screenshot`,
+   list the Yeah Hand credit lines and the build version.
+2. `screenshot` — look over the barrier and check for tiered rows of
+   yellow mannequins in blue hard hats on grey chairs, facing you.
+3. Empty trigger on the left — nothing should move.
+4. `b_button` right — `read_state` reports `toolEquipped: true`, and
+   `b_button` again reports false. Summon it once more for the build.
+5. Carry the palm with the left hand to its socket, release with trigger.
+6. `pose` the right hand so the tip touches a screw site and `wait_ms`;
+   the screw drives with no trigger press. Repeat until the queue moves.
+7. `a_button` right press + release to open the menu, `screenshot`,
    press again to close. The menu exposes reset, undo and redo with
-   step counts, movement settings, and the filament palette. Hovering
-   each button with a pointer ray must brighten it.
-7. If a full build was completed, wait for the completion splash with
+   step counts, movement settings, the filament palette, and the
+   controls footer. Hovering each button with a pointer ray must
+   brighten it.
+8. If a full build was completed, wait for the completion splash with
    REBUILD, hold out its gate, press REBUILD with the pointer ray and
    trigger, and confirm the queue restarts at the palm.
-8. `page_errors` — should be empty at every step.
+9. `page_errors` — should be empty at every step.

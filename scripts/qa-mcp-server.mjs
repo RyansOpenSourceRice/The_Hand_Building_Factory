@@ -33,8 +33,10 @@ function stickLayout(hand) {
   };
   if (hand === 'left') {
     components['x-button'] = component('button', 4);
+    components['y-button'] = component('button', 5);
   } else {
     components['a-button'] = component('button', 4);
+    components['b-button'] = component('button', 5);
   }
   return {
     components,
@@ -207,6 +209,8 @@ async function readState() {
       screwSites: debug.sites(),
       driverTip: debug.tip(),
       driverCenter: debug.driverCenter(),
+      toolEquipped: debug.toolEquipped(),
+      toolVisible: debug.toolVisible(),
     };
   });
 }
@@ -232,7 +236,8 @@ const TOOLS = [
     name: 'read_state',
     description: 'Snapshot of the game state: status text, announced ' +
       'part, viewer yaw, controller world poses, active part center, ' +
-      'screw sites, screwdriver tip and center. World space: +x right, ' +
+      'screw sites, screwdriver tip and center, and whether the ' +
+      'screwdriver is equipped or visible. World space: +x right, ' +
       '+y up, +z toward the player.',
     inputSchema: {type: 'object', properties: {}},
   },
@@ -308,7 +313,22 @@ const TOOLS = [
   {
     name: 'squeeze',
     description: 'Set a grip value (1 = squeeze, 0 = release). ' +
-      'Grip only drops a held item; empty-hand squeezes do nothing.',
+      'Grip drops a held part or stows the screwdriver; empty-hand ' +
+      'squeezes do nothing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        side: {enum: ['left', 'right']},
+        value: {type: 'number'},
+      },
+      required: ['side', 'value'],
+    },
+  },
+  {
+    name: 'b_button',
+    description: 'Press the tool button (B on the right controller, ' +
+      'Y on the left): 1 = press, 0 = release. Summons or stows the ' +
+      'screwdriver.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -395,6 +415,11 @@ async function callTool(name, args) {
       const side = sideArg(args);
       await setController(side, {squeeze: numberArg(args, 'value')});
       return {content: [{type: 'text', text: `${side} squeeze set`}]};
+    }
+    case 'b_button': {
+      const side = sideArg(args);
+      await setController(side, {bButton: numberArg(args, 'value')});
+      return {content: [{type: 'text', text: `${side} b-button set`}]};
     }
     case 'a_button': {
       const side = sideArg(args);

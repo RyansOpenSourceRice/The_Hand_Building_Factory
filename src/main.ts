@@ -118,7 +118,6 @@ async function boot(): Promise<void> {
       reducedMotion,
   );
   const driver = new Screwdriver(scene);
-  driver.show();
   initSfx(scene);
   const music = new MusicLoop(scene);
   let audioArmed = false;
@@ -151,7 +150,16 @@ async function boot(): Promise<void> {
       window.setTimeout(() => splash.show(true), 2500);
     }
   };
-  driver.onDropped = () => partDrop();
+  stage.onDropped = () => partDrop();
+  const toggleDriver = (): void => {
+    if (driver.isEquipped() || driver.isVisible()) {
+      driver.holster();
+      hud.setStatus('Screwdriver put away.');
+      return;
+    }
+    driver.show();
+    hud.setStatus('Screwdriver ready. Drag it to a screw.');
+  };
   const hud = new Hud({
     reset: () => stage.reset(),
     undo: () => stage.undo(),
@@ -163,6 +171,10 @@ async function boot(): Promise<void> {
       armAudio();
       settings.toggleMuted();
     },
+    toggleTool: () => {
+      armAudio();
+      toggleDriver();
+    },
   });
   stage.onStatus = (text) => hud.setStatus(text);
   stage.onPartInfo = (info) => hud.setPartInfo(info);
@@ -171,6 +183,7 @@ async function boot(): Promise<void> {
   const splash = new CreditSplash(scene, {
     rebuild: () => {
       xrGrabControls?.releaseAll();
+      driver.holster();
       stage.restart();
       armAudio();
     },
@@ -223,6 +236,12 @@ async function boot(): Promise<void> {
   };
 
   window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyT' && !e.repeat &&
+        !(e.ctrlKey || e.metaKey || e.altKey)) {
+      armAudio();
+      toggleDriver();
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey)) {
       return;
     }
@@ -241,7 +260,15 @@ async function boot(): Promise<void> {
   });
   const xr = await initXr(scene, env.ground);
   if (xr) {
-    xrGrabControls = attachXrGrab(xr, stage, driver, scene);
+    xrGrabControls = attachXrGrab(xr, stage, driver, scene, {
+      blocked: () => splash.isVisible(),
+      onToolChanged: (equipped) => {
+        armAudio();
+        hud.setStatus(equipped ?
+            'Screwdriver ready. Touch the tip to a screw.' :
+            'Screwdriver put away. Press B or Y to bring it back.');
+      },
+    });
     attachXrLocomotion(xr, settings, scene, reportCamera);
     attachHeightControl(xr, scene, reducedMotion);
     handRepMaterial = attachControllerHands(
@@ -315,10 +342,13 @@ async function boot(): Promise<void> {
       splashVisible: () => boolean;
       splashGated: () => boolean;
       splashSkip: () => void;
+      splashRegate: () => void;
       splashRebuild: () => void;
       splashBg: () => string;
       splashPos: () => number[];
       splashCam: () => number[];
+      toolEquipped: () => boolean;
+      toolVisible: () => boolean;
       hudBg: () => Record<string, string>;
       menuBg: () => Record<string, string>;
     };
@@ -384,10 +414,13 @@ async function boot(): Promise<void> {
     splashVisible: () => splash.isVisible(),
     splashGated: () => splash.gateElapsed(),
     splashSkip: () => splash.debugSkip(),
+    splashRegate: () => splash.debugRegate(),
     splashRebuild: () => splash.debugRebuild(),
     splashBg: () => splash.buttonBackground(),
     splashPos: () => splash.debugPosition(),
     splashCam: () => splash.debugCam(),
+    toolEquipped: () => driver.isEquipped(),
+    toolVisible: () => driver.isVisible(),
     hudBg: () => hud.buttonBackgrounds(),
     menuBg: () => vrMenu?.buttonBackgrounds() ?? {},
   };

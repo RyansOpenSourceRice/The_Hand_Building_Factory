@@ -758,9 +758,6 @@ function buildGrandHall(scene: Scene): void {
   const steelMat = machineMat(scene, 'hallSteelMat', '#7c8694', '#20252d');
   const yellowMat = machineMat(scene, 'hallYellowMat', '#d9a622', '#4a3a0c');
   const darkMat = machineMat(scene, 'hallDarkMat', '#2a2f3e', '#05070c');
-  const crowdMat = new StandardMaterial('crowdMat', scene);
-  crowdMat.diffuseColor = new Color3(0.75, 0.72, 0.66);
-  crowdMat.specularColor = Color3.Black();
 
   const floor = MeshBuilder.CreateGround(
       'hallFloor', {width: HALL_HALF_WIDTH * 2, height: 19.8}, scene);
@@ -935,82 +932,137 @@ function buildGrandHall(scene: Scene): void {
   podiumTop.position.set(1.6, 1.72, -21.6);
   podiumTop.material = yellowMat;
 
+  const seatMat = machineMat(scene, 'crowdSeatMat', '#6d7480', '#1e2229');
+  const tierMat = machineMat(scene, 'crowdTierMat', '#565c66', '#181b20');
+  const figureMat = new StandardMaterial('crowdFigureMat', scene);
+  figureMat.diffuseColor = Color3.FromHexString('#d9a622');
+  figureMat.emissiveColor = new Color3(0.12, 0.09, 0.02);
+  figureMat.specularColor = Color3.Black();
+  const hatMat = new StandardMaterial('crowdHatMat', scene);
+  hatMat.diffuseColor = Color3.FromHexString('#2f6fd0');
+  hatMat.emissiveColor = new Color3(0.03, 0.08, 0.2);
+  hatMat.specularColor = new Color3(0.08, 0.1, 0.14);
+
+  const part = (
+      name: string,
+      width: number,
+      height: number,
+      depth: number,
+      x: number,
+      y: number,
+      z: number,
+  ): Mesh => {
+    const box = MeshBuilder.CreateBox(
+        name, {width, height, depth}, scene);
+    box.position.set(x, y, z);
+    return box;
+  };
+
+  const head = (name: string, y: number, z = 0): Mesh => {
+    const sphere = MeshBuilder.CreateSphere(
+        name, {diameter: 0.17, segments: 8}, scene);
+    sphere.position.set(0, y, z);
+    return sphere;
+  };
+
+  const buildSeatedFigure = (name: string): Mesh | null =>
+    Mesh.MergeMeshes([
+      part(`${name}-lap`, 0.34, 0.2, 0.42, 0, 0.02, 0.08),
+      part(`${name}-torso`, 0.36, 0.46, 0.22, 0, 0.35, 0),
+      part(`${name}-armL`, 0.1, 0.32, 0.12, -0.23, 0.32, 0.02),
+      part(`${name}-armR`, 0.1, 0.32, 0.12, 0.23, 0.32, 0.02),
+      head(`${name}-head`, 0.69, 0.01),
+    ], true, true);
+
+  const buildStandingFigure = (name: string): Mesh | null =>
+    Mesh.MergeMeshes([
+      part(`${name}-legL`, 0.12, 0.78, 0.16, -0.09, 0.39, 0),
+      part(`${name}-legR`, 0.12, 0.78, 0.16, 0.09, 0.39, 0),
+      part(`${name}-torso`, 0.36, 0.46, 0.22, 0, 1.01, 0),
+      part(`${name}-armL`, 0.1, 0.42, 0.12, -0.23, 0.98, 0),
+      part(`${name}-armR`, 0.1, 0.42, 0.12, 0.23, 0.98, 0),
+      head(`${name}-head`, 1.35),
+    ], true, true);
+
+  const buildHat = (name: string): Mesh | null => {
+    const dome = MeshBuilder.CreateSphere(
+        `${name}-dome`, {diameter: 0.21, segments: 10}, scene);
+    dome.scaling.y = 0.62;
+    dome.position.set(0, 0.045, 0);
+    return Mesh.MergeMeshes([dome,
+      MeshBuilder.CreateCylinder(
+          `${name}-brim`, {diameter: 0.3, height: 0.02}, scene,
+      )], true, true);
+  };
+
   const seat = Mesh.MergeMeshes([
-    MeshBuilder.CreateBox('crowdSeat', {width: 0.44, height: 0.05, depth: 0.42},
-        scene),
-    MeshBuilder.CreateBox('crowdBack', {width: 0.44, height: 0.5, depth: 0.05},
-        scene),
+    part('crowdSeat', 0.46, 0.06, 0.44, 0, 0, 0),
+    part('crowdBack', 0.46, 0.5, 0.06, 0, 0.28, -0.21),
   ], true, true);
-  const figure = Mesh.MergeMeshes([
-    MeshBuilder.CreateSphere('crowdHead', {diameter: 0.16, segments: 6},
-        scene),
-    MeshBuilder.CreateBox(
-        'crowdTorse', {width: 0.3, height: 0.44, depth: 0.2}, scene),
-  ], true, true);
-  if (seat && figure) {
-    seat.setEnabled(false);
-    figure.setEnabled(false);
-    seat.material = machineMat(scene, 'crowdSeatMat', '#3e5a78', '#101c2a');
-    figure.material = crowdMat;
-    const colors: number[] = [];
-    const palette = FILAMENT_COLORS.map((color) => {
-      const c = Color3.FromHexString(color.hex);
-      return [c.r, c.g, c.b];
-    });
-    const toneAt = (index: number): [number, number, number] => {
-      const tone = palette[index % palette.length] ?? [0.6, 0.6, 0.6];
-      return [tone[0] ?? 0.6, tone[1] ?? 0.6, tone[2] ?? 0.6];
-    };
+  const seated = buildSeatedFigure('crowdSeated');
+  const standing = buildStandingFigure('crowdStanding');
+  const hat = buildHat('crowdHat');
+
+  if (seat && seated && standing && hat) {
+    seat.material = seatMat;
+    seated.material = figureMat;
+    standing.material = figureMat;
+    hat.material = hatMat;
+    for (const source of [seat, seated, standing, hat]) {
+      source.setEnabled(false);
+    }
+
+    let seatIndex = 0;
+    let figureIndex = 0;
+    let hatIndex = 0;
     for (let row = 0; row < 9; row++) {
+      const tierTop = 0.42 + row * 0.24;
+      const z = -10.7 - row * 0.92;
+      const tier = part(`crowdTier${row}`, 13.2, tierTop, 1.0, 0,
+          tierTop / 2, z);
+      tier.material = tierMat;
       for (let col = 0; col < 15; col++) {
         const x = -5.25 + col * 0.75 + (row % 2) * 0.15;
-        const z = -12.6 - row * 0.85;
-        seat.thinInstanceAdd(Matrix.Compose(
-            Vector3.One(),
-            Quaternion.Identity(),
-            new Vector3(x, 0.28, z),
-        ));
-        figure.thinInstanceAdd(Matrix.Compose(
-            Vector3.One(),
-            Quaternion.Identity(),
-            new Vector3(x, 0.78, z - 0.06),
-        ));
-        const [tr, tg, tb] = toneAt(row * 7 + col * 3);
-        const shade = 0.75 + ((row * 13 + col * 5) % 5) * 0.08;
-        colors.push(tr * shade, tg * shade, tb * shade, 1);
+        seat.createInstance(`crowdSeatInstance${seatIndex++}`)
+            .position.set(x, tierTop + 0.03, z);
+        seated.createInstance(`crowdFigureInstance${figureIndex++}`)
+            .position.set(x, tierTop + 0.06, z - 0.02);
+        hat.createInstance(`crowdHatInstance${hatIndex++}`)
+            .position.set(x, tierTop + 0.78, z - 0.02);
       }
     }
     for (let row = 0; row < 2; row++) {
+      const z = -20.4 - row * 0.95;
       for (let col = 0; col < 10; col++) {
-        const x = -4 + col * 0.85;
-        const z = -20.6 - row * 0.85;
-        figure.thinInstanceAdd(Matrix.Compose(
-            Vector3.One(),
-            Quaternion.Identity(),
-            new Vector3(x, 0.62, z),
-        ));
-        const [tr, tg, tb] = toneAt(row * 5 + col * 7);
-        const shade = 0.7 + ((row * 11 + col * 3) % 5) * 0.08;
-        colors.push(tr * shade, tg * shade, tb * shade, 1);
+        const x = -4.05 + col * 0.9;
+        standing.createInstance(`crowdFigureInstance${figureIndex++}`)
+            .position.set(x, 0, z);
+        hat.createInstance(`crowdHatInstance${hatIndex++}`)
+            .position.set(x, 1.44, z);
       }
     }
-    figure.thinInstanceSetBuffer('color', new Float32Array(colors), 4);
   }
 
-  const walkers: Mesh[] = [];
-  if (figure) {
-    for (let i = 0; i < 3; i++) {
-      const walker = figure.createInstance(`crowdWalker${i}`);
-      walkers.push(walker as unknown as Mesh);
+  const walkers: Array<{body: Mesh}> = [];
+  for (let i = 0; i < 3; i++) {
+    const body = buildStandingFigure(`crowdWalker${i}`);
+    const cap = buildHat(`crowdWalkerHat${i}`);
+    if (!body || !cap) {
+      continue;
     }
+    body.material = figureMat;
+    cap.material = hatMat;
+    cap.parent = body;
+    cap.position.set(0, 1.44, 0);
+    walkers.push({body});
   }
   scene.onBeforeRenderObservable.add(() => {
     const t = performance.now() / 1000;
     walkers.forEach((walker, i) => {
       const phase = (t * 0.35 + i * 0.33) % 1;
-      const z = -9.5 - phase * 2.5;
-      const x = i === 0 ? -6.8 : i === 1 ? 6.6 : -0.4 + Math.sin(t + i) * 0.3;
-      walker.position.set(x, 0.62, z);
+      const z = -8.7 - phase * 1.5;
+      const x = i === 0 ? -6.4 : i === 1 ? 6.2 : -0.4 + Math.sin(t + i) * 0.3;
+      walker.body.position.set(x, 0, z);
     });
   });
 
@@ -1170,8 +1222,8 @@ function buildWarehouse(scene: Scene): void {
   front.position.set(0, WALL_HEIGHT / 2, WALL_Z);
   front.material = wallMat;
   const opening = MeshBuilder.CreateBox(
-      'warehouseBack', {width: 24, depth: 0.2, height: 1.1}, scene);
-  opening.position.set(0, 0.55, -WALL_Z);
+      'warehouseBack', {width: 24, depth: 0.2, height: 0.85}, scene);
+  opening.position.set(0, 0.425, -WALL_Z);
   opening.material = wallMat;
   const sideSpec = {width: 0.2, depth: 16.6, height: WALL_HEIGHT};
   for (const [name, x] of [['warehouseLeft', -12],
@@ -1208,19 +1260,23 @@ function buildWarehouse(scene: Scene): void {
     post.material = steelMat;
   }
 
+  const pendantTop = railY + 1;
+  const pendantShadeY = 2.9;
+  const pendantCordHeight = pendantTop - pendantShadeY;
   for (const x of [-2, 0, 2]) {
     const cord = MeshBuilder.CreateCylinder(
-        `warehouseCord${x}`, {diameter: 0.02, height: 1.2}, scene);
-    cord.position.set(x, railY - 0.6, 0.5);
+        `warehouseCord${x}`, {diameter: 0.02, height: pendantCordHeight},
+        scene);
+    cord.position.set(x, pendantTop - pendantCordHeight / 2, 0.5);
     cord.material = steelMat;
     const shade = MeshBuilder.CreateCylinder(
         `warehouseShade${x}`, {diameterTop: 0.08, diameterBottom: 0.3,
           height: 0.18}, scene);
-    shade.position.set(x, railY - 1.3, 0.5);
+    shade.position.set(x, pendantShadeY, 0.5);
     shade.material = steelMat;
     const bulb = MeshBuilder.CreateSphere(
         `warehouseBulb${x}`, {diameter: 0.12}, scene);
-    bulb.position.set(x, railY - 1.42, 0.5);
+    bulb.position.set(x, pendantShadeY - 0.1, 0.5);
     bulb.material = bulbMat;
   }
 
@@ -1343,15 +1399,6 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
       machineMat(scene, 'pedestalBaseMat', '#2a2f3e', '#05070c');
   accentRing.material =
       machineMat(scene, 'pedestalAccentMat', '#2e8d7c', '#0b4a3e');
-
-  const curtainMat = new StandardMaterial('curtainMat', scene);
-  curtainMat.diffuseColor = new Color3(0.42, 0.1, 0.14);
-  curtainMat.emissiveColor = new Color3(0.09, 0.02, 0.03);
-  curtainMat.specularColor = new Color3(0.0, 0.0, 0.0);
-  const curtain =
-      MeshBuilder.CreatePlane('curtain', {width: 14, height: 5.5}, scene);
-  curtain.position.set(0, 2.75, -3.4);
-  curtain.material = curtainMat;
 
   const printerBed = buildPrinter(scene);
   buildPrinterBench(scene);
