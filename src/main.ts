@@ -427,6 +427,7 @@ async function boot(): Promise<void> {
       toolEquipped: () => boolean;
       toolVisible: () => boolean;
       toolParent: () => string;
+      controllerMotion: (hand: string) => boolean;
       arrowCount: () => number;
       audienceCount: () => number;
       partColor: (id: string) => string;
@@ -517,6 +518,9 @@ async function boot(): Promise<void> {
     toolEquipped: () => driver.isEquipped(),
     toolVisible: () => driver.isVisible(),
     toolParent: () => driver.mesh.parent?.name ?? '',
+    controllerMotion: (hand) =>
+      !!xr?.input.controllers.find(
+          (ctrl) => ctrl.inputSource.handedness === hand)?.motionController,
     arrowCount: () => stage.arrowCount(),
     audienceCount: () => AUDIENCE_COUNT,
     partColor: (id) => stage.partColor(id),

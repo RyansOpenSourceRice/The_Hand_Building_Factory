@@ -140,13 +140,15 @@ export function setHandTint(material: StandardMaterial, tint: Color3): void {
   material.emissiveColor = tint.scale(EMISSIVE_SHARE);
 }
 
+type MotionHand = {
+  getComponentOfType: (
+      type: MotionControllerComponentType,
+  ) => WebXRControllerComponent | null;
+};
+
 type ActiveHand = {
   controller: WebXRInputSource;
-  motion: {
-    getComponentOfType: (
-        type: MotionControllerComponentType,
-    ) => WebXRControllerComponent | null;
-  };
+  motion: MotionHand | null;
   hand: {root: TransformNode; pose: HandPose; dispose: () => void};
 };
 
@@ -176,19 +178,27 @@ export function attachControllerHands(
   material.alpha = HAND_REP_ALPHA;
   setHandTint(material, handRepTint(colorIndex));
 
-  const active = new Map<'left' | 'right', ActiveHand>();
+  const active = new Map<WebXRInputSource, ActiveHand>();
+
+  const ensure = (controller: WebXRInputSource): ActiveHand => {
+    const existing = active.get(controller);
+    if (existing) {
+      return existing;
+    }
+    const handedness =
+        controller.inputSource.handedness === 'left' ? 'left' : 'right';
+    const side = handedness === 'left' ? -1 : 1;
+    const hand = buildHand(side, material, scene);
+    hand.root.name = `handRep-${handedness}`;
+    const entry: ActiveHand = {controller, motion: null, hand};
+    active.set(controller, entry);
+    return entry;
+  };
 
   const attach = (controller: WebXRInputSource): void => {
+    ensure(controller);
     controller.onMotionControllerInitObservable.add((motion) => {
-      const handedness = motion.handedness === 'left' ? 'left' : 'right';
-      const previous = active.get(handedness);
-      if (previous) {
-        previous.hand.dispose();
-      }
-      const side = handedness === 'left' ? -1 : 1;
-      const hand = buildHand(side, material, scene);
-      hand.root.name = `handRep-${handedness}`;
-      active.set(handedness, {controller, motion, hand});
+      ensure(controller).motion = motion;
     });
   };
 
@@ -198,11 +208,10 @@ export function attachControllerHands(
   xr.input.onControllerAddedObservable.add(attach);
 
   xr.input.onControllerRemovedObservable.add((controller) => {
-    for (const [handedness, entry] of active) {
-      if (entry.controller === controller) {
-        entry.hand.dispose();
-        active.delete(handedness);
-      }
+    const entry = active.get(controller);
+    if (entry) {
+      entry.hand.dispose();
+      active.delete(controller);
     }
   });
 
@@ -220,21 +229,14 @@ export function attachControllerHands(
           entry.hand.root.position,
           undefined,
       );
-      const trigger = entry.motion.getComponentOfType('trigger');
-      const squeeze = entry.motion.getComponentOfType('squeeze');
+      const trigger = entry.motion?.getComponentOfType('trigger');
+      const squeeze = entry.motion?.getComponentOfType('squeeze');
       entry.hand.pose(trigger?.value ?? 0, squeeze?.value ?? 0);
     }
   });
 
   return {
     material,
-    rootFor: (controller) => {
-      for (const entry of active.values()) {
-        if (entry.controller === controller) {
-          return entry.hand.root;
-        }
-      }
-      return null;
-    },
+    rootFor: (controller) => ensure(controller).hand.root,
   };
 }

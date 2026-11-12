@@ -75,6 +75,12 @@ test.describe('xr credit splash (chromium + mock navigator.xr)', () => {
         undefined,
         {timeout: 20_000},
     );
+    await page.waitForFunction(
+        () => window.factoryDebug!.controllerMotion('left') &&
+            window.factoryDebug!.controllerMotion('right'),
+        undefined,
+        {timeout: 10_000},
+    );
     await page.waitForTimeout(500);
   });
 
