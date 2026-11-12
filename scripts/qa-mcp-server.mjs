@@ -213,6 +213,9 @@ async function readState() {
       toolVisible: debug.toolVisible(),
       toolParent: debug.toolParent(),
       arrowCount: debug.arrowCount(),
+      guidance: debug.guidance(),
+      voice: debug.voice(),
+      hostGlow: debug.hostGlow(),
       audienceCount: debug.audienceCount(),
       perf: debug.perf(),
       audio: debug.audio(),
@@ -244,8 +247,9 @@ const TOOLS = [
       'part, viewer yaw, controller world poses, active part center, ' +
       'screw sites, screwdriver tip and center, whether the screwdriver ' +
       'is equipped or visible and what it is parented to, guide arrow ' +
-      'count, audience count, audio state, render stats, and the last ' +
-      'runtime error. World space: +x right, +y up, +z toward the player.',
+      'count, guidance, voice, host glow, audience count, audio state, ' +
+      'render stats, and the last runtime error. World space: +x right, ' +
+      '+y up, +z toward the player.',
     inputSchema: {type: 'object', properties: {}},
   },
   {

@@ -37,7 +37,7 @@ an error instead of guessing.
 
 | Tool          | Arguments | What it does |
 |---------------|-----------|--------------|
-| `read_state`  | none      | Game state snapshot: status text, active part, camera, pointer poses, pointer rotations, active part center, screw sites, driver tip and center, tool parent, guide arrow count, audience count, audio and render stats, the last runtime error, and raw mock controller state. |
+| `read_state`  | none      | Game state snapshot: status text, active part, camera, pointer poses, pointer rotations, active part center, screw sites, driver tip and center, tool parent, guide arrow count, guidance board text, voice state, host glow id, audience count, audio and render stats, the last runtime error, and raw mock controller state. |
 | `screenshot`  | none      | PNG capture of the game view, base64 encoded. |
 | `wait_ms`     | `ms`      | Sleep up to 5000 ms. Use after squeezes to let drops settle. |
 | `pose`        | `side` (`left`/`right`), `pos` `[x,y,z]`, `yaw`, `pitch` | Move a controller in world space. |
@@ -85,12 +85,20 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
 - Confirm the audience: look over the barrier and check for **two rows
   of six** yellow mannequins in blue hard hats on grey chairs, facing
   you. `read_state.audienceCount` must be 12.
-- The yellow guide arrows are part of the game, not decoration. One
-  bobs over each undriven screw, and one bobs over the next part at its
-  printer or conveyor until it is grabbed. `arrowCount` should equal the
-  remaining screws, plus one while a part is waiting to be picked up.
+- The yellow guide arrows are part of the game, not decoration. Two
+  arrows show while a part waits: one over the part and one over its
+  blue destination. Both stay while it is carried, then the arrows switch
+  to one over each undriven screw. `arrowCount` is 2 before and during
+  the carry, then equals the remaining screws.
 - The five blue blocks are the motors: wrist, index, middle, ring, and
   little. Their status labels say "motor".
+- `read_state.guidance` must name the step, the route, and progress. It
+  reads `PLACE THE PALM` / `PRINTER TO THE STAND` / `PALM` at boot.
+- `read_state.hostGlow` is `stand` while the palm waits, then a part id
+  while a later part waits, and empty while screws are being driven.
+- `read_state.voice` reports the current line, the last line, and play
+  counts. `plays.intro` must be 1; `plays["screw-palm"]` and
+  `plays["phase-motors"]` must each appear once the build reaches them.
 - Audio is fixed to the deployment base path. `read_state.audio` must
   report `base: "./"` on Pages, `musicReady: true`, and (after a click
   or controller press) `state: "running"`. Every `/audio/` response
@@ -122,9 +130,10 @@ A full pass lives in the repository history and follows this shape:
    2 for the upper cover, 1 for single-screw parts. Check
    `read_state.audienceCount` is 12 and `read_state.audio.musicReady` is
    true.
-8. The narrator should name the palm, its printer pickup, and its
-   landing spot; music ducks while it speaks. Mute with SOUND and confirm
-   both voice and effects stop.
+8. The narrator should give the grouped palm line, name the stand when
+   the screws start, then move to the motors line. `read_state.voice`
+   shows `plays.intro: 1`. Music ducks while it speaks. Mute with SOUND
+   and confirm both voice and effects stop; the status board remains.
 9. `a_button` right press + release to open the menu, `screenshot`,
    press again to close. The menu exposes reset, undo and redo with
    step counts, movement settings, the filament palette, and the

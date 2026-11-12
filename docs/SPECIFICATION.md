@@ -2,7 +2,7 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.12.3)
+## Current behavior (release 2026.11.12.4)
 
 - A warehouse workshop opens through a low north sill onto a grand
   factory hall, generated almost entirely in code. The workshop keeps the
@@ -68,10 +68,20 @@ What HANDS ON! does, milestone by milestone.
   the menu names the trigger, grip, B/Y tool, and A/X menu bindings.
   While a splash is up, A and X skip the splash instead of toggling the
   menu.
-- The game speaks short pre-rendered lines: a welcome, each part's name
-  and destination, the mount prompt, tool on and off, the arrow hint,
-  completion, rebuild, and the menu hint. Music ducks under speech. All
-  narration is muted by the SOUND button with the sound effects.
+- A compact in-world status board floats above the hand stand. Three
+  lines show the current action, the source and destination, and
+  progress (for example `PLACE THE MIDDLE MOTOR`,
+  `CONVEYOR TO THE BACK OF THE HAND`, `MOTORS 2 OF 5`). The board hides
+  during splashes and the in-headset menu.
+- The game speaks grouped pre-rendered lines: a welcome, then one line
+  per phase (palm, five motors, thumb base, four fingers, thumb
+  segments, cover), and one screw line per phase that names the host
+  ("Drive the four screws into the stand"). Switching the screwdriver
+  on during a screw step repeats the host. A new line stops the previous
+  one; a watchdog clears a line whose end event is lost. After 25 silent
+  seconds the current line repeats once. Music ducks under speech. All
+  narration is muted by the SOUND button with the sound effects, while
+  the status board still shows the step.
 - A credits splash shows right after boot and again after the hand is
   complete. It lists the Yeah Hand model source, its CERN Open Hardware
   Licence 2 - Strongly Reciprocal licence, and the modification credit.
@@ -83,9 +93,11 @@ What HANDS ON! does, milestone by milestone.
   dismisses a splash never also toggles the menu. The completion splash
   adds REBUILD, which drops anything held and starts the build over
   from the palm with an empty undo and redo history.
-- After a part snaps in, screws stick out of it. A bobbing yellow arrow
-  hovers over each screw that still needs driving, and another floats
-  over the next part at the printer or conveyor until it is picked up.
+- Before a part is seated, the host it belongs to glows softly and a
+  guide arrow marks the part and its blue destination. Both arrows keep
+  one fixed size, draw through geometry, and follow the carried part.
+  After a part snaps in, screws sit on its surface and a bobbing yellow
+  arrow marks each screw that still needs driving.
   Press B (right) or Y (left) to summon the orange screwdriver into that
   hand; press again or squeeze to stow it. The screwdriver never falls,
   so it cannot be lost.

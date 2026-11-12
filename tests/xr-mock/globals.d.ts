@@ -26,6 +26,23 @@ interface FactoryDebug {
   toolParent: () => string;
   controllerMotion: (hand: string) => boolean;
   arrowCount: () => number;
+  activeBounds: () => number[][];
+  activeTransform: () => {pos: number[]; quat: number[]};
+  guidance: () => {
+    title: string;
+    detail: string;
+    progress: string;
+    visible: boolean;
+  };
+  voice: () => {
+    current: string;
+    lastKey: string;
+    lastText: string;
+    speaking: boolean;
+    muted: boolean;
+    plays: Record<string, number>;
+  };
+  hostGlow: () => string;
   audienceCount: () => number;
   partColor: (id: string) => string;
   selectTheme: (slot: 'primary' | 'secondary' | 'tertiary',

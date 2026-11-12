@@ -61,12 +61,12 @@ and makes no AI service calls.
 
 - Model: `speechify/simba-3.5` (voice `geffen_32`), accessed through
   OpenRouter.
-- Used for: the narrator clips in `public/audio/voice/`. Each clip names
-  a part and where it goes, or narrates a key event (welcome, tool,
-  completion, rebuild). They are generated once by
-  `scripts/gen-voice.mjs`, trimmed, loudness-normalized, and encoded as
-  mono 24 kHz OGG Vorbis (about 600 KB total). The game never calls the
-  service at runtime.
+- Used for: the narrator clips in `public/audio/voice/`. Phase clips
+  name a part group and its host; screw clips name the host; the rest
+  narrate key events (welcome, tool, completion, rebuild). They are
+  generated once by `scripts/gen-voice.mjs`, trimmed,
+  loudness-normalized, and encoded as mono 24 kHz OGG Vorbis (about
+  400 KB total). The game never calls the service at runtime.
 - Policy: the [asset approval rule](../AGENTS.md) applies; Ryan asked
   for this narrator and chose the model and voice before it was wired
   in.

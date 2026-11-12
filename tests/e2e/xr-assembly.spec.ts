@@ -189,6 +189,27 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
       async ({page}) => {
         test.setTimeout(330_000);
 
+        await expect.poll(
+            () => page.evaluate(
+                () => window.factoryDebug!.guidance().visible),
+            {timeout: 4_000}).toBe(true);
+        await expect.poll(
+            () => page.evaluate(
+                () => window.factoryDebug!.guidance().title),
+            {timeout: 4_000}).toBe('PLACE THE PALM');
+        await expect.poll(
+            () => page.evaluate(
+                () => window.factoryDebug!.arrowCount()),
+            {timeout: 4_000}).toBe(2);
+        await expect.poll(
+            () => page.evaluate(
+                () => window.factoryDebug!.hostGlow()),
+            {timeout: 4_000}).toBe('stand');
+        await expect.poll(
+            () => page.evaluate(
+                () => window.factoryDebug!.voice().plays['intro'] ?? 0),
+            {timeout: 6_000}).toBe(1);
+
         await setWorldPose(page, 'right', TOOL_POSE, 0, TOOL_POSE_PITCH);
         expect(await page.evaluate(
             () => window.factoryDebug!.audienceCount())).toBe(12);
@@ -258,6 +279,16 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
             await page.waitForTimeout(150);
           }
           expect(held).toBe(true);
+          if (id === 'palm') {
+            await expect.poll(
+                () => page.evaluate(
+                    () => window.factoryDebug!.arrowCount()),
+                {timeout: 4_000}).toBe(2);
+            await expect.poll(
+                () => page.evaluate(
+                    () => window.factoryDebug!.guidance().title),
+                {timeout: 4_000}).toBe('CARRY THE PALM');
+          }
 
           await setWorldPose(page, 'left', releasePtr);
           await page.waitForTimeout(350);
@@ -270,6 +301,19 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
                 () => page.evaluate(
                     () => window.factoryDebug!.arrowCount()),
                 {timeout: 4_000}).toBe(4);
+            await expect.poll(
+                () => page.evaluate(
+                    () => window.factoryDebug!.guidance().title),
+                {timeout: 4_000}).toBe('DRIVE THE SCREWS');
+            await expect.poll(
+                () => page.evaluate(
+                    () => window.factoryDebug!.hostGlow()),
+                {timeout: 4_000}).toBe('');
+            await expect.poll(
+                () => page.evaluate(
+                    () => window.factoryDebug!.voice()
+                        .plays['screw-palm'] ?? 0),
+                {timeout: 6_000}).toBeGreaterThan(0);
           }
 
           for (let rounds = 0; rounds < 14; rounds++) {
@@ -285,6 +329,13 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
           }
           if ((await sites(page)).length > 0) {
             throw new Error(`failed to drive screws for ${id}`);
+          }
+          if (id === 'palm') {
+            await expect.poll(
+                () => page.evaluate(
+                    () => window.factoryDebug!.voice()
+                        .plays['phase-motors'] ?? 0),
+                {timeout: 6_000}).toBeGreaterThan(0);
           }
           await page.waitForTimeout(300);
         }

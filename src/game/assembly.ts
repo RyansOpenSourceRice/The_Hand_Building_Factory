@@ -13,7 +13,7 @@ import type {PhysicsBody} from '@babylonjs/core/Physics/v2/physicsBody';
 import {createScrew} from '../scene/screwMeshes';
 import {ArrowGuides} from './arrows';
 import {makeBoxBody} from '../scene/physics';
-import type {PartDef} from './handParts';
+import type {PartDef, PartSource} from './handParts';
 import {
   CONVEYOR_BELT_TOP,
   CONVEYOR_PATH,
@@ -55,6 +55,7 @@ type PartState = {
   homeQuat: Quaternion;
   socket: Vector3;
   socketQuat: Quaternion;
+  center: Vector3;
   screwsDone: number;
   history: Snapshot[];
   future: Snapshot[];
@@ -67,6 +68,21 @@ const SPAWN_DROP = 0.04;
 const SPAWN_FRAMES = 14;
 const SPAWN_RIDE_FRAMES = 72;
 const EMISSIVE_FLASH = 0.45;
+
+export type StageGuidance = {
+  label: string;
+  phase: string;
+  phaseIndex: number;
+  phaseTotal: number;
+  source: PartSource;
+  hostId: string;
+  hostLabel: string;
+  screwsDone: number;
+  screwCount: number;
+  snapped: boolean;
+  grabbing: boolean;
+  complete: boolean;
+};
 
 export class AssemblyStage {
   private readonly states: PartState[] = [];
@@ -88,8 +104,11 @@ export class AssemblyStage {
   onProgress: ((done: number, total: number) => void) | null = null;
   onDropped: (() => void) | null = null;
   onAnnounce: ((id: string) => void) | null = null;
+  onPhase: ((phase: string, total: number) => void) | null = null;
+  onGrab: (() => void) | null = null;
   onMounted:
-      ((screwCount: number, first: boolean) => void) | null = null;
+      ((screwCount: number, phase: string, hostLabel: string,
+        firstInPhase: boolean) => void) | null = null;
 
   constructor(
       scene: Scene,
@@ -116,6 +135,7 @@ export class AssemblyStage {
       );
       mesh.position.y = this.restHeight(def, mesh);
 
+      mesh.refreshBoundingInfo();
       const ghost = mesh.clone(`ghost:${def.id}`);
       ghost.material = this.ghostMaterial;
       ghost.isPickable = false;
@@ -143,6 +163,7 @@ export class AssemblyStage {
         homeQuat: mesh.rotationQuaternion.clone(),
         socket: ghost.position.clone(),
         socketQuat: ghost.rotationQuaternion.clone(),
+        center: mesh.getBoundingInfo().boundingBox.center.clone(),
         screwsDone: 0,
         history: [],
         future: [],
@@ -159,13 +180,18 @@ export class AssemblyStage {
             0.78 + Math.sin(performance.now() / 480) * 0.12;
       }
       if (state?.snap.isComplete) {
-        this.arrows.setPartPosition(null);
+        this.arrows.clearParts();
         this.arrows.setScrewTargets(
             this.screwSites(), this.remainingAxes(state));
-      } else {
+      } else if (state) {
         this.arrows.clearScrews();
-        this.arrows.setPartPosition(
-            this.grabbing ? null : state?.mesh.getAbsolutePosition() ?? null);
+        this.arrows.setPartTargets(
+            state.mesh.getAbsolutePosition(),
+            state.ghost.getAbsolutePosition(),
+        );
+      } else {
+        this.arrows.clearParts();
+        this.arrows.clearScrews();
       }
       this.arrows.tick(performance.now() / 1000);
     });
@@ -196,6 +222,54 @@ export class AssemblyStage {
     return material.diffuseColor.toHexString();
   }
 
+  guidance(): StageGuidance {
+    const state = this.states[this.current];
+    if (!state) {
+      return {
+        label: '',
+        phase: '',
+        phaseIndex: 0,
+        phaseTotal: 0,
+        source: 'printer',
+        hostId: '',
+        hostLabel: '',
+        screwsDone: 0,
+        screwCount: 0,
+        snapped: false,
+        grabbing: false,
+        complete: true,
+      };
+    }
+    const siblings = this.states.filter(
+        (entry) => entry.def.phase === state.def.phase);
+    return {
+      label: state.def.label,
+      phase: state.def.phase,
+      phaseIndex: siblings.indexOf(state) + 1,
+      phaseTotal: siblings.length,
+      source: state.def.source,
+      hostId: state.def.hostId,
+      hostLabel: state.def.hostLabel,
+      screwsDone: state.screwsDone,
+      screwCount: state.def.screwCount,
+      snapped: state.snap.isComplete,
+      grabbing: this.grabbing,
+      complete: false,
+    };
+  }
+
+  currentHostId(): string | null {
+    const state = this.states[this.current];
+    if (!state || state.snap.isComplete) {
+      return null;
+    }
+    return state.def.hostId;
+  }
+
+  hostMesh(id: string): Mesh | null {
+    return this.states.find((state) => state.def.id === id)?.mesh ?? null;
+  }
+
   activeCenter(): Vector3 {
     const {min, max} = this.active.mesh.getHierarchyBoundingVectors();
     return Vector3.Center(min, max);
@@ -223,6 +297,7 @@ export class AssemblyStage {
     }
     this.grabbing = true;
     this.grabbedBy = tag;
+    this.onGrab?.();
     this.setBodyMotion(state, PhysicsMotionType.ANIMATED);
     this.report(
         `Carrying the ${state.def.label}. ` +
@@ -523,10 +598,10 @@ export class AssemblyStage {
     if (!offset) {
       return Vector3.Zero();
     }
-    return this.toLocalNormal(
+    return state.center.add(this.toLocalNormal(
         state,
         new Vector3(offset.x, offset.y, offset.z),
-    );
+    ));
   }
 
   private screwAxis(state: PartState, index: number): Vector3 {
@@ -603,7 +678,14 @@ export class AssemblyStage {
         `${state.def.label} mounted. Press B or Y for the screwdriver, ` +
         `then touch its tip to each of the ${count} screws.`);
     this.onSnapped?.(tag);
-    this.onMounted?.(count, this.states.indexOf(state) === 0);
+    const siblings = this.states.filter(
+        (entry) => entry.def.phase === state.def.phase);
+    this.onMounted?.(
+        count,
+        state.def.phase,
+        state.def.hostLabel,
+        siblings[0] === state,
+    );
   }
 
   private advanceQueue(): void {
@@ -656,6 +738,11 @@ export class AssemblyStage {
     this.report(`Next part: the ${state.def.label}, at the ${source}.`);
     this.reportPartInfo(state);
     this.onAnnounce?.(state.def.id);
+    const siblings = this.states.filter(
+        (entry) => entry.def.phase === state.def.phase);
+    if (siblings[0] === state) {
+      this.onPhase?.(state.def.phase, siblings.length);
+    }
   }
 
   private rideConveyor(state: PartState): void {

@@ -60,7 +60,9 @@ export class MusicLoop {
         return;
       }
       this.sound.setVolume(this.ducked ? DUCK_VOLUME : VOLUME);
-      this.sound.play();
+      if (!this.sound.isPlaying) {
+        this.sound.play();
+      }
     } catch {
       return;
     }

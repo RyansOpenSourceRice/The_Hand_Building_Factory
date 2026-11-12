@@ -32,7 +32,10 @@ import {
 } from './audio/sfx';
 import {MusicLoop} from './audio/music';
 import {VoicePlayer} from './audio/voice';
-import {partVoiceKey} from './audio/voiceLines';
+import type {VoiceState} from './audio/voice';
+import {phaseVoiceKey, screwVoiceKey} from './audio/voiceLines';
+import {Guidance} from './ui/guidance';
+import {HostGlow} from './scene/hostGlow';
 import {SettingsStore} from './game/settings';
 import type {ThemeSlot} from './game/palette';
 import {
@@ -128,31 +131,42 @@ async function boot(): Promise<void> {
   const music = new MusicLoop(scene);
   const voice = new VoicePlayer(
       scene, (speaking) => music.setDucked(speaking));
+  const guidance = new Guidance(scene);
+  const hostGlow = new HostGlow();
   let voiceArmed = false;
-  let pendingPart = '';
   let introSaid = false;
-  let arrowsTold = false;
   let menuTold = false;
   let audioArmed = false;
+  let lastActionAt = performance.now();
+  let lastReminderKey = '';
+  let suppressNextPhase = false;
+  const markAction = (): void => {
+    lastActionAt = performance.now();
+    lastReminderKey = '';
+  };
   const armAudio = (): void => {
     if (audioArmed) {
       return;
     }
     audioArmed = true;
+    voice.unlock();
     music.start();
   };
   window.addEventListener('pointerdown', armAudio);
   window.addEventListener('keydown', armAudio);
   stage.onRatchet = (tag) => {
+    markAction();
     armAudio();
     ratchet();
     pulseControllerSoft(tag);
   };
   stage.onScrewDriven = () => {
+    markAction();
     armAudio();
     screwClick();
   };
   stage.onSnapped = (tag) => {
+    markAction();
     pulseController(tag);
     armAudio();
     snap();
@@ -164,26 +178,29 @@ async function boot(): Promise<void> {
       window.setTimeout(() => splash.show(true), 2500);
     }
   };
-  stage.onDropped = () => partDrop();
-  stage.onAnnounce = (id) => {
-    const key = partVoiceKey(id);
-    if (voiceArmed) {
-      voice.say(key);
-    } else {
-      pendingPart = key;
-    }
+  stage.onDropped = () => {
+    markAction();
+    partDrop();
   };
-  stage.onMounted = (count, first) => {
-    if (!voiceArmed) {
+  stage.onGrab = () => markAction();
+  stage.onPhase = (phase) => {
+    if (suppressNextPhase) {
+      suppressNextPhase = false;
       return;
     }
-    voice.say(count > 1 ? 'mount-many' : 'mount-one');
-    if (first && count > 1 && !arrowsTold) {
-      arrowsTold = true;
-      voice.say('arrows');
+    markAction();
+    if (voiceArmed) {
+      voice.say(phaseVoiceKey(phase));
+    }
+  };
+  stage.onMounted = (_count, phase, _hostLabel, firstInPhase) => {
+    markAction();
+    if (voiceArmed && firstInPhase) {
+      voice.say(screwVoiceKey(phase));
     }
   };
   const toggleDriver = (): void => {
+    markAction();
     if (driver.isEquipped() || driver.isVisible()) {
       driver.holster();
       hud.setStatus('Screwdriver put away.');
@@ -192,12 +209,26 @@ async function boot(): Promise<void> {
     }
     driver.show();
     hud.setStatus('Screwdriver ready. Drag it to a screw.');
-    voice.say('tool-on');
+    const guide = stage.guidance();
+    if (guide.snapped && guide.screwsDone < guide.screwCount) {
+      voice.say(screwVoiceKey(guide.phase));
+    } else {
+      voice.say('tool-on');
+    }
   };
   const hud = new Hud({
-    reset: () => stage.reset(),
-    undo: () => stage.undo(),
-    redo: () => stage.redo(),
+    reset: () => {
+      markAction();
+      stage.reset();
+    },
+    undo: () => {
+      markAction();
+      stage.undo();
+    },
+    redo: () => {
+      markAction();
+      stage.redo();
+    },
     cycleTurnMode: () => settings.cycleTurnMode(),
     cycleSnapAngle: () => settings.cycleSnapAngle(),
     setTheme: (slot, colorIndex) => settings.setTheme(slot, colorIndex),
@@ -218,8 +249,10 @@ async function boot(): Promise<void> {
     rebuild: () => {
       xrGrabControls?.releaseAll();
       driver.holster();
-      voice.say('rebuild');
+      suppressNextPhase = true;
       stage.restart();
+      voice.say('rebuild');
+      markAction();
       armAudio();
     },
   });
@@ -230,18 +263,116 @@ async function boot(): Promise<void> {
     hud.setSuppressed(false);
     armAudio();
     voiceArmed = true;
+    markAction();
     if (!introSaid) {
       introSaid = true;
       voice.say('intro');
-    }
-    if (pendingPart) {
-      voice.say(pendingPart);
-      pendingPart = '';
     }
   };
   splash.onShown = () => hud.setSuppressed(true);
   splash.setCamera(camera);
   stage.announceCurrent();
+
+  const phaseLabel = (phase: string): string => {
+    switch (phase) {
+      case 'motors':
+        return 'MOTORS';
+      case 'thumb-base':
+        return 'THUMB BASE';
+      case 'fingers':
+        return 'FINGERS';
+      case 'thumb-segments':
+        return 'THUMB SEGMENTS';
+      case 'cover':
+        return 'COVER';
+      default:
+        return 'PALM';
+    }
+  };
+  const updateGuidance = (): void => {
+    const guide = stage.guidance();
+    const host = guide.hostLabel.toUpperCase();
+    const source = guide.source === 'printer' ? 'PRINTER' : 'CONVEYOR';
+    if (guide.complete) {
+      guidance.set({
+        title: 'HAND COMPLETE',
+        detail: 'TAKE A BOW',
+        progress: '',
+      });
+    } else if (guide.grabbing) {
+      guidance.set({
+        title: `CARRY THE ${guide.label.toUpperCase()}`,
+        detail: `${source} TO ${host}`,
+        progress: 'RELEASE IT IN THE BLUE OUTLINE',
+      });
+    } else if (guide.snapped) {
+      const left = guide.screwCount - guide.screwsDone;
+      guidance.set({
+        title: 'DRIVE THE SCREWS',
+        detail: `${guide.label.toUpperCase()} TO ${host}`,
+        progress: `${left} SCREW${left === 1 ? '' : 'S'} LEFT`,
+      });
+    } else {
+      guidance.set({
+        title: `PLACE THE ${guide.label.toUpperCase()}`,
+        detail: `${source} TO ${host}`,
+        progress: guide.phaseTotal > 1 ?
+          `${phaseLabel(guide.phase)} ${guide.phaseIndex} ` +
+            `OF ${guide.phaseTotal}` :
+          phaseLabel(guide.phase),
+      });
+    }
+    guidance.setVisible(!splash.isVisible() && !vrMenu?.isVisible());
+  };
+
+  let glowHost = '';
+  const updateHostGlow = (): void => {
+    const hostId = stage.currentHostId();
+    if (hostId === glowHost) {
+      return;
+    }
+    glowHost = hostId ?? '';
+    if (hostId === 'stand') {
+      hostGlow.set('stand', [env.slab, env.column]);
+      return;
+    }
+    const mesh = hostId ? stage.hostMesh(hostId) : null;
+    hostGlow.set(hostId ?? '', mesh ? [mesh] : null);
+  };
+
+  const maybeRemind = (now: number): void => {
+    if (!voiceArmed || splash.isVisible() || stage.guidance().complete) {
+      return;
+    }
+    if (now - lastActionAt < 25_000) {
+      return;
+    }
+    const guide = stage.guidance();
+    const key = `${guide.phase}:${guide.snapped}:${guide.screwsDone}`;
+    if (key === lastReminderKey) {
+      return;
+    }
+    lastReminderKey = key;
+    lastActionAt = now;
+    if (guide.snapped) {
+      voice.say(screwVoiceKey(guide.phase));
+    } else {
+      voice.say(phaseVoiceKey(guide.phase));
+    }
+  };
+
+  let lastBoardAt = 0;
+  scene.onBeforeRenderObservable.add(() => {
+    const now = performance.now();
+    if (now - lastBoardAt < 200) {
+      return;
+    }
+    lastBoardAt = now;
+    updateGuidance();
+    updateHostGlow();
+    hostGlow.tick(now / 1000);
+    maybeRemind(now);
+  });
   const applySettings = (): void => {
     const current = settings.get();
     hud.setSettings(current.turnMode, current.snapAngle);
@@ -429,6 +560,8 @@ async function boot(): Promise<void> {
       toolParent: () => string;
       controllerMotion: (hand: string) => boolean;
       arrowCount: () => number;
+      activeBounds: () => number[][];
+      activeTransform: () => {pos: number[]; quat: number[]};
       audienceCount: () => number;
       partColor: (id: string) => string;
       selectTheme: (slot: ThemeSlot, index: number) => void;
@@ -447,6 +580,14 @@ async function boot(): Promise<void> {
       lastError: () => string;
       hudBg: () => Record<string, string>;
       menuBg: () => Record<string, string>;
+      guidance: () => {
+        title: string;
+        detail: string;
+        progress: string;
+        visible: boolean;
+      };
+      voice: () => VoiceState;
+      hostGlow: () => string;
     };
   };
   bridgeWindow.factoryDebug = {
@@ -522,6 +663,17 @@ async function boot(): Promise<void> {
       !!xr?.input.controllers.find(
           (ctrl) => ctrl.inputSource.handedness === hand)?.motionController,
     arrowCount: () => stage.arrowCount(),
+    activeBounds: () => {
+      const {min, max} = stage.currentPart.getHierarchyBoundingVectors();
+      return [min.asArray(), max.asArray()];
+    },
+    activeTransform: () => ({
+      pos: stage.currentPart.getAbsolutePosition().asArray(),
+      quat: stage.currentPart.rotationQuaternion?.asArray() ?? [],
+    }),
+    guidance: () => guidance.debugText(),
+    voice: () => voice.state(),
+    hostGlow: () => hostGlow.active(),
     audienceCount: () => AUDIENCE_COUNT,
     partColor: (id) => stage.partColor(id),
     selectTheme: (slot, index) => settings.setTheme(slot, index),

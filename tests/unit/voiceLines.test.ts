@@ -2,14 +2,21 @@ import {readFileSync, statSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {describe, expect, it} from 'vitest';
 import {PART_DEFS} from '../../src/game/handParts';
-import {partVoiceKey, VOICE_LINES} from '../../src/audio/voiceLines';
+import {
+  phaseVoiceKey,
+  screwVoiceKey,
+  VOICE_LINES,
+} from '../../src/audio/voiceLines';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 
+const PHASES = [...new Set(PART_DEFS.map((def) => def.phase))];
+
 describe('voice line registry', () => {
-  it('has one announcement for every part', () => {
-    for (const def of PART_DEFS) {
-      expect(VOICE_LINES[partVoiceKey(def.id)]).toBeDefined();
+  it('has a phase and screw line for every part phase', () => {
+    for (const phase of PHASES) {
+      expect(VOICE_LINES[phaseVoiceKey(phase)], phase).toBeDefined();
+      expect(VOICE_LINES[screwVoiceKey(phase)], phase).toBeDefined();
     }
   });
 
@@ -23,13 +30,18 @@ describe('voice line registry', () => {
     }
   });
 
-  it('names the destination for every part line', () => {
-    for (const def of PART_DEFS) {
-      const line = VOICE_LINES[partVoiceKey(def.id)];
-      expect(line?.text.toLowerCase()).toMatch(
-          /goes|place|over the|behind|beside|above|on the/,
-      );
+  it('names the host for every screw line', () => {
+    for (const phase of PHASES) {
+      const line = VOICE_LINES[screwVoiceKey(phase)];
+      expect(line?.text.toLowerCase()).toMatch(/into|drive/);
     }
+  });
+
+  it('keeps only grouped part narration', () => {
+    expect(Object.keys(VOICE_LINES).some((key) => key.startsWith('part-')))
+        .toBe(false);
+    expect(VOICE_LINES['mount-one']).toBeUndefined();
+    expect(VOICE_LINES['arrows']).toBeUndefined();
   });
 
   it('keeps the intro clip readable', () => {
