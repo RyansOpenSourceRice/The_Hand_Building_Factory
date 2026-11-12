@@ -42,6 +42,9 @@ const ROW_LABELS: Readonly<Array<[ThemeSlot, string]>> = [
   ['tertiary', 'TERTIARY'],
 ];
 
+const BUTTON_BACKGROUND = 'rgba(35, 45, 80, 0.9)';
+const BUTTON_HOVER = 'rgba(78, 94, 150, 0.95)';
+
 function makeButton(
     name: string,
     label: string,
@@ -55,12 +58,18 @@ function makeButton(
   button.fontFamily = FONT;
   button.fontSize = `${fontSize}px`;
   button.color = '#f2f4ff';
-  button.background = 'rgba(35, 45, 80, 0.9)';
+  button.background = BUTTON_BACKGROUND;
   button.cornerRadius = 8;
   button.width = `${width}px`;
   button.height = `${height}px`;
   button.top = `${top}px`;
   button.left = `${left}px`;
+  button.onPointerEnterObservable.add(() => {
+    button.background = BUTTON_HOVER;
+  });
+  button.onPointerOutObservable.add(() => {
+    button.background = BUTTON_BACKGROUND;
+  });
   return button;
 }
 
@@ -82,6 +91,7 @@ export class VrMenu {
   private undoCount = 1;
   private redoCount = 1;
   private visible = false;
+  private suppressed = false;
   private cam: Camera | null = null;
   onToggled: ((open: boolean) => void) | null = null;
 
@@ -254,6 +264,12 @@ export class VrMenu {
         swatch.onPointerClickObservable.add(() => {
           this.actions.setTheme(slot, index);
         });
+        swatch.onPointerEnterObservable.add(() => {
+          swatch.thickness = 3;
+        });
+        swatch.onPointerOutObservable.add(() => {
+          swatch.thickness = this.theme[slot] === index ? 3 : 1;
+        });
         this.add('looks', swatch);
         this.swatches.push({button: swatch, slot, index});
       });
@@ -297,13 +313,29 @@ export class VrMenu {
         for (const id of ['a-button', 'x-button']) {
           const component = mc.components[id];
           component?.onButtonStateChangedObservable.add(() => {
-            if (component.pressed) {
+            if (component.pressed && !this.suppressed) {
               this.toggle();
             }
           });
         }
       });
     });
+  }
+
+  setSuppressed(value: boolean): void {
+    this.suppressed = value;
+  }
+
+  buttonBackgrounds(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const name of ['menu-reset', 'menu-turn', 'menu-angle',
+      'menu-close']) {
+      const control = this.adt.getControlByName(name);
+      if (control instanceof Button) {
+        out[name] = control.background;
+      }
+    }
+    return out;
   }
 
   private toggle(): void {

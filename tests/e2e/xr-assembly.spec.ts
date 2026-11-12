@@ -156,6 +156,7 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         undefined,
         {timeout: 20_000},
     );
+    await page.evaluate(() => window.factoryDebug!.splashSkip());
   });
 
   test('carries and screws every part to finish the hand', async ({page}) => {

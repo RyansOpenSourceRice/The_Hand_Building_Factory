@@ -106,6 +106,7 @@ test.describe('xr thumbsticks (chromium + mock navigator.xr)', () => {
         undefined,
         {timeout: 20_000},
     );
+    await page.evaluate(() => window.factoryDebug!.splashSkip());
   });
 
   test('right thumbstick forward walks along the camera forward vector',

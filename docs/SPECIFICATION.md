@@ -53,7 +53,20 @@ What HANDS ON! does, milestone by milestone.
   that exists, and ALL replays everything available. The MOVE tab holds
   turn mode and snap angle. The LOOKS tab holds the 8-color filament
   palette. HUD buttons and menu buttons are pressable in-headset via
-  the controller pointer rays.
+  the controller pointer rays. Hovering any HUD button, menu button,
+  splash button, or color swatch with a pointer ray brightens it so the
+  player always sees where the pointer is aimed; while a splash is up,
+  A and X skip the splash instead of toggling the menu.
+- A credits splash shows right after boot and again after the hand is
+  complete. It lists the Yeah Hand model source, its CERN Open Hardware
+  Licence 2 - Strongly Reciprocal licence, and the modification credit.
+  The splash cannot be dismissed for its first four seconds; a countdown
+  label shows when dismissal unlocks. After the gate, CONTINUE (or A/X)
+  dismisses it. The in-headset menu stays suppressed and the desktop
+  HUD is hidden until the splash is gone, and the same press that
+  dismisses a splash never also toggles the menu. The completion splash
+  adds REBUILD, which drops anything held and starts the build over
+  from the palm with an empty undo and redo history.
 - After a part snaps in, screws stick out of it. Grab the orange
   screwdriver from its holster beside the pedestal, point the tip at a
   screw, and hold the trigger to drive it. A ratchet tick plays while

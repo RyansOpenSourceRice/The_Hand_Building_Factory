@@ -13,6 +13,15 @@ interface FactoryDebug {
   menu: () => boolean;
   menuToggle: () => void;
   menuPlace: () => void;
+  splashVisible: () => boolean;
+  splashGated: () => boolean;
+  splashSkip: () => void;
+  splashRebuild: () => void;
+  splashBg: () => string;
+  splashPos: () => number[];
+  splashCam: () => number[];
+  hudBg: () => Record<string, string>;
+  menuBg: () => Record<string, string>;
 }
 
 interface XrMock {
