@@ -104,6 +104,12 @@ test.describe('xr menu (chromium + mock navigator.xr)', () => {
         undefined,
         {timeout: 20_000},
     );
+    await page.waitForFunction(
+        () => window.factoryDebug!.controllerMotion('left') &&
+            window.factoryDebug!.controllerMotion('right'),
+        undefined,
+        {timeout: 10_000},
+    );
     await page.evaluate(() => window.factoryDebug!.splashSkip());
     await page.waitForTimeout(500);
   });

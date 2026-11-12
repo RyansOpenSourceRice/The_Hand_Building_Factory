@@ -24,6 +24,7 @@ interface FactoryDebug {
   toolEquipped: () => boolean;
   toolVisible: () => boolean;
   toolParent: () => string;
+  controllerMotion: (hand: string) => boolean;
   arrowCount: () => number;
   audienceCount: () => number;
   partColor: (id: string) => string;
