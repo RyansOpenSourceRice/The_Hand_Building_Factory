@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.12.2] - 2026-11-12
+
+### Added
+
+- The screwdriver is summoned and stowed with B (right) or Y (left)
+  and never falls, so it cannot be lost. Its tip is magnetic: touching
+  a screw drives it without holding the trigger. Desktop players use T
+  or the new TOOL button and always get the tool back at its dock on
+  release.
+- A controls footer in the in-headset menu and a build tag on the
+  credits splash. The tag makes it obvious which version a headset
+  loaded.
+
+### Changed
+
+- The grand hall audience is now a tiered crowd of golden-yellow
+  mannequins in blue hard hats on grey chairs, facing the player. The
+  crowd renders reliably and clears the balcony sill.
+- The snap-target outline for STL parts is a soft pulsing hologram
+  instead of a dense wireframe, so the palm reads as a target rather
+  than a blue porcupine.
+- Pendant bulbs over the workbench hang at head clearance, and the
+  controller hand representations rest and grip with a gentler curl.
+
+### Removed
+
+- The red curtain plane that could be seen from behind the workbench.
+
 ## [2026.11.12.1] - 2026-11-12
 
 ### Added
