@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.12.3] - 2026-11-12
+
+### Added
+
+- A pre-rendered narrator (Speechify Simba 3.5, voice geffen_32). It
+  welcomes the player, names every part and where it goes, announces
+  mounts and the screwdriver, points at the yellow arrows, and calls the
+  completion and rebuild. Music ducks under speech and SOUND mutes both.
+- Yellow guide arrows: one bobbing arrow over every screw that still
+  needs driving, and one over the next part at its printer or conveyor.
+- A render-loop error guard and `?perf=1` readout (fps, active meshes,
+  meshes, materials); `read_state` now reports perf, audio, arrow count,
+  audience count, tool parent, and the last runtime error.
+
+### Changed
+
+- Controller hands are vertical fists wrapped around the controller
+  grip, and the screwdriver is parented to the hand instead of the
+  pointer ray, so the handle sits inside the fist with the shaft leaving
+  from the thumb side.
+- The filament palette now recolors the printed hand parts as well as
+  the controller hands. Parts share the three theme materials and update
+  live.
+- The audience is twelve seated mannequins in two rows of six on two
+  tiers. Standing rows and aisle walkers are gone.
+- Servo parts are labelled as motors (wrist, index, middle, ring,
+  little) in the status text, the menu, and the narration.
+- Screws are one merged low-poly mesh per screw with a single shared
+  material; static hall racks, fixtures, and warehouse steel merge by
+  material. Shared materials are the main draw-call saving.
+- The screwdriver handle sits deeper in the fist, with a slight forward
+  cant.
+
+### Fixed
+
+- Audio was silent on GitHub Pages because clips were requested from
+  `/audio/...` at the domain root. Paths now resolve against the Vite
+  base. The engine previously created no audio device at all; it now
+  requests one and retries music when decoding finishes.
+- A stopped frame (last viewport square, black around it) can no longer
+  silently kill the render loop; errors are caught, shown in the status
+  line, and kept rendering.
+
+### Removed
+
+- The 155-person crowd, standing rows, and the three aisle walkers.
+- The per-screw dynamic thread texture and per-screw materials.
+
 ## [2026.11.12.2] - 2026-11-12
 
 ### Added
