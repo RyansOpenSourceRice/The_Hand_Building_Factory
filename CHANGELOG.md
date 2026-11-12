@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.12.1] - 2026-11-12
+
+### Added
+
+- Credits splash shown right after boot and again after the hand is
+  complete. It credits the Yeah Hand model by OPSOBOT, its source
+  location, and the CERN Open Hardware Licence 2 - Strongly
+  Reciprocal licence, and cannot be dismissed for its first four
+  seconds. The completion splash adds REBUILD, which drops anything
+  held and restarts the build from the palm with an empty undo and
+  redo history.
+- Pointer hover feedback on every HUD button, in-headset menu button,
+  splash button, and color swatch, so the cursor position is always
+  visible in menus.
+
+### Changed
+
+- The desktop HUD hides while a splash is up, and the in-headset menu
+  stays suppressed until the splash is dismissed; the dismissing
+  press never also toggles the menu.
+
 ## [2026.11.11.3] - 2026-11-11
 
 ### Added
