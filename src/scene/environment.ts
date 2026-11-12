@@ -33,6 +33,10 @@ import {
 import {WALK_HALF} from '../input/locomotion';
 import {FILAMENT_COLORS, FALLBACK_HEX} from '../game/palette';
 
+const AUDIENCE_ROWS = 2;
+const AUDIENCE_COLS = 6;
+export const AUDIENCE_COUNT = AUDIENCE_ROWS * AUDIENCE_COLS;
+
 export interface Environment {
   engine: Engine;
   scene: Scene;
@@ -74,6 +78,25 @@ function machineMat(
   mat.emissiveColor = Color3.FromHexString(emissive);
   mat.specularColor = new Color3(0.08, 0.08, 0.1);
   return mat;
+}
+
+function mergeStatic(meshes: Mesh[]): void {
+  const groups = new Map<StandardMaterial, Mesh[]>();
+  for (const mesh of meshes) {
+    const material = mesh.material;
+    if (!(material instanceof StandardMaterial)) {
+      continue;
+    }
+    const list = groups.get(material) ?? [];
+    list.push(mesh);
+    groups.set(material, list);
+  }
+  for (const list of groups.values()) {
+    if (list.length < 2) {
+      continue;
+    }
+    Mesh.MergeMeshes(list, true, true, undefined, false);
+  }
 }
 
 function spoolColor(index: number): string {
@@ -720,7 +743,8 @@ function buildRack(
     x: number,
     z: number,
     flip: boolean,
-): void {
+): Mesh[] {
+  const parts: Mesh[] = [];
   const frame = new TransformNode(`rack${x}_${z}`, scene);
   frame.position.set(x, 0, z);
   frame.rotation.y = flip ? Math.PI / 2 : 0;
@@ -731,6 +755,7 @@ function buildRack(
     upright.position.set(dx, 2.1, 0);
     upright.parent = frame;
     upright.material = steelMat;
+    parts.push(upright);
   }
   for (const y of [1.2, 2.4, 3.6]) {
     const beam = MeshBuilder.CreateBox(
@@ -738,19 +763,23 @@ function buildRack(
     beam.position.set(0, y, -0.55);
     beam.parent = frame;
     beam.material = steelMat;
+    parts.push(beam);
     const beamBack = MeshBuilder.CreateBox(
         `rackBeamBack${x}_${z}`, {width: 2.9, height: 0.09, depth: 0.09},
         scene);
     beamBack.position.set(0, y, 0.55);
     beamBack.parent = frame;
     beamBack.material = steelMat;
+    parts.push(beamBack);
     const load = MeshBuilder.CreateBox(
         `rackLoad${x}_${z}${y}`, {width: 2.7, height: 1.0, depth: 1.0},
         scene);
     load.position.set(0, y + 0.55, 0);
     load.parent = frame;
     load.material = loadMat;
+    parts.push(load);
   }
+  return parts;
 }
 
 function buildGrandHall(scene: Scene): void {
@@ -803,17 +832,21 @@ function buildGrandHall(scene: Scene): void {
   }
   const fixtureSpec = {width: 1.3, height: 0.07, depth: 0.2};
   const tubeMat = machineMat(scene, 'hallTubeMat', '#fff3d6', '#c9b98a');
+  const fixtureMeshes: Mesh[] = [];
   for (const x of [-10, -4, 4, 10]) {
     for (const z of [-13, -19, -25]) {
       const tube = MeshBuilder.CreateBox('hallTube', fixtureSpec, scene);
       tube.position.set(x, 8.4, z);
       tube.material = tubeMat;
+      fixtureMeshes.push(tube);
       const rod = MeshBuilder.CreateCylinder(
           'hallTubeRod', {diameter: 0.02, height: 1.5}, scene);
       rod.position.set(x, 9.2, z);
       rod.material = steelMat;
+      fixtureMeshes.push(rod);
     }
   }
+  mergeStatic(fixtureMeshes);
 
   const boomPivots: TransformNode[] = [];
   boomPivots.push(
@@ -835,12 +868,15 @@ function buildGrandHall(scene: Scene): void {
 
   const loadMat =
       imageMat(scene, 'rackLoadMat', 'textures/rack-boxes.png', 1, 1);
-  buildRack(scene, steelMat, loadMat, -13, -13, true);
-  buildRack(scene, steelMat, loadMat, -13, -17, true);
-  buildRack(scene, steelMat, loadMat, -13, -22, true);
-  buildRack(scene, steelMat, loadMat, 13, -13, true);
-  buildRack(scene, steelMat, loadMat, 13, -17, true);
-  buildRack(scene, steelMat, loadMat, 13, -22, true);
+  const rackMeshes = [
+    ...buildRack(scene, steelMat, loadMat, -13, -13, true),
+    ...buildRack(scene, steelMat, loadMat, -13, -17, true),
+    ...buildRack(scene, steelMat, loadMat, -13, -22, true),
+    ...buildRack(scene, steelMat, loadMat, 13, -13, true),
+    ...buildRack(scene, steelMat, loadMat, 13, -17, true),
+    ...buildRack(scene, steelMat, loadMat, 13, -22, true),
+  ];
+  mergeStatic(rackMeshes);
 
   const pallet = Mesh.MergeMeshes([
     MeshBuilder.CreateBox('palletSlat', {width: 1.2, height: 0.04, depth: 1},
@@ -853,6 +889,7 @@ function buildGrandHall(scene: Scene): void {
     [-14.5, -11], [-11.8, -12.2], [-14.2, -19.5], [14.5, -11.5],
     [11.5, -14.5], [14.2, -20], [-10, -25], [10.5, -25.2],
   ];
+  const palletLoads: Mesh[] = [];
   palletSpots.forEach(([x, z], i) => {
     if (pallet) {
       const stack = pallet.createInstance(`palletStack${i}`);
@@ -864,7 +901,9 @@ function buildGrandHall(scene: Scene): void {
     load.position.set(x, 0.47, z);
     load.rotation.y = (i % 4) * 0.4;
     load.material = crateMat;
+    palletLoads.push(load);
   });
+  mergeStatic(palletLoads);
   if (pallet) {
     pallet.setEnabled(false);
   }
@@ -974,16 +1013,6 @@ function buildGrandHall(scene: Scene): void {
       head(`${name}-head`, 0.69, 0.01),
     ], true, true);
 
-  const buildStandingFigure = (name: string): Mesh | null =>
-    Mesh.MergeMeshes([
-      part(`${name}-legL`, 0.12, 0.78, 0.16, -0.09, 0.39, 0),
-      part(`${name}-legR`, 0.12, 0.78, 0.16, 0.09, 0.39, 0),
-      part(`${name}-torso`, 0.36, 0.46, 0.22, 0, 1.01, 0),
-      part(`${name}-armL`, 0.1, 0.42, 0.12, -0.23, 0.98, 0),
-      part(`${name}-armR`, 0.1, 0.42, 0.12, 0.23, 0.98, 0),
-      head(`${name}-head`, 1.35),
-    ], true, true);
-
   const buildHat = (name: string): Mesh | null => {
     const dome = MeshBuilder.CreateSphere(
         `${name}-dome`, {diameter: 0.21, segments: 10}, scene);
@@ -1000,29 +1029,27 @@ function buildGrandHall(scene: Scene): void {
     part('crowdBack', 0.46, 0.5, 0.06, 0, 0.28, -0.21),
   ], true, true);
   const seated = buildSeatedFigure('crowdSeated');
-  const standing = buildStandingFigure('crowdStanding');
   const hat = buildHat('crowdHat');
 
-  if (seat && seated && standing && hat) {
+  if (seat && seated && hat) {
     seat.material = seatMat;
     seated.material = figureMat;
-    standing.material = figureMat;
     hat.material = hatMat;
-    for (const source of [seat, seated, standing, hat]) {
+    for (const source of [seat, seated, hat]) {
       source.setEnabled(false);
     }
 
     let seatIndex = 0;
     let figureIndex = 0;
     let hatIndex = 0;
-    for (let row = 0; row < 9; row++) {
+    for (let row = 0; row < AUDIENCE_ROWS; row++) {
       const tierTop = 0.42 + row * 0.24;
-      const z = -10.7 - row * 0.92;
-      const tier = part(`crowdTier${row}`, 13.2, tierTop, 1.0, 0,
+      const z = -11.1 - row * 0.92;
+      const tier = part(`crowdTier${row}`, 6.8, tierTop, 1.0, 0,
           tierTop / 2, z);
       tier.material = tierMat;
-      for (let col = 0; col < 15; col++) {
-        const x = -5.25 + col * 0.75 + (row % 2) * 0.15;
+      for (let col = 0; col < AUDIENCE_COLS; col++) {
+        const x = -2.25 + col * 0.9;
         seat.createInstance(`crowdSeatInstance${seatIndex++}`)
             .position.set(x, tierTop + 0.03, z);
         seated.createInstance(`crowdFigureInstance${figureIndex++}`)
@@ -1031,40 +1058,7 @@ function buildGrandHall(scene: Scene): void {
             .position.set(x, tierTop + 0.78, z - 0.02);
       }
     }
-    for (let row = 0; row < 2; row++) {
-      const z = -20.4 - row * 0.95;
-      for (let col = 0; col < 10; col++) {
-        const x = -4.05 + col * 0.9;
-        standing.createInstance(`crowdFigureInstance${figureIndex++}`)
-            .position.set(x, 0, z);
-        hat.createInstance(`crowdHatInstance${hatIndex++}`)
-            .position.set(x, 1.44, z);
-      }
-    }
   }
-
-  const walkers: Array<{body: Mesh}> = [];
-  for (let i = 0; i < 3; i++) {
-    const body = buildStandingFigure(`crowdWalker${i}`);
-    const cap = buildHat(`crowdWalkerHat${i}`);
-    if (!body || !cap) {
-      continue;
-    }
-    body.material = figureMat;
-    cap.material = hatMat;
-    cap.parent = body;
-    cap.position.set(0, 1.44, 0);
-    walkers.push({body});
-  }
-  scene.onBeforeRenderObservable.add(() => {
-    const t = performance.now() / 1000;
-    walkers.forEach((walker, i) => {
-      const phase = (t * 0.35 + i * 0.33) % 1;
-      const z = -8.7 - phase * 1.5;
-      const x = i === 0 ? -6.4 : i === 1 ? 6.2 : -0.4 + Math.sin(t + i) * 0.3;
-      walker.body.position.set(x, 0, z);
-    });
-  });
 
   const barrierRunMat = yellowMat;
   const runRailSpec = {width: 4.2, depth: 0.05, height: 0.06};
@@ -1216,6 +1210,11 @@ function buildWarehouse(scene: Scene): void {
   const bulbMat = machineMat(scene, 'warehouseBulbMat', '#fff3d6', '#8a7a54');
   const fixtureMat =
       machineMat(scene, 'warehouseFixtureMat', '#f5f8ff', '#c9d2e0');
+  const steelParts: Mesh[] = [];
+  const bulbParts: Mesh[] = [];
+  const barParts: Mesh[] = [];
+  const panelParts: Mesh[] = [];
+  const crateParts: Mesh[] = [];
 
   const wallSpec = {width: 24, depth: 0.2, height: WALL_HEIGHT};
   const front = MeshBuilder.CreateBox('warehouseFront', wallSpec, scene);
@@ -1253,11 +1252,13 @@ function buildWarehouse(scene: Scene): void {
       'warehouseRail', {width: 23.6, depth: 0.06, height: 0.06}, scene);
   rail.position.set(0, railY + 1, -4);
   rail.material = steelMat;
+  steelParts.push(rail);
   const postSpec = {width: 0.06, depth: 0.06, height: 1};
   for (let x = -11.5; x <= 11.5; x += 2.3) {
     const post = MeshBuilder.CreateBox('warehouseRailPost', postSpec, scene);
     post.position.set(x, railY + 0.5, -4);
     post.material = steelMat;
+    steelParts.push(post);
   }
 
   const pendantTop = railY + 1;
@@ -1269,15 +1270,18 @@ function buildWarehouse(scene: Scene): void {
         scene);
     cord.position.set(x, pendantTop - pendantCordHeight / 2, 0.5);
     cord.material = steelMat;
+    steelParts.push(cord);
     const shade = MeshBuilder.CreateCylinder(
         `warehouseShade${x}`, {diameterTop: 0.08, diameterBottom: 0.3,
           height: 0.18}, scene);
     shade.position.set(x, pendantShadeY, 0.5);
     shade.material = steelMat;
+    steelParts.push(shade);
     const bulb = MeshBuilder.CreateSphere(
         `warehouseBulb${x}`, {diameter: 0.12}, scene);
     bulb.position.set(x, pendantShadeY - 0.1, 0.5);
     bulb.material = bulbMat;
+    bulbParts.push(bulb);
   }
 
   const barSpec = {width: 1.8, depth: 0.22, height: 0.08};
@@ -1286,11 +1290,13 @@ function buildWarehouse(scene: Scene): void {
     const bar = MeshBuilder.CreateBox('warehouseBayBar', barSpec, scene);
     bar.position.set(x, 3.18, 0.6);
     bar.material = fixtureMat;
+    barParts.push(bar);
     for (const dx of [-0.7, 0.7]) {
       const hang = MeshBuilder.CreateCylinder(
           'warehouseBayCord', cordSpec, scene);
       hang.position.set(x + dx, 6.14, 0.6);
       hang.material = steelMat;
+      steelParts.push(hang);
     }
   }
 
@@ -1299,6 +1305,7 @@ function buildWarehouse(scene: Scene): void {
     const purlin = MeshBuilder.CreateBox('warehousePurlin', purlinSpec, scene);
     purlin.position.set(x, 9.8, 0);
     purlin.material = steelMat;
+    steelParts.push(purlin);
   }
 
   const roof = MeshBuilder.CreateBox(
@@ -1318,6 +1325,7 @@ function buildWarehouse(scene: Scene): void {
       panel.rotation.x = Math.PI / 2;
       panel.position.set(x, 10.05, z);
       panel.material = diffuserMat;
+      panelParts.push(panel);
     }
   }
 
@@ -1333,11 +1341,17 @@ function buildWarehouse(scene: Scene): void {
     crate.position.set(x, y, z);
     crate.rotation.y = (index % 3) * 0.21;
     crate.material = crateMat;
+    crateParts.push(crate);
   });
+  mergeStatic(steelParts);
+  mergeStatic(bulbParts);
+  mergeStatic(barParts);
+  mergeStatic(panelParts);
+  mergeStatic(crateParts);
 }
 
 export function createEnvironment(canvas: HTMLCanvasElement): Environment {
-  const engine = new Engine(canvas, true, {stencil: false});
+  const engine = new Engine(canvas, true, {stencil: false, audioEngine: true});
   const scene = new Scene(engine);
   const voidColor = new Color4(0.58, 0.63, 0.7, 1);
   scene.clearColor = voidColor;

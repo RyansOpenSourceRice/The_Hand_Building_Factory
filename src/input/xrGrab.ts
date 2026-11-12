@@ -5,6 +5,7 @@ import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import type {WebXRInputSource} from '@babylonjs/core/XR/webXRInputSource';
+import type {TransformNode} from '@babylonjs/core/Meshes/transformNode';
 import type {AssemblyStage} from '../game/assembly';
 import type {Screwdriver} from '../game/screwdriver';
 
@@ -12,6 +13,10 @@ const PULSE_VALUE = 0.7;
 const PULSE_DURATION_MS = 60;
 const PULSE_SOFT_VALUE = 0.05;
 const PULSE_SOFT_DURATION_MS = 40;
+
+export type HandRootSource = {
+  rootFor: (controller: WebXRInputSource) => TransformNode | null;
+};
 
 export type XrGrabHooks = {
   blocked: () => boolean;
@@ -46,6 +51,7 @@ export function attachXrGrab(
     stage: AssemblyStage,
     driver: Screwdriver,
     scene: Scene,
+    hands: HandRootSource,
     hooks: XrGrabHooks,
 ): {releaseAll: () => void} {
   const ray = new Ray(Vector3.Zero(), Vector3.Forward());
@@ -88,7 +94,8 @@ export function attachXrGrab(
     if (ctrl === partHolder) {
       return;
     }
-    if (driver.equip(ctrl.pointer)) {
+    const anchor = hands.rootFor(ctrl) ?? ctrl.grip ?? ctrl.pointer;
+    if (driver.equip(anchor)) {
       toolHolder = ctrl;
       hooks.onToolChanged(true);
     }

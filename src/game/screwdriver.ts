@@ -11,7 +11,8 @@ import {Scene} from '@babylonjs/core/scene';
 import {makeBoxBody} from '../scene/physics';
 
 const HOLSTER = new Vector3(0, 1.08, 0.5);
-const HAND_OFFSET = new Vector3(0, 0.005, 0.02);
+const HAND_OFFSET = new Vector3(0, 0, 0.036);
+const HAND_TILT = Quaternion.FromEulerAngles(0.12, 0, 0);
 const HANDLE_HEIGHT = 0.11;
 const SHAFT_HEIGHT = 0.06;
 
@@ -70,7 +71,7 @@ export class Screwdriver {
     this.mesh.setEnabled(true);
     this.mesh.setParent(node);
     this.mesh.position.copyFrom(HAND_OFFSET);
-    this.mesh.rotationQuaternion = Quaternion.Identity();
+    this.mesh.rotationQuaternion = HAND_TILT.clone();
     if (this.body) {
       this.body.setMotionType(PhysicsMotionType.ANIMATED);
       this.body.disablePreStep = false;

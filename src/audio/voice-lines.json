@@ -1,0 +1,90 @@
+{
+  "intro": {
+    "text": "Welcome to the Hand Building Factory. Grab the glowing part with the trigger, and place it in the blue outline.",
+    "file": "intro.ogg"
+  },
+  "menu": {
+    "text": "Press A or X to open the menu.",
+    "file": "menu.ogg"
+  },
+  "tool-on": {
+    "text": "Screwdriver ready. Touch its tip to a screw.",
+    "file": "tool-on.ogg"
+  },
+  "tool-off": {
+    "text": "Screwdriver stowed.",
+    "file": "tool-off.ogg"
+  },
+  "mount-one": {
+    "text": "Mounted. Press B or Y for the screwdriver, then touch the tip to the screw.",
+    "file": "mount-one.ogg"
+  },
+  "mount-many": {
+    "text": "Mounted. Press B or Y for the screwdriver, then touch the tip to each screw.",
+    "file": "mount-many.ogg"
+  },
+  "arrows": {
+    "text": "Follow the yellow arrows to the screws.",
+    "file": "arrows.ogg"
+  },
+  "complete": {
+    "text": "Hand complete! Take a bow.",
+    "file": "complete.ogg"
+  },
+  "rebuild": {
+    "text": "New hand. Let's build.",
+    "file": "rebuild.ogg"
+  },
+  "part-palm": {
+    "text": "Next: the palm. Pick it up at the printer, and place it on the hand stand.",
+    "file": "part-palm.ogg"
+  },
+  "part-servo-base": {
+    "text": "Next: the wrist motor. It rides the conveyor, and goes on the back of the wrist.",
+    "file": "part-servo-base.ogg"
+  },
+  "part-servo-f1": {
+    "text": "Next: the index motor. It rides the conveyor, and goes behind the index finger.",
+    "file": "part-servo-f1.ogg"
+  },
+  "part-servo-f2": {
+    "text": "Next: the middle motor. It rides the conveyor, and goes behind the middle finger.",
+    "file": "part-servo-f2.ogg"
+  },
+  "part-servo-f3": {
+    "text": "Next: the ring motor. It rides the conveyor, and goes behind the ring finger.",
+    "file": "part-servo-f3.ogg"
+  },
+  "part-servo-f4": {
+    "text": "Next: the little motor. It rides the conveyor, and goes behind the little finger.",
+    "file": "part-servo-f4.ogg"
+  },
+  "part-thumb-base": {
+    "text": "Next: the thumb base. Pick it up at the printer, and place it on the side of the palm.",
+    "file": "part-thumb-base.ogg"
+  },
+  "part-finger-index": {
+    "text": "Next: the index finger. Pick it up at the printer, and place it above the palm.",
+    "file": "part-finger-index.ogg"
+  },
+  "part-finger-middle": {
+    "text": "Next: the middle finger. Pick it up at the printer, and place it above the palm.",
+    "file": "part-finger-middle.ogg"
+  },
+  "part-finger-ring": {
+    "text": "Next: the ring finger. Pick it up at the printer, and place it above the palm.",
+    "file": "part-finger-ring.ogg"
+  },
+  "part-finger-little": {
+    "text": "Next: the little finger. Pick it up at the printer, and place it above the palm.",
+    "file": "part-finger-little.ogg"
+  },
+  "part-thumb-segments": {
+    "text": "Next: the thumb segments. Pick them up at the printer, and place them beside the thumb base.",
+    "file": "part-thumb-segments.ogg"
+  },
+  "part-upper-cover": {
+    "text": "Last part: the upper cover. Pick it up at the printer, and place it over the back of the hand.",
+    "file": "part-upper-cover.ogg"
+  }
+}

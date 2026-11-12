@@ -11,6 +11,7 @@ import {
 } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import type {PhysicsBody} from '@babylonjs/core/Physics/v2/physicsBody';
 import {createScrew} from '../scene/screwMeshes';
+import {ArrowGuides} from './arrows';
 import {makeBoxBody} from '../scene/physics';
 import type {PartDef} from './handParts';
 import {
@@ -77,6 +78,7 @@ export class AssemblyStage {
   private driveProgress = 0;
   private ratchetClock = 0;
   private readonly ghostMaterial: StandardMaterial;
+  private readonly arrows: ArrowGuides;
 
   onStatus: ((text: string) => void) | null = null;
   onSnapped: ((tag: string) => void) | null = null;
@@ -85,6 +87,9 @@ export class AssemblyStage {
   onPartInfo: ((info: string) => void) | null = null;
   onProgress: ((done: number, total: number) => void) | null = null;
   onDropped: (() => void) | null = null;
+  onAnnounce: ((id: string) => void) | null = null;
+  onMounted:
+      ((screwCount: number, first: boolean) => void) | null = null;
 
   constructor(
       scene: Scene,
@@ -98,16 +103,11 @@ export class AssemblyStage {
     this.ghostMaterial.specularColor = new Color3(0.05, 0.05, 0.08);
     this.ghostMaterial.alpha = GHOST_ALPHA;
     this.ghostMaterial.backFaceCulling = false;
+    this.arrows = new ArrowGuides(scene);
 
     for (const def of PART_DEFS) {
       const mesh = provider(def, scene);
       mesh.setEnabled(false);
-      const material = new StandardMaterial(`mat:${def.id}`, scene);
-      const diffuse = Color3.FromHexString(def.color);
-      material.diffuseColor = diffuse;
-      material.emissiveColor = diffuse.scale(0.06);
-      material.specularColor = new Color3(0.07, 0.07, 0.08);
-      mesh.material = material;
       mesh.position.set(def.home.x, def.home.y, def.home.z);
       mesh.rotationQuaternion = Quaternion.FromEulerAngles(
           STANDING_TILT,
@@ -158,6 +158,16 @@ export class AssemblyStage {
         state.ghost.visibility =
             0.78 + Math.sin(performance.now() / 480) * 0.12;
       }
+      if (state?.snap.isComplete) {
+        this.arrows.setPartPosition(null);
+        this.arrows.setScrewTargets(
+            this.screwSites(), this.remainingAxes(state));
+      } else {
+        this.arrows.clearScrews();
+        this.arrows.setPartPosition(
+            this.grabbing ? null : state?.mesh.getAbsolutePosition() ?? null);
+      }
+      this.arrows.tick(performance.now() / 1000);
     });
   }
 
@@ -175,6 +185,15 @@ export class AssemblyStage {
 
   get currentIndex(): number {
     return this.current;
+  }
+
+  partColor(id: string): string {
+    const state = this.states.find((entry) => entry.def.id === id);
+    if (!state) {
+      return '';
+    }
+    const material = state.mesh.material as StandardMaterial;
+    return material.diffuseColor.toHexString();
   }
 
   activeCenter(): Vector3 {
@@ -395,6 +414,18 @@ export class AssemblyStage {
     return node;
   }
 
+  arrowCount(): number {
+    return this.arrows.count();
+  }
+
+  private remainingAxes(state: PartState): Vector3[] {
+    const axes: Vector3[] = [];
+    for (let i = state.screwsDone; i < state.def.screwCount; i++) {
+      axes.push(this.screwAxis(state, i));
+    }
+    return axes;
+  }
+
   screwSites(): Vector3[] {
     const state = this.states[this.current];
     if (!state || !state.snap.isComplete || !state.screws) {
@@ -572,6 +603,7 @@ export class AssemblyStage {
         `${state.def.label} mounted. Press B or Y for the screwdriver, ` +
         `then touch its tip to each of the ${count} screws.`);
     this.onSnapped?.(tag);
+    this.onMounted?.(count, this.states.indexOf(state) === 0);
   }
 
   private advanceQueue(): void {
@@ -623,6 +655,7 @@ export class AssemblyStage {
   private announce(state: PartState, source: string): void {
     this.report(`Next part: the ${state.def.label}, at the ${source}.`);
     this.reportPartInfo(state);
+    this.onAnnounce?.(state.def.id);
   }
 
   private rideConveyor(state: PartState): void {
@@ -648,8 +681,11 @@ export class AssemblyStage {
   }
 
   private flash(state: PartState): void {
-    const material = state.mesh.material as StandardMaterial;
-    const base = Color3.FromHexString(state.def.color);
+    const material = state.mesh.material;
+    if (!(material instanceof StandardMaterial)) {
+      return;
+    }
+    const base = material.diffuseColor;
     Animation.CreateAndStartAnimation(
         'partFlash',
         material,
@@ -711,9 +747,10 @@ export class AssemblyStage {
 
   private restore(state: PartState): void {
     state.ghost.setEnabled(true);
-    const material = state.mesh.material as StandardMaterial;
-    material.emissiveColor =
-        Color3.FromHexString(state.def.color).scale(0.06);
+    const material = state.mesh.material;
+    if (material instanceof StandardMaterial) {
+      material.emissiveColor = material.diffuseColor.scale(0.06);
+    }
   }
 
   private capture(state: PartState): Snapshot {

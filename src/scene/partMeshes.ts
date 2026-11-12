@@ -51,7 +51,9 @@ export function createThemeMaterials(
 ): ThemeMaterials {
   const build = (slot: ThemeSlot, name: string): StandardMaterial => {
     const mat = new StandardMaterial(name, scene);
-    mat.diffuseColor = Color3.FromHexString(colorForSlot(settings, slot));
+    const diffuse = Color3.FromHexString(colorForSlot(settings, slot));
+    mat.diffuseColor = diffuse;
+    mat.emissiveColor = diffuse.scale(0.06);
     mat.specularColor = new Color3(0.05, 0.05, 0.06);
     return mat;
   };
@@ -66,12 +68,14 @@ export function applyTheme(
     theme: ThemeMaterials,
     settings: GameSettings,
 ): void {
-  theme.body.diffuseColor =
-      Color3.FromHexString(colorForSlot(settings, 'primary'));
-  theme.accent.diffuseColor =
-      Color3.FromHexString(colorForSlot(settings, 'secondary'));
-  theme.trim.diffuseColor =
-      Color3.FromHexString(colorForSlot(settings, 'tertiary'));
+  const set = (mat: StandardMaterial, hex: string): void => {
+    const diffuse = Color3.FromHexString(hex);
+    mat.diffuseColor = diffuse;
+    mat.emissiveColor = diffuse.scale(0.06);
+  };
+  set(theme.body, colorForSlot(settings, 'primary'));
+  set(theme.accent, colorForSlot(settings, 'secondary'));
+  set(theme.trim, colorForSlot(settings, 'tertiary'));
 }
 
 export async function loadPrototypes(

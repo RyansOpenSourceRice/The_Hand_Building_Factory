@@ -37,7 +37,7 @@ an error instead of guessing.
 
 | Tool          | Arguments | What it does |
 |---------------|-----------|--------------|
-| `read_state`  | none      | Game state snapshot: status text, active part, camera, pointer poses, pointer rotations, active part center, screw sites, driver tip and center, raw mock controller state. |
+| `read_state`  | none      | Game state snapshot: status text, active part, camera, pointer poses, pointer rotations, active part center, screw sites, driver tip and center, tool parent, guide arrow count, audience count, audio and render stats, the last runtime error, and raw mock controller state. |
 | `screenshot`  | none      | PNG capture of the game view, base64 encoded. |
 | `wait_ms`     | `ms`      | Sleep up to 5000 ms. Use after squeezes to let drops settle. |
 | `pose`        | `side` (`left`/`right`), `pos` `[x,y,z]`, `yaw`, `pitch` | Move a controller in world space. |
@@ -82,8 +82,26 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
 - Gripping (`squeeze`) drops a held part. Squeezing empty hands does
   nothing — reset lives in the menu, not on the grip. Drop physics still
   settle; wait ~1.5 s before reading state.
-- Confirm the audience: look over the barrier and check for tiered rows
-  of yellow mannequins in blue hard hats on grey chairs, facing you.
+- Confirm the audience: look over the barrier and check for **two rows
+  of six** yellow mannequins in blue hard hats on grey chairs, facing
+  you. `read_state.audienceCount` must be 12.
+- The yellow guide arrows are part of the game, not decoration. One
+  bobs over each undriven screw, and one bobs over the next part at its
+  printer or conveyor until it is grabbed. `arrowCount` should equal the
+  remaining screws, plus one while a part is waiting to be picked up.
+- The five blue blocks are the motors: wrist, index, middle, ring, and
+  little. Their status labels say "motor".
+- Audio is fixed to the deployment base path. `read_state.audio` must
+  report `base: "./"` on Pages, `musicReady: true`, and (after a click
+  or controller press) `state: "running"`. Every `/audio/` response
+  must be 200; voice clips live under `audio/voice/`.
+- `?handDebug=1` on desktop draws a fixed fist + screwdriver with a
+  controller proxy and points the camera at it; use it to judge the
+  grip. `?perf=1` shows fps, active meshes, mesh count, and material
+  count in the top right. If the scene ever freezes again, ask for
+  `read_state.perf` and `lastError`.
+- The screwdriver's parent should be `handRep-right` or `handRep-left`,
+  never a pointer ray. `read_state.toolParent` exposes it.
 
 ## Example session
 
@@ -100,12 +118,19 @@ A full pass lives in the repository history and follows this shape:
 5. Carry the palm with the left hand to its socket, release with trigger.
 6. `pose` the right hand so the tip touches a screw site and `wait_ms`;
    the screw drives with no trigger press. Repeat until the queue moves.
-7. `a_button` right press + release to open the menu, `screenshot`,
+7. Check `read_state.arrowCount` after the mount: 4 arrows for the palm,
+   2 for the upper cover, 1 for single-screw parts. Check
+   `read_state.audienceCount` is 12 and `read_state.audio.musicReady` is
+   true.
+8. The narrator should name the palm, its printer pickup, and its
+   landing spot; music ducks while it speaks. Mute with SOUND and confirm
+   both voice and effects stop.
+9. `a_button` right press + release to open the menu, `screenshot`,
    press again to close. The menu exposes reset, undo and redo with
    step counts, movement settings, the filament palette, and the
    controls footer. Hovering each button with a pointer ray must
    brighten it.
-8. If a full build was completed, wait for the completion splash with
+10. If a full build was completed, wait for the completion splash with
    REBUILD, hold out its gate, press REBUILD with the pointer ray and
    trigger, and confirm the queue restarts at the palm.
-9. `page_errors` — should be empty at every step.
+11. `page_errors` — should be empty at every step.

@@ -147,7 +147,15 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
   test.skip(({browserName}) => browserName !== 'chromium');
   test.slow();
 
+  const audioStatuses: number[] = [];
+
   test.beforeEach(async ({page}) => {
+    audioStatuses.length = 0;
+    page.on('response', (response) => {
+      if (response.url().includes('/audio/')) {
+        audioStatuses.push(response.status());
+      }
+    });
     await page.addInitScript(() => {
       window.__XR_MOCK_CONFIG__ = {mockXr: true};
     });
@@ -176,11 +184,16 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         test.setTimeout(330_000);
 
         await setWorldPose(page, 'right', TOOL_POSE, 0, TOOL_POSE_PITCH);
+        expect(await page.evaluate(
+            () => window.factoryDebug!.audienceCount())).toBe(12);
+
         await pressTool(page, 'right');
         expect(await page.evaluate(
             () => window.factoryDebug!.toolEquipped())).toBe(true);
         expect(await page.evaluate(
             () => window.factoryDebug!.toolVisible())).toBe(true);
+        expect(await page.evaluate(
+            () => window.factoryDebug!.toolParent())).toBe('handRep-right');
 
         await pressTool(page, 'right');
         expect(await page.evaluate(
@@ -246,6 +259,12 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
 
           await expect.poll(async () => (await sites(page)).length,
               {timeout: 8_000}).toBeGreaterThan(0);
+          if (id === 'palm') {
+            await expect.poll(
+                () => page.evaluate(
+                    () => window.factoryDebug!.arrowCount()),
+                {timeout: 4_000}).toBe(4);
+          }
 
           for (let rounds = 0; rounds < 14; rounds++) {
             const remaining = await sites(page);
@@ -283,5 +302,12 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         await expect.poll(async () => (await partInfo(page)).id,
             {timeout: 20_000}).toBe('palm');
         expect((await sites(page)).length).toBe(0);
+
+        expect(audioStatuses.length).toBeGreaterThan(6);
+        expect(audioStatuses.every((status) => status === 200)).toBe(true);
+        const audio = await page.evaluate(
+            () => window.factoryDebug!.audio());
+        expect(audio.musicReady).toBe(true);
+        expect(audio.base).not.toMatch(/^\/audio/);
       });
 });

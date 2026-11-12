@@ -24,11 +24,16 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
        hall (robot arms, racks, forklifts, stage, ~155-person instanced
        audience, walkers), four generated detail textures.
        (2026.11.10.7)
-8. [ ] Test on the actual Quest 3 via the Pages staging URL and in an
-       itch-style iframe (pending Ryan pushing `dev`/`main`).
-9. [ ] Add a cheer swell (instanced crowd shipped in 2026.11.10.7; audio
-       from OpenRouter generation direction to be provided by Ryan).
+8. [x] Test on the actual Quest 3 via the Pages staging URL.
+       (2026.11.11.3 and 2026.11.12.2, with feedback below.)
+9. [x] Cheer swell plus a pre-rendered narrator that names each part and
+       where it goes. (2026.11.12.3)
 10. [ ] Fine tuning (90 Hz budget, seated/height adaptation, pause menu,
         mirror, itch upload, on-device validation, rate other entries).
+11. [x] On-device feedback round: fist-shaped controller hands, magnetic
+        screwdriver parented to the hand, working Pages audio, palette
+        that recolors the printed hand, 12-person audience, low-poly
+        screws, yellow screw arrows, render-loop error guard and perf
+        readout. (2026.11.12.3)
 
 Definition of done for every item: the four gates in AGENTS.md.

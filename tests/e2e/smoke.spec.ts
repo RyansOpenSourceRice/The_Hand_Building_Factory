@@ -118,3 +118,26 @@ test('enter VR fails gracefully without a device', async ({page}) => {
   await page.mouse.click(640, 587);
   await expect(status).toContainText('VR did not start', {timeout: 5_000});
 });
+
+test('the filament palette recolors printed hand parts', async ({page}) => {
+  test.skip(
+      test.info().project.name !== 'firefox',
+      'colour state is asserted on the desktop project',
+  );
+  await page.goto('/');
+  const status = page.locator('#live-status');
+  await expect(status).toHaveAttribute('data-ready', 'desktop', {
+    timeout: 20_000,
+  });
+  await page.evaluate(() => window.factoryDebug!.splashSkip());
+
+  expect((await page.evaluate(
+      () => window.factoryDebug!.partColor('palm'))).toLowerCase())
+      .toBe('#e8e2d4');
+  await page.evaluate(
+      () => window.factoryDebug!.selectTheme('primary', 5));
+  await expect.poll(
+      () => page.evaluate(
+          () => window.factoryDebug!.partColor('palm').toLowerCase()),
+      {timeout: 4_000}).toBe('#c9a227');
+});

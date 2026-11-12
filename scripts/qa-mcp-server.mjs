@@ -211,6 +211,12 @@ async function readState() {
       driverCenter: debug.driverCenter(),
       toolEquipped: debug.toolEquipped(),
       toolVisible: debug.toolVisible(),
+      toolParent: debug.toolParent(),
+      arrowCount: debug.arrowCount(),
+      audienceCount: debug.audienceCount(),
+      perf: debug.perf(),
+      audio: debug.audio(),
+      lastError: debug.lastError(),
     };
   });
 }
@@ -236,9 +242,10 @@ const TOOLS = [
     name: 'read_state',
     description: 'Snapshot of the game state: status text, announced ' +
       'part, viewer yaw, controller world poses, active part center, ' +
-      'screw sites, screwdriver tip and center, and whether the ' +
-      'screwdriver is equipped or visible. World space: +x right, ' +
-      '+y up, +z toward the player.',
+      'screw sites, screwdriver tip and center, whether the screwdriver ' +
+      'is equipped or visible and what it is parented to, guide arrow ' +
+      'count, audience count, audio state, render stats, and the last ' +
+      'runtime error. World space: +x right, +y up, +z toward the player.',
     inputSchema: {type: 'object', properties: {}},
   },
   {

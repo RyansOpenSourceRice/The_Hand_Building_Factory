@@ -1,6 +1,6 @@
 import './style.css';
 import {UniversalCamera} from '@babylonjs/core/Cameras/universalCamera';
-import {Vector3} from '@babylonjs/core/Maths/math.vector';
+import {Quaternion, Vector3} from '@babylonjs/core/Maths/math.vector';
 import type {WebXRCamera} from '@babylonjs/core/XR/webXRCamera';
 import {Scene} from '@babylonjs/core/scene';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
@@ -13,9 +13,11 @@ import type {
   WebXRDefaultExperience,
 } from '@babylonjs/core/XR/webXRDefaultExperience';
 import {
+  AUDIENCE_COUNT,
   attachEnvironmentColliders,
   createEnvironment,
 } from './scene/environment';
+import {AbstractEngine} from '@babylonjs/core/Engines/abstractEngine';
 import {enableGamePhysics} from './scene/physics';
 import {AssemblyStage} from './game/assembly';
 import {Screwdriver} from './game/screwdriver';
@@ -29,7 +31,10 @@ import {
   snap,
 } from './audio/sfx';
 import {MusicLoop} from './audio/music';
+import {VoicePlayer} from './audio/voice';
+import {partVoiceKey} from './audio/voiceLines';
 import {SettingsStore} from './game/settings';
+import type {ThemeSlot} from './game/palette';
 import {
   applyTheme,
   createPartProvider,
@@ -48,6 +53,7 @@ import {attachXrLocomotion} from './input/locomotion';
 import {attachHeightControl} from './input/height';
 import {
   attachControllerHands,
+  createDebugHand,
   handRepTint,
   setHandTint,
 } from './input/handRep';
@@ -120,6 +126,13 @@ async function boot(): Promise<void> {
   const driver = new Screwdriver(scene);
   initSfx(scene);
   const music = new MusicLoop(scene);
+  const voice = new VoicePlayer(
+      scene, (speaking) => music.setDucked(speaking));
+  let voiceArmed = false;
+  let pendingPart = '';
+  let introSaid = false;
+  let arrowsTold = false;
+  let menuTold = false;
   let audioArmed = false;
   const armAudio = (): void => {
     if (audioArmed) {
@@ -147,18 +160,39 @@ async function boot(): Promise<void> {
   stage.onProgress = (done, total) => {
     if (total > 0 && done >= total) {
       cheer();
+      voice.say('complete');
       window.setTimeout(() => splash.show(true), 2500);
     }
   };
   stage.onDropped = () => partDrop();
+  stage.onAnnounce = (id) => {
+    const key = partVoiceKey(id);
+    if (voiceArmed) {
+      voice.say(key);
+    } else {
+      pendingPart = key;
+    }
+  };
+  stage.onMounted = (count, first) => {
+    if (!voiceArmed) {
+      return;
+    }
+    voice.say(count > 1 ? 'mount-many' : 'mount-one');
+    if (first && count > 1 && !arrowsTold) {
+      arrowsTold = true;
+      voice.say('arrows');
+    }
+  };
   const toggleDriver = (): void => {
     if (driver.isEquipped() || driver.isVisible()) {
       driver.holster();
       hud.setStatus('Screwdriver put away.');
+      voice.say('tool-off');
       return;
     }
     driver.show();
     hud.setStatus('Screwdriver ready. Drag it to a screw.');
+    voice.say('tool-on');
   };
   const hud = new Hud({
     reset: () => stage.reset(),
@@ -184,6 +218,7 @@ async function boot(): Promise<void> {
     rebuild: () => {
       xrGrabControls?.releaseAll();
       driver.holster();
+      voice.say('rebuild');
       stage.restart();
       armAudio();
     },
@@ -194,6 +229,15 @@ async function boot(): Promise<void> {
     });
     hud.setSuppressed(false);
     armAudio();
+    voiceArmed = true;
+    if (!introSaid) {
+      introSaid = true;
+      voice.say('intro');
+    }
+    if (pendingPart) {
+      voice.say(pendingPart);
+      pendingPart = '';
+    }
   };
   splash.onShown = () => hud.setSuppressed(true);
   splash.setCamera(camera);
@@ -209,6 +253,7 @@ async function boot(): Promise<void> {
     });
     setSfxMuted(current.muted);
     music.setMuted(current.muted);
+    voice.setMuted(current.muted);
     hud.setMutedLabel(current.muted);
     applyTheme(theme, current);
     if (handRepMaterial) {
@@ -260,19 +305,21 @@ async function boot(): Promise<void> {
   });
   const xr = await initXr(scene, env.ground);
   if (xr) {
-    xrGrabControls = attachXrGrab(xr, stage, driver, scene, {
+    const hands = attachControllerHands(
+        xr, scene, settings.get().themePrimary);
+    handRepMaterial = hands.material;
+    xrGrabControls = attachXrGrab(xr, stage, driver, scene, hands, {
       blocked: () => splash.isVisible(),
       onToolChanged: (equipped) => {
         armAudio();
         hud.setStatus(equipped ?
             'Screwdriver ready. Touch the tip to a screw.' :
             'Screwdriver put away. Press B or Y to bring it back.');
+        voice.say(equipped ? 'tool-on' : 'tool-off');
       },
     });
     attachXrLocomotion(xr, settings, scene, reportCamera);
     attachHeightControl(xr, scene, reducedMotion);
-    handRepMaterial = attachControllerHands(
-        xr, scene, settings.get().themePrimary);
     splash.attach(xr);
     const menu = new VrMenu(scene, {
       reset: () => stage.reset(),
@@ -285,7 +332,13 @@ async function boot(): Promise<void> {
       setTheme: (slot, colorIndex) => settings.setTheme(slot, colorIndex),
     });
     menu.attach(xr);
-    menu.onToggled = () => armAudio();
+    menu.onToggled = () => {
+      armAudio();
+      if (!menuTold) {
+        menuTold = true;
+        voice.say('menu');
+      }
+    };
     vrMenu = menu;
     vrMenu.setSuppressed(splash.isVisible());
     hud.hideDesktopOnly();
@@ -320,9 +373,33 @@ async function boot(): Promise<void> {
   }
   attachDesktopControls(scene, camera, reportCamera);
   attachDesktopGrab(scene, camera, stage, driver);
+  if (!xr && new URLSearchParams(window.location.search).has('handDebug')) {
+    const debugHand = createDebugHand(scene, settings.get().themePrimary);
+    debugHand.position.set(0, 1.5, 0.55);
+    debugHand.rotationQuaternion = Quaternion.Identity();
+    driver.equip(debugHand);
+    camera.position.set(0.3, 1.65, 1.35);
+    camera.setTarget(new Vector3(0, 1.48, 0.55));
+  }
 
   const xrCamera = (): UniversalCamera | WebXRCamera =>
     xr?.baseExperience.camera ?? camera;
+  let lastError = '';
+  const reportError = (err: unknown): void => {
+    const text = err instanceof Error ? err.message : String(err);
+    if (!text || text === lastError) {
+      return;
+    }
+    lastError = text;
+    hud.setStatus('Something went wrong: ' + text);
+  };
+  window.addEventListener('error', (event) => {
+    reportError(event.error ?? event.message);
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    reportError(event.reason);
+  });
+
   const bridgeWindow = window as typeof window & {
     factoryDebug?: {
       camera: () => number[];
@@ -349,6 +426,24 @@ async function boot(): Promise<void> {
       splashCam: () => number[];
       toolEquipped: () => boolean;
       toolVisible: () => boolean;
+      toolParent: () => string;
+      arrowCount: () => number;
+      audienceCount: () => number;
+      partColor: (id: string) => string;
+      selectTheme: (slot: ThemeSlot, index: number) => void;
+      perf: () => {
+        fps: number;
+        meshes: number;
+        activeMeshes: number;
+        materials: number;
+      };
+      audio: () => {
+        base: string;
+        state: string;
+        unlocked: boolean;
+        musicReady: boolean;
+      };
+      lastError: () => string;
       hudBg: () => Record<string, string>;
       menuBg: () => Record<string, string>;
     };
@@ -421,6 +516,27 @@ async function boot(): Promise<void> {
     splashCam: () => splash.debugCam(),
     toolEquipped: () => driver.isEquipped(),
     toolVisible: () => driver.isVisible(),
+    toolParent: () => driver.mesh.parent?.name ?? '',
+    arrowCount: () => stage.arrowCount(),
+    audienceCount: () => AUDIENCE_COUNT,
+    partColor: (id) => stage.partColor(id),
+    selectTheme: (slot, index) => settings.setTheme(slot, index),
+    perf: () => ({
+      fps: scene.getEngine().getFps(),
+      meshes: scene.meshes.length,
+      activeMeshes: scene.getActiveMeshes().length,
+      materials: scene.materials.length,
+    }),
+    audio: () => {
+      const engineAudio = AbstractEngine.audioEngine;
+      return {
+        base: import.meta.env.BASE_URL,
+        state: engineAudio?.audioContext?.state ?? 'none',
+        unlocked: engineAudio?.unlocked ?? false,
+        musicReady: music.isReady(),
+      };
+    },
+    lastError: () => lastError,
     hudBg: () => hud.buttonBackgrounds(),
     menuBg: () => vrMenu?.buttonBackgrounds() ?? {},
   };
@@ -428,8 +544,32 @@ async function boot(): Promise<void> {
   splash.show();
   vrMenu?.setSuppressed(true);
   document.getElementById('boot-fallback')?.remove();
-  engine.runRenderLoop(() => scene.render());
+  engine.runRenderLoop(() => {
+    try {
+      scene.render();
+    } catch (err) {
+      reportError(err);
+    }
+  });
   window.addEventListener('resize', () => engine.resize());
+  if (new URLSearchParams(window.location.search).has('perf')) {
+    const readout = document.createElement('div');
+    readout.id = 'perf-readout';
+    readout.style.cssText =
+        'position:fixed;right:8px;top:8px;padding:6px 8px;' +
+        'background:rgba(0,0,0,.65);color:#d9e2ff;font:12px monospace;' +
+        'z-index:99;border-radius:4px;pointer-events:none';
+    document.body.appendChild(readout);
+    window.setInterval(() => {
+      const perf = bridgeWindow.factoryDebug?.perf();
+      if (!perf) {
+        return;
+      }
+      readout.textContent =
+          `${perf.fps.toFixed(0)} fps | ${perf.activeMeshes} active | ` +
+          `${perf.meshes} meshes | ${perf.materials} mats`;
+    }, 1000);
+  }
 }
 
 boot().catch((err: unknown) => {

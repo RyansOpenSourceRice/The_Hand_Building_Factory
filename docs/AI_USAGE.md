@@ -57,6 +57,20 @@ and makes no AI service calls.
   loop crossfade applied by ffmpeg. The game never calls the service
   at runtime.
 
+### Speechify voice generation
+
+- Model: `speechify/simba-3.5` (voice `geffen_32`), accessed through
+  OpenRouter.
+- Used for: the narrator clips in `public/audio/voice/`. Each clip names
+  a part and where it goes, or narrates a key event (welcome, tool,
+  completion, rebuild). They are generated once by
+  `scripts/gen-voice.mjs`, trimmed, loudness-normalized, and encoded as
+  mono 24 kHz OGG Vorbis (about 600 KB total). The game never calls the
+  service at runtime.
+- Policy: the [asset approval rule](../AGENTS.md) applies; Ryan asked
+  for this narrator and chose the model and voice before it was wired
+  in.
+
 ### Replicate sound-effect generation
 
 - Model: `stability-ai/stable-audio-2.5`, accessed through Replicate.
@@ -75,13 +89,15 @@ and makes no AI service calls.
 - Code: vibe coded — written by OpenCode (GLM-5.3-Flash) under Ryan's
   direction and review.
 - Development memory/notes: AI-assisted (SuperMemory).
-- In-game media: generated in code by this project, except six AI
-  texture images (`concrete-floor.png`, `metal-roof.png`, `pegboard.png`,
-  `brushed-steel.png`, `rack-boxes.png`, `garage-door.png`) generated
-  with `bytedance-seed/seedream-5-0-flash` via OpenRouter, and six AI
-  audio files (`music-loop.ogg`, `screw-ratchet.ogg`, `screw-driven.ogg`,
-  `part-snap.ogg`, `part-drop.ogg`, `crowd-cheer.ogg`) generated with
-  `minimax:music@2.6` via Runware and `stability-ai/stable-audio-2.5`
-  via Replicate. All are listed here and on the itch.io page before
-  submission.
+- In-game media: generated in code by this project, except the following
+  committed assets: six texture images (`concrete-floor.png`,
+  `metal-roof.png`, `pegboard.png`, `brushed-steel.png`,
+  `rack-boxes.png`, `garage-door.png`) from
+  `bytedance-seed/seedream-5-0-flash`; six audio files
+  (`music-loop.ogg`, `screw-ratchet.ogg`, `screw-driven.ogg`,
+  `part-snap.ogg`, `part-drop.ogg`, `crowd-cheer.ogg`) from
+  `minimax:music@2.6` (Runware) and
+  `stability-ai/stable-audio-2.5` (Replicate); and the voice clips in
+  `public/audio/voice/` from `speechify/simba-3.5` via OpenRouter. All
+  are listed here and on the itch.io page before submission.
 - Runtime: static build, no AI service calls.
