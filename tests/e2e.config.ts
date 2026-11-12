@@ -4,6 +4,10 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
   retries: 1,
+  reporter: [
+    ['list'],
+    ['json', {outputFile: 'test-results/results.json'}],
+  ],
   projects: [
     {
       name: 'firefox',
