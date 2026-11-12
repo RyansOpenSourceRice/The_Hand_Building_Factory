@@ -11,6 +11,8 @@ interface FactoryDebug {
   tip: () => number[];
   driverCenter: () => number[];
   menu: () => boolean;
+  menuToggle: () => void;
+  menuPlace: () => void;
 }
 
 interface XrMock {

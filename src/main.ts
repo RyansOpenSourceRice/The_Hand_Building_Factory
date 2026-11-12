@@ -289,6 +289,8 @@ async function boot(): Promise<void> {
       tip: () => number[];
       driverCenter: () => number[];
       menu: () => boolean;
+      menuToggle: () => void;
+      menuPlace: () => void;
     };
   };
   bridgeWindow.factoryDebug = {
@@ -347,6 +349,8 @@ async function boot(): Promise<void> {
       return [c.x, c.y, c.z];
     },
     menu: () => vrMenu?.isVisible() ?? false,
+    menuToggle: () => vrMenu?.debugToggle(),
+    menuPlace: () => vrMenu?.debugPlaceInFrontOfActiveCamera(),
   };
 
   document.getElementById('boot-fallback')?.remove();

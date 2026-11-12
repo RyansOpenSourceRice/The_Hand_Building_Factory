@@ -2,9 +2,11 @@ import {
   AdvancedDynamicTexture,
   Button,
   Control,
+  Rectangle,
   TextBlock,
 } from '@babylonjs/gui';
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder';
+import {Axis, Space} from '@babylonjs/core/Maths/math.axis';
 import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import type {Camera} from '@babylonjs/core/Cameras/camera';
 import type {Mesh} from '@babylonjs/core/Meshes/mesh';
@@ -83,7 +85,10 @@ export class VrMenu {
   private cam: Camera | null = null;
   onToggled: ((open: boolean) => void) | null = null;
 
+  private scene: Scene;
+
   constructor(scene: Scene, actions: VrMenuActions) {
+    this.scene = scene;
     this.actions = actions;
     this.plane = MeshBuilder.CreatePlane('vrMenu', {size: 0.42}, scene);
     this.plane.setEnabled(false);
@@ -92,6 +97,15 @@ export class VrMenu {
         MENU_WIDTH,
         MENU_HEIGHT,
     );
+
+    const backing = new Rectangle('menu-backing');
+    backing.width = `${MENU_WIDTH - 60}px`;
+    backing.height = `${MENU_HEIGHT - 40}px`;
+    backing.background = 'rgba(16, 21, 38, 0.92)';
+    backing.color = 'rgba(140, 160, 220, 1)';
+    backing.thickness = 2;
+    backing.cornerRadius = 16;
+    this.adt.addControl(backing);
 
     this.buildTabBar();
     this.buildMainPage();
@@ -142,14 +156,22 @@ export class VrMenu {
     minus.onPointerClickObservable.add(() => this.stepCount(which, -1));
     this.add('main', minus);
 
+    const badge = new Rectangle(`${which}-count-badge`);
+    badge.width = '96px';
+    badge.height = '56px';
+    badge.background = 'rgba(35, 45, 80, 0.9)';
+    badge.color = 'rgba(140, 160, 220, 1)';
+    badge.thickness = 1;
+    badge.cornerRadius = 8;
+    badge.left = -50;
+    badge.top = `${top}px`;
+    this.add('main', badge);
+
     const count = new TextBlock(`${which}-count`, '× 1');
     count.fontFamily = FONT;
     count.fontSize = '28px';
     count.color = '#c9d4ff';
-    count.resizeToFit = true;
-    count.left = -50;
-    count.top = `${top}px`;
-    this.add('main', count);
+    badge.addControl(count);
     if (which === 'undo') {
       this.undoCountText = count;
     } else {
@@ -308,15 +330,10 @@ export class VrMenu {
   }
 
   private placeInFront(): void {
-    const cam = this.cam;
-    if (!cam) {
+    if (!this.cam) {
       return;
     }
-    const forward = cam.getDirection(Vector3.Forward());
-    const position = cam.position.add(forward.scale(MENU_DISTANCE));
-    position.y -= MENU_DROP;
-    this.plane.position.copyFrom(position);
-    this.plane.lookAt(cam.position);
+    this.placeInFrontFor(this.cam);
   }
 
   sync(turnMode: TurnMode, snapAngle: SnapAngle): void {
@@ -345,5 +362,29 @@ export class VrMenu {
 
   isVisible(): boolean {
     return this.visible;
+  }
+
+  debugToggle(): void {
+    this.toggle();
+  }
+
+  debugPlaceInFrontOfActiveCamera(): void {
+    const cam = this.scene.activeCamera;
+    if (!cam) {
+      return;
+    }
+    this.placeInFrontFor(cam);
+    this.refreshCounts();
+    this.plane.setEnabled(true);
+    this.visible = true;
+  }
+
+  private placeInFrontFor(cam: Camera): void {
+    const forward = cam.getDirection(Vector3.Forward());
+    const position = cam.position.add(forward.scale(MENU_DISTANCE));
+    position.y -= MENU_DROP;
+    this.plane.position.copyFrom(position);
+    this.plane.lookAt(cam.position);
+    this.plane.rotate(Axis.Y, Math.PI, Space.LOCAL);
   }
 }
