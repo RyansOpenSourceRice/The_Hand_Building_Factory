@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.11.2] - 2026-11-11
+
+### Added
+
+- A soundtrack. The game now plays the six committed audio assets:
+  a calm ambient music loop (Runware, `minimax:music@2.6`,
+  instrumental mode) and five sound effects (Replicate,
+  `stability-ai/stable-audio-2.5`) — ratchet clicks while driving a
+  screw, a screw seating tight, a part snapping into its socket, a
+  part dropped on a surface, and a short crowd cheer at completion.
+  `scripts/gen-audio.mjs` documents how each file is generated and
+  compresses everything to mono OGG (the 37 MB of source WAVs ship
+  as about 2 MB). AI usage is disclosed in `docs/AI_USAGE.md`.
+- A persistent SOUND: ON/OFF toggle in the HUD, stored alongside the
+  other settings. Muting silences both the music and the effects and
+  survives reloads.
+- Completion now celebrates with the crowd cheer.
+
+### Changed
+
+- The three synthesized oscillator blips were removed in favor of the
+  generated effects; where no audio device exists (unit tests,
+  headless sessions), the game stays silent instead of throwing.
+- Music respects the no-autoplay rule: nothing sounds until the
+  first interaction (pointerdown, keydown, HUD press, or a VR
+  trigger/grip).
+
 ## [2026.11.11.1] - 2026-11-11
 
 ### Fixed
