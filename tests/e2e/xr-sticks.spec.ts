@@ -8,9 +8,9 @@ const PROFILE_LIST = {'factory-mock': {path: 'factory-mock'}};
 const PROFILE = {
   profileId: 'factory-mock',
   layouts: {
-    left: stickLayout(),
-    right: stickLayout(),
-    none: stickLayout(),
+    left: stickLayout('left'),
+    right: stickLayout('right'),
+    none: stickLayout('right'),
   },
 };
 
@@ -25,14 +25,17 @@ function component(type: string, button: number, xAxis?: number,
   return {type, gamepadIndices, visualResponses: {}};
 }
 
-function stickLayout(): Record<string, unknown> {
+function stickLayout(hand: 'left' | 'right'): Record<string, unknown> {
   return {
     components: {
       'xr-standard-trigger': component('trigger', 0),
       'xr-standard-squeeze': component('squeeze', 1),
       'xr-standard-thumbstick': component('thumbstick', 3, 2, 3),
+      [hand === 'left' ? 'x-button' : 'a-button']:
+        component('button', 4),
     },
     gamepad: {mapping: 'xr-standard'},
+    selectComponentId: 'xr-standard-trigger',
     assetPath: 'controller.glb',
   };
 }

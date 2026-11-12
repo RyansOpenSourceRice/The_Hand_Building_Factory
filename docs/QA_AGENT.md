@@ -44,6 +44,7 @@ an error instead of guessing.
 | `stick`       | `side`, `x`, `y` | Push a thumbstick (locomotion / turn snap). |
 | `trigger`     | `side`, `value` | Squeeze a trigger (grab / drive screws). |
 | `squeeze`     | `side`    | Full grip squeeze (drops a held item only). |
+| `a_button`    | `side`, `value` | Press the menu button (A right / X left). Toggles the in-headset menu panel. |
 | `page_errors` | none      | Console errors and uncaught page errors since the session started. |
 
 A session starts on `tool` launch, loads the page, waits for XR readiness,
@@ -85,4 +86,7 @@ A full pass lives in the repository history and follows this shape:
 4. Carry the palm with the left hand to its socket, release with trigger.
 5. `squeeze` right to drop the tool, `wait_ms`, `read_state` — the
    mounted part must stay mounted.
+6. `a_button` right press + release to open the menu, `screenshot`,
+   press again to close. The menu exposes reset, undo and redo with
+   step counts, movement settings, and the filament palette.
 6. `page_errors` — should be empty at every step.

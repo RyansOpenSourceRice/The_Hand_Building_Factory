@@ -45,8 +45,15 @@ What HANDS ON! does, milestone by milestone.
 - Quest 3: point at the part with a controller and hold the trigger to
   grab it. Release the trigger with the part inside the outline and it
   locks in place with a chime and a controller pulse. Grip squeeze only
-  drops a held item; squeezing empty hands does nothing. Reset lives in
-  the in-headset menu, never on the grip.
+  drops a held item; squeezing empty hands does nothing.
+- Pressing A (right controller) or X (left) toggles an in-headset menu
+  about 0.75 m in front of the player. The MAIN tab holds reset, undo,
+  and redo. Undo and redo apply an exact step count picked with a
+  stepper; counts that are broken or too large clamp to the history
+  that exists, and ALL replays everything available. The MOVE tab holds
+  turn mode and snap angle. The LOOKS tab holds the 8-color filament
+  palette. HUD buttons and menu buttons are pressable in-headset via
+  the controller pointer rays.
 - After a part snaps in, screws stick out of it. Grab the orange
   screwdriver from its holster beside the pedestal, point the tip at a
   screw, and hold the trigger to drive it. A ratchet tick plays while

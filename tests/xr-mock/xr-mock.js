@@ -24,7 +24,7 @@
     return {
       x: 0, y: 1.1, z: 0.5, yaw: 0, pitch: 0,
       trigger: 0, squeeze: 0, stickX: 0, stickY: 0,
-      stickPressed: false,
+      stickPressed: false, aButton: 0,
     };
   }
 
@@ -326,6 +326,7 @@
         set(0, c.trigger);
         set(1, c.squeeze);
         set(3, c.stickPressed ? 1 : 0);
+        set(4, c.aButton);
         const prev = this._buttonState.get(src) ??
           {trigger: 0, squeeze: 0};
         const event = (type) => ({
