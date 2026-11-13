@@ -46,6 +46,6 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
         left hand on the pedestal, hobby-servo models with tabs, horn,
         wires, brushed-metal parts, an exclusive audio channel that waits
         for unlock, and a formal hand audit plus audio trace in the
-        start-to-finish E2E. (2026.11.12.5)
+        start-to-finish E2E. (2026.11.12.6)
 
 Definition of done for every item: the four gates in AGENTS.md.

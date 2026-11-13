@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.12.6] - 2026-11-12
+
+### Fixed
+
+- Music now starts after its clip is ready instead of being marked as
+  requested while the clip was still loading. The earlier fix avoided
+  duplicate copies but could leave the loop silent on a cold load.
+- Added final `music` assertions to the full E2E audio trace.
+
 ## [2026.11.12.5] - 2026-11-12
 
 ### Fixed

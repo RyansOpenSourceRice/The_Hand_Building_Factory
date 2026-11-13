@@ -68,7 +68,7 @@ export class MusicLoop {
         return;
       }
       this.sound.setVolume(this.ducked ? DUCK_VOLUME : VOLUME);
-      if (!this.playRequested) {
+      if (!this.playRequested && this.sound.isReady()) {
         this.playRequested = true;
         this.sound.play();
       }

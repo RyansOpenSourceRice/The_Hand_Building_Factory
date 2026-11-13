@@ -396,6 +396,9 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
           window.clearInterval(store.__audioTimer);
           return store.__audioTrace;
         });
+        const channels = await page.evaluate(
+            () => window.factoryDebug!.audioChannels());
+        expect(channels.music).toBe(true);
         expect(trace.length).toBeGreaterThan(10);
         const overlaps = trace.filter((sample) => sample.voice > 1);
         if (overlaps.length > 0) {
