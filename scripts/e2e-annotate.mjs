@@ -1,6 +1,9 @@
 import {existsSync, readFileSync} from 'node:fs';
 
-const FILE = 'test-results/results.json';
+const FILES = [
+  'test-results/results.json',
+  'tests/test-results/results.json',
+];
 
 function walk(suite) {
   for (const spec of suite.specs ?? []) {
@@ -21,8 +24,9 @@ function walk(suite) {
   }
 }
 
-if (existsSync(FILE)) {
-  const report = JSON.parse(readFileSync(FILE, 'utf8'));
+const file = FILES.find((name) => existsSync(name));
+if (file) {
+  const report = JSON.parse(readFileSync(file, 'utf8'));
   for (const suite of report.suites ?? []) {
     walk(suite);
   }
