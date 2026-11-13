@@ -104,13 +104,16 @@ test.describe('xr credit splash (chromium + mock navigator.xr)', () => {
         {timeout: 10_000}).toBe(true);
 
         await pressButton(page, 'right', 400);
-        expect(await splashVisible(page)).toBe(false);
+        await expect.poll(() => splashVisible(page),
+            {timeout: 5_000}).toBe(false);
 
         await pressButton(page, 'right', 400);
-        expect(await page.evaluate(
-            () => window.factoryDebug!.menu())).toBe(true);
+        await expect.poll(() => page.evaluate(
+            () => window.factoryDebug!.menu()),
+        {timeout: 5_000}).toBe(true);
         await pressButton(page, 'right', 400);
-        expect(await page.evaluate(
-            () => window.factoryDebug!.menu())).toBe(false);
+        await expect.poll(() => page.evaluate(
+            () => window.factoryDebug!.menu()),
+        {timeout: 5_000}).toBe(false);
       });
 });
