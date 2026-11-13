@@ -14,7 +14,7 @@ export type PartDef = {
   id: string;
   label: string;
   file: string | null;
-  primitive: 'servo' | null;
+  primitive: 'servo' | 'pin' | 'wrist-plate' | 'hinge-boss' | null;
   source: PartSource;
   phase: PartPhase;
   hostId: string;
@@ -33,21 +33,14 @@ export const HAND_ROOT: Vec3Literal = {x: 0, y: 1.4949, z: 0};
 export const HAND_TILT_X = 0;
 export const HAND_YAW = 0;
 
-const FINGER_X = 0.0993;
-const FINGER_STEP = 0.0626;
+export const FINGER_X = 0.0993;
+export const FINGER_STEP = 0.0626;
 const SERVO_BACK_Z = -0.035;
 
 export const PRINTER_HOME: Vec3Literal = {x: -0.75, y: 1.265, z: 0.3};
-export const CONVEYOR_HOME: Vec3Literal = {x: 0.62, y: 1.16, z: 0.35};
-export const CONVEYOR_PATH: readonly [
-  Vec3Literal,
-  Vec3Literal,
-  Vec3Literal,
-  Vec3Literal,
-] = [
-  {x: 1.75, y: -0.06, z: 1.4},
-  {x: 1.1, y: 0.14, z: 1.4},
-  {x: 0.75, y: 0.55, z: 1.28},
+export const CONVEYOR_HOME: Vec3Literal = {x: 0.62, y: 1.16, z: 0.55};
+export const CONVEYOR_PATH: readonly [Vec3Literal, Vec3Literal] = [
+  {x: 0.62, y: -0.45, z: 2.85},
   {x: 0.62, y: 1.16, z: 0.55},
 ];
 export const PRINTER_BED_TOP = 1.24;
@@ -104,9 +97,92 @@ const finger = (
   home: PRINTER_HOME,
   snapRadius: 0.22,
   screwCount: 1,
-  screwOffsets: [{x: 0, y: -0.15, z: 0}],
+  screwOffsets: [{x: FINGER_X, y: -0.15, z: 0}],
   screwNormals: [{x: 0, y: 1, z: 0}],
 });
+
+const primitiveDef = (
+    id: string,
+    label: string,
+    primitive: 'pin' | 'wrist-plate' | 'hinge-boss',
+    phase: PartPhase,
+    hostId: string,
+    hostLabel: string,
+    local: Vec3Literal,
+    snapRadius: number,
+): PartDef => ({
+  id,
+  label,
+  file: null,
+  primitive,
+  source: 'printer',
+  phase,
+  hostId,
+  hostLabel,
+  scale: 1,
+  local,
+  home: PRINTER_HOME,
+  snapRadius,
+  screwCount: 0,
+  screwOffsets: [],
+  screwNormals: [],
+});
+
+const knucklePin = (
+    id: string,
+    label: string,
+    x: number,
+): PartDef => primitiveDef(
+    id,
+    label,
+    'pin',
+    'fingers',
+    'palm',
+    'the knuckle',
+    {x, y: -0.03, z: 0},
+    0.085,
+);
+
+const thumbPinBase = primitiveDef(
+    'thumb-pin-base',
+    'thumb hinge pin',
+    'pin',
+    'thumb-segments',
+    'thumb-base',
+    'the thumb hinge',
+    {x: 0.04, y: -0.28, z: 0},
+    0.075,
+);
+
+const thumbPinTip = primitiveDef(
+    'thumb-pin-tip',
+    'thumb tip pin',
+    'pin',
+    'thumb-segments',
+    'thumb-segments',
+    'the thumb tip hinge',
+    {x: 0.16, y: -0.23, z: 0},
+    0.075,
+);
+
+const wristPlate: PartDef = {
+  ...primitiveDef(
+      'wrist-plate',
+      'wrist plate',
+      'wrist-plate',
+      'palm',
+      'palm',
+      'the bottom of the palm',
+      {x: 0, y: -0.427, z: 0.01},
+      0.2,
+  ),
+  screwCount: 2,
+  screwOffsets: [
+    {x: 0.06, y: 0, z: 0},
+    {x: -0.06, y: 0, z: 0},
+  ],
+  screwNormals: [{x: 0, y: 1, z: 0}, {x: 0, y: 1, z: 0}],
+};
 
 export const PART_DEFS: readonly PartDef[] = [
   {
@@ -131,6 +207,7 @@ export const PART_DEFS: readonly PartDef[] = [
     ],
     screwNormals: [down(), down(), down(), down()],
   },
+  wristPlate,
   servoDef('servo-base', 'wrist motor', servoLocal(0, -0.34)),
   servoDef('servo-f1', 'index motor', servoLocal(FINGER_X, -0.105)),
   servoDef(
@@ -158,10 +235,27 @@ export const PART_DEFS: readonly PartDef[] = [
     screwOffsets: [{x: 0.04, y: -0.28, z: 0}],
     screwNormals: [intoPalmFromThumb()],
   },
+  primitiveDef(
+      'thumb-hinge-boss',
+      'thumb hinge boss',
+      'hinge-boss',
+      'thumb-base',
+      'palm',
+      'the side of the palm',
+      {x: 0.045, y: -0.28, z: 0.015},
+      0.085,
+  ),
   finger('finger-index', 'index finger', 0),
   finger('finger-middle', 'middle finger', -FINGER_STEP),
   finger('finger-ring', 'ring finger', -FINGER_STEP * 2),
   finger('finger-little', 'little finger', -FINGER_STEP * 3),
+  knucklePin('knuckle-index', 'index knuckle pin', FINGER_X),
+  knucklePin(
+      'knuckle-middle', 'middle knuckle pin', FINGER_X - FINGER_STEP),
+  knucklePin(
+      'knuckle-ring', 'ring knuckle pin', FINGER_X - FINGER_STEP * 2),
+  knucklePin(
+      'knuckle-little', 'little knuckle pin', FINGER_X - FINGER_STEP * 3),
   {
     id: 'thumb-segments',
     label: 'thumb segments',
@@ -179,6 +273,8 @@ export const PART_DEFS: readonly PartDef[] = [
     screwOffsets: [{x: 0.16, y: -0.23, z: 0}],
     screwNormals: [{x: 0, y: -1, z: 0}],
   },
+  thumbPinBase,
+  thumbPinTip,
   {
     id: 'upper-cover',
     label: 'upper cover',
@@ -192,12 +288,19 @@ export const PART_DEFS: readonly PartDef[] = [
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.3,
-    screwCount: 2,
+    screwCount: 4,
     screwOffsets: [
-      {x: 0.09, y: -0.30, z: -0.10},
-      {x: -0.09, y: -0.30, z: -0.10},
+      {x: 0.09, y: -0.36, z: -0.085},
+      {x: -0.09, y: -0.36, z: -0.085},
+      {x: 0.09, y: -0.20, z: -0.085},
+      {x: -0.09, y: -0.20, z: -0.085},
     ],
-    screwNormals: [intoPalmFromCover(), intoPalmFromCover()],
+    screwNormals: [
+      intoPalmFromCover(),
+      intoPalmFromCover(),
+      intoPalmFromCover(),
+      intoPalmFromCover(),
+    ],
   },
 ];
 

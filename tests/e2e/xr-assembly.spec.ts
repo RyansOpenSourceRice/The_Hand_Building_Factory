@@ -51,19 +51,37 @@ const TOOL_POSE: V3 = [0, 1.35, 0.9];
 
 const SOCKETS: Record<string, V3> = {
   'palm': [0, 1.4949, 0],
+  'wrist-plate': [0, 1.0679, 0.01],
   'servo-base': [0, 1.1549, -0.035],
   'servo-f1': [0.0993, 1.3899, -0.035],
   'servo-f2': [0.0367, 1.3899, -0.035],
   'servo-f3': [-0.0259, 1.3899, -0.035],
   'servo-f4': [-0.0885, 1.3899, -0.035],
   'thumb-base': [0, 1.4949, 0],
+  'thumb-hinge-boss': [0.045, 1.2149, 0.015],
   'finger-index': [0, 1.4949, 0],
   'finger-middle': [-0.0626, 1.4949, 0],
   'finger-ring': [-0.1252, 1.4949, 0],
   'finger-little': [-0.1878, 1.4949, 0],
+  'knuckle-index': [0.0993, 1.4649, 0],
+  'knuckle-middle': [0.0367, 1.4649, 0],
+  'knuckle-ring': [-0.0259, 1.4649, 0],
+  'knuckle-little': [-0.0885, 1.4649, 0],
   'thumb-segments': [0, 1.4949, 0],
+  'thumb-pin-base': [0.04, 1.2149, 0],
+  'thumb-pin-tip': [0.16, 1.2649, 0],
   'upper-cover': [0, 1.4949, 0],
 };
+
+const SCREWLESS_IDS = new Set([
+  'thumb-hinge-boss',
+  'knuckle-index',
+  'knuckle-middle',
+  'knuckle-ring',
+  'knuckle-little',
+  'thumb-pin-base',
+  'thumb-pin-tip',
+]);
 
 const CONVEYOR_IDS = new Set([
   'servo-base',
@@ -208,9 +226,9 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
     });
   });
 
-  test('finishes the hand with the magnetic screwdriver, then rebuilds',
+  test('finishes the hand by touching the screwdriver tip, then rebuilds',
       async ({page}) => {
-        test.setTimeout(330_000);
+        test.setTimeout(540_000);
 
         await expect.poll(
             () => page.evaluate(
@@ -239,6 +257,11 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
             () => window.factoryDebug!.toolVisible())).toBe(true);
         expect(await page.evaluate(
             () => window.factoryDebug!.toolParent())).toBe('handRep-right');
+        const digits = await page.evaluate(
+            () => window.factoryDebug!.digitAudit('right'));
+        expect(digits?.fingers).toBe(4);
+        expect(digits?.thumbs).toBe(1);
+        expect(digits?.digits).toBe(5);
 
         await pressTool(page, 'right');
         expect(await page.evaluate(
@@ -257,6 +280,23 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
             () => window.factoryDebug!.tip(),
         ) as V3;
         const tipOff = sub(heldTip, pointer);
+        const toolDir = await page.evaluate(
+            () => window.factoryDebug!.toolDirection()) as V3;
+        const pointerRot = await page.evaluate(
+            () => window.factoryDebug!.pointerRot('right')) as number[];
+        const forward = page.evaluate((q) => {
+          const x = q[0] ?? 0;
+          const y = q[1] ?? 0;
+          const z = q[2] ?? 0;
+          const w = q[3] ?? 1;
+          const tx = 2 * (x * z + w * y);
+          const ty = 2 * (y * z - w * x);
+          const tz = 1 - 2 * (x * x + y * y);
+          return [tx, ty, tz];
+        }, pointerRot);
+        const fwd = await forward as V3;
+        expect(toolDir[0] * fwd[0] + toolDir[1] * fwd[1] +
+            toolDir[2] * fwd[2]).toBeGreaterThan(0.65);
 
         for (const id of Object.keys(SOCKETS)) {
           await waitForActivePart(page, id);
@@ -312,6 +352,11 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
           await page.waitForTimeout(350);
           await trigger(page, 'left', false);
 
+          if (SCREWLESS_IDS.has(id)) {
+            await page.waitForTimeout(350);
+            continue;
+          }
+
           await expect.poll(async () => (await sites(page)).length,
               {timeout: 8_000}).toBeGreaterThan(0);
           if (id === 'palm') {
@@ -327,6 +372,19 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
                 () => page.evaluate(
                     () => window.factoryDebug!.hostGlow()),
                 {timeout: 4_000}).toBe('');
+            const beforeHover = (await sites(page)).length;
+            const hoverSite = (await sites(page))[0]!;
+            await setWorldPose(
+                page,
+                'right',
+                sub(add(hoverSite, [0, 0.06, 0]), tipOff),
+                0,
+                TOOL_POSE_PITCH,
+            );
+            await page.waitForTimeout(DRIVE_MS + 250);
+            expect((await sites(page)).length).toBe(beforeHover);
+            expect(await page.evaluate(
+                () => window.factoryDebug!.drive().contact)).toBe(false);
           }
 
           for (let rounds = 0; rounds < 14; rounds++) {
@@ -351,7 +409,7 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
 
         const parts = await page.evaluate(
             () => window.factoryDebug!.parts());
-        expect(parts).toHaveLength(13);
+        expect(parts).toHaveLength(21);
         for (const part of parts) {
           expect(part.placed, part.id).toBe(true);
           expect(part.screwsDone, part.id).toBe(part.screwCount);
@@ -364,7 +422,13 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         const thumbBase = byId.get('thumb-base');
         const thumbSegments = byId.get('thumb-segments');
         const cover = byId.get('upper-cover');
+        const wrist = byId.get('wrist-plate');
+        const boss = byId.get('thumb-hinge-boss');
+        const pin = byId.get('knuckle-index');
         expect(palm).toBeDefined();
+        expect(wrist).toBeDefined();
+        expect(boss).toBeDefined();
+        expect(pin).toBeDefined();
         expect(index).toBeDefined();
         expect(little).toBeDefined();
         expect(thumbBase).toBeDefined();
@@ -382,6 +446,19 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         const minX = Math.min(...parts.map((part) => part.min[0]!));
         expect(maxX - minX).toBeLessThan(0.5);
         expect(maxX - minX).toBeGreaterThan(0.25);
+
+        const beforeFrames = await page.evaluate(
+            () => window.factoryDebug!.perf().frames);
+        await page.waitForTimeout(1200);
+        const afterFrames = await page.evaluate(
+            () => window.factoryDebug!.perf().frames);
+        expect(afterFrames).toBeGreaterThan(beforeFrames + 5);
+        const sceneAudit = await page.evaluate(
+            () => window.factoryDebug!.sceneAudit());
+        expect(sceneAudit.textures.tiles).toBeGreaterThanOrEqual(12);
+        expect(sceneAudit.textures.overBudget).toBe(false);
+        expect(sceneAudit.textures.overTileBudget).toBe(false);
+        expect(sceneAudit.lights).toBeLessThanOrEqual(4);
 
         const trace = await page.evaluate(() => {
           const store = window as unknown as {

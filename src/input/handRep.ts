@@ -18,18 +18,32 @@ import {
   FILAMENT_COLORS,
   isValidColorIndex,
 } from '../game/palette';
+import {applyTile} from '../scene/textures';
 
 export const HAND_REP_ALPHA = 0.55;
 const EMISSIVE_SHARE = 0.12;
-const CURL_REST = 0.6;
-const CURL_RANGE = 0.32;
-const DISTAL_REST = 1.05;
+const CURL_REST = 0.36;
+const CURL_RANGE = 0.48;
+const DISTAL_REST = 0.42;
 const DISTAL_RANGE = 0.35;
-const FINGER_Y = [0.036, 0.012, -0.012, -0.036];
+const FINGER_X = [-0.03, -0.01, 0.01, 0.03] as const;
+const PALM_WIDTH = 0.082;
+const PALM_HEIGHT = 0.026;
+const PALM_DEPTH = 0.078;
 
 type HandPose = (trigger: number, squeeze: number) => void;
 
-type Finger = {pivot: TransformNode; distal: TransformNode};
+type Finger = {
+  pivot: TransformNode;
+  distal: TransformNode;
+};
+
+export type DigitAudit = {
+  fingers: number;
+  thumbs: number;
+  digits: number;
+  meshes: number;
+};
 
 function box(
     name: string,
@@ -50,18 +64,24 @@ function box(
 
 function buildFinger(
     index: number,
-    y: number,
     side: number,
     root: TransformNode,
 ): Finger {
   const pivot = new TransformNode(`handRep-finger${index}`, root.getScene());
   pivot.parent = root;
-  pivot.position.set(side * 0.034, y, 0.022);
-  box(`handRep-proximal${index}`, [0.019, 0.019, 0.036], pivot, [0, 0, 0.018]);
-  const distal = new TransformNode(`handRep-distal${index}`, root.getScene());
+  pivot.position.set(
+      side * (FINGER_X[index] ?? 0),
+      0,
+      PALM_DEPTH / 2 - 0.002,
+  );
+  box(`handRep-finger${index}-proximal`, [0.016, 0.018, 0.036], pivot,
+      [0, 0, 0.018]);
+  const distal = new TransformNode(
+      `handRep-finger${index}-distal`, root.getScene());
   distal.parent = pivot;
-  distal.position.set(0, 0, 0.036);
-  box(`handRep-tip${index}`, [0.016, 0.016, 0.028], distal, [0, 0, 0.014]);
+  distal.position.z = 0.036;
+  box(`handRep-finger${index}-tip`, [0.013, 0.015, 0.028], distal,
+      [0, 0, 0.014]);
   return {pivot, distal};
 }
 
@@ -69,28 +89,38 @@ function buildHand(
     side: number,
     material: StandardMaterial,
     scene: Scene,
+    showProxy = false,
 ): {root: TransformNode; pose: HandPose; dispose: () => void} {
   const root = new TransformNode('handRep-root', scene);
-  const palm = box(
-      'handRep-palm', [0.026, 0.095, 0.082], root,
-      [side * 0.034, 0, 0.004]);
-  palm.material = material;
-  box('handRep-wrist', [0.032, 0.05, 0.055], root,
-      [side * 0.032, -0.075, -0.004])
-      .material = material;
-  box('handRep-knuckle', [0.024, 0.088, 0.024], root,
-      [side * 0.03, 0, 0.045])
-      .material = material;
+  box(
+      'handRep-palm',
+      [PALM_WIDTH, PALM_HEIGHT, PALM_DEPTH],
+      root,
+      [0, 0, 0.018],
+  ).material = material;
+  box(
+      'handRep-wrist',
+      [0.056, 0.032, 0.048],
+      root,
+      [0, -0.004, -0.043],
+  ).material = material;
 
-  const fingers = FINGER_Y.map((y, i) => buildFinger(i, y, side, root));
+  const fingers = FINGER_X.map(
+      (_x, i) => buildFinger(i, side, root));
 
   const thumbPivot = new TransformNode('handRep-thumb', scene);
   thumbPivot.parent = root;
-  thumbPivot.position.set(side * 0.024, 0.055, 0.026);
-  box('handRep-thumbSeg', [0.021, 0.021, 0.052], thumbPivot, [0, 0, 0.026])
-      .material = material;
+  thumbPivot.position.set(side * -0.049, 0.002, 0.038);
+  thumbPivot.rotation.y = side * -0.68;
+  box('handRep-thumb-base', [0.019, 0.019, 0.034], thumbPivot,
+      [0, 0, 0.017]).material = material;
+  const thumbDistal = new TransformNode('handRep-thumb-distal', scene);
+  thumbDistal.parent = thumbPivot;
+  thumbDistal.position.z = 0.034;
+  box('handRep-thumb-tip', [0.016, 0.016, 0.027], thumbDistal,
+      [0, 0, 0.0135]).material = material;
 
-  if (new URLSearchParams(window.location.search).has('handDebug')) {
+  if (showProxy) {
     const proxy = MeshBuilder.CreateCylinder(
         'handRep-controllerProxy',
         {height: 0.12, diameter: 0.036, tessellation: 12},
@@ -107,13 +137,12 @@ function buildHand(
     const grip = Math.max(trigger, squeeze);
     const fist = squeeze;
     for (const finger of fingers) {
-      finger.pivot.rotation.y = -side * (CURL_REST + CURL_RANGE * grip +
-          0.12 * fist);
-      finger.distal.rotation.y = -side * (DISTAL_REST + DISTAL_RANGE * grip +
-          0.1 * fist);
+      finger.pivot.rotation.x = CURL_REST + CURL_RANGE * grip + 0.1 * fist;
+      finger.distal.rotation.x =
+          DISTAL_REST + DISTAL_RANGE * grip + 0.08 * fist;
     }
-    thumbPivot.rotation.y = -side * (0.7 + 0.2 * fist);
-    thumbPivot.rotation.x = 0.18 + 0.12 * fist;
+    thumbPivot.rotation.x = 0.2 + 0.22 * grip + 0.08 * fist;
+    thumbDistal.rotation.x = 0.32 + 0.2 * grip;
   };
   pose(0.12, 0);
 
@@ -126,6 +155,27 @@ function buildHand(
     root.dispose(false, true);
   };
   return {root, pose, dispose};
+}
+
+export function digitAudit(root: TransformNode): DigitAudit {
+  let fingers = 0;
+  let thumbs = 0;
+  let meshes = 0;
+  const visit = (node: TransformNode): void => {
+    for (const child of node.getChildren()) {
+      if (child instanceof Mesh) {
+        meshes++;
+      }
+      if (child.name === 'handRep-thumb') {
+        thumbs++;
+      } else if (/^handRep-finger\d+$/.test(child.name)) {
+        fingers++;
+      }
+      visit(child as TransformNode);
+    }
+  };
+  visit(root);
+  return {fingers, thumbs, digits: fingers + thumbs, meshes};
 }
 
 export function handRepTint(colorIndex: number): Color3 {
@@ -155,12 +205,18 @@ type ActiveHand = {
 export function createDebugHand(
     scene: Scene,
     colorIndex: number,
+    showProxy = true,
 ): TransformNode {
   const material = new StandardMaterial('handRepDebugMat', scene);
   material.specularColor = Color3.Black();
   material.alpha = 0.85;
+  applyTile(material, scene, 'pla', {
+    uScale: 3,
+    vScale: 9,
+    offsetSeed: 'handRepDebugMat',
+  });
   setHandTint(material, handRepTint(colorIndex));
-  return buildHand(1, material, scene).root;
+  return buildHand(1, material, scene, showProxy).root;
 }
 
 export type ControllerHands = {
@@ -176,6 +232,11 @@ export function attachControllerHands(
   const material = new StandardMaterial('handRepMat', scene);
   material.specularColor = Color3.Black();
   material.alpha = HAND_REP_ALPHA;
+  applyTile(material, scene, 'pla', {
+    uScale: 3,
+    vScale: 9,
+    offsetSeed: 'handRepMat',
+  });
   setHandTint(material, handRepTint(colorIndex));
 
   const active = new Map<WebXRInputSource, ActiveHand>();

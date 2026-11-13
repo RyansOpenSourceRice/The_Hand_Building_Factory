@@ -107,6 +107,7 @@ export class VrMenu {
         MENU_WIDTH,
         MENU_HEIGHT,
     );
+    this.adt.renderScale = 0.7;
 
     const backing = new Rectangle('menu-backing');
     backing.width = `${MENU_WIDTH - 60}px`;

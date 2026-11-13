@@ -33,6 +33,23 @@ export class HostGlow {
       if (!(glow instanceof StandardMaterial)) {
         continue;
       }
+      const clonedTextures = [
+        glow.diffuseTexture,
+        glow.emissiveTexture,
+        glow.ambientTexture,
+        glow.specularTexture,
+        glow.bumpTexture,
+        glow.opacityTexture,
+      ];
+      glow.diffuseTexture = original.diffuseTexture;
+      glow.emissiveTexture = original.emissiveTexture;
+      glow.ambientTexture = original.ambientTexture;
+      glow.specularTexture = original.specularTexture;
+      glow.bumpTexture = original.bumpTexture;
+      glow.opacityTexture = original.opacityTexture;
+      for (const texture of clonedTextures) {
+        texture?.dispose();
+      }
       glow.name = `hostGlow:${mesh.name}`;
       glow.emissiveColor = AMBER.scale(0.18);
       glow.specularColor = Color3.Black();

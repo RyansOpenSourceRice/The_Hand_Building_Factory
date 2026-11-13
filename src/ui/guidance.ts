@@ -43,6 +43,7 @@ export class Guidance {
     this.plane.isPickable = false;
     this.adt = AdvancedDynamicTexture.CreateForMesh(
         this.plane, 640, 280);
+    this.adt.renderScale = 0.75;
 
     const backing = new Rectangle('guidance-backing');
     backing.width = '608px';

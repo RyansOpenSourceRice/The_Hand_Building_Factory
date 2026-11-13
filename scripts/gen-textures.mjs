@@ -1,8 +1,11 @@
-import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {existsSync, readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const SIZE = 256;
+const OUT_DIR = resolve(ROOT, 'public', 'textures');
 
 function loadKey() {
   if (process.env.OPENROUTER_API_KEY) {
@@ -17,80 +20,105 @@ function loadKey() {
   return line.slice('OPENROUTER_API_KEY='.length).trim();
 }
 
+const SEAMLESS = 'Evenly lit, no cast shadows, no objects, flat orthographic ' +
+  'view, seamless tileable texture that repeats on all four edges.';
+
 const TEXTURES = {
-  'concrete-floor': 'Seamless tileable albedo texture of a polished light ' +
-      'grey concrete warehouse floor. Photorealistic, subtle aggregate ' +
-      'speckle, faint darker stains and scuffs, shallow saw-cut joint ' +
-      'lines forming a sparse square grid, evenly lit, no shadows, no ' +
-      'objects, flat orthographic top-down view, repeats seamlessly on ' +
-      'all edges.',
-  'metal-roof': 'Seamless tileable albedo texture of light grey ' +
-      'galvanized corrugated sheet metal roofing. Photorealistic, crisp ' +
-      'parallel corrugation ribs, subtle weathering and faint rust ' +
-      'flecks at panel seams, evenly lit, no shadows, no objects, flat ' +
-      'orthographic view, ribs run horizontally, repeats seamlessly on ' +
-      'all edges.',
-  'pegboard': 'Seamless tileable albedo texture of a dark slate grey ' +
-      'workshop pegboard panel. Photorealistic, regular grid of small ' +
-      'round holes with subtle chamfers, faint dust and light scuffs, ' +
-      'evenly lit, no shadows, no tools or objects, flat orthographic ' +
-      'front view, repeats seamlessly on all edges.',
-  'brushed-steel': 'Seamless tileable albedo texture of brushed ' +
-      'stainless steel sheet. Photorealistic, fine horizontal brushing ' +
-      'grain, soft light grey tone with subtle sheen variation and a ' +
-      'few faint smudges, evenly lit, no shadows, no objects, flat ' +
-      'orthographic view, grain runs horizontally, repeats seamlessly ' +
-      'on all edges.',
-  'rack-boxes': 'Albedo texture of rows of plain cardboard shipping ' +
-      'boxes stacked on an industrial warehouse shelf. Photorealistic, ' +
-      'two neat rows of brown cardboard boxes of slightly varying ' +
-      'tones with plain blank faces, dark shelf gap between rows, ' +
-      'evenly lit, no shadows, no labels or text, flat orthographic ' +
-      'front view, tiles horizontally.',
-  'garage-door': 'Seamless tileable albedo texture of a light grey ' +
-      'industrial sectional garage door panel. Photorealistic, ' +
-      'horizontal panel seams and recessed grooves, faint dirt ' +
-      'streaks and scuffs near the bottom, evenly lit, no shadows, no ' +
-      'objects, flat orthographic front view, repeats seamlessly on ' +
-      'top and bottom edges.',
+  'pla-layer-256': 'Photorealistic grayscale FDM 3D-printer PLA surface. ' +
+    'Fine horizontal extrusion layer lines with slight random wobble, a ' +
+    'faint satin sheen, very subtle dust in the layer grooves, neutral ' +
+    'mid-grey so it can be tinted. ' + SEAMLESS,
+  'painted-steel-256': 'Photorealistic powder-coated industrial machine ' +
+    'paint in neutral light slate grey. Fine orange-peel micrograin, sparse ' +
+    'tiny chips, subtle tone variation and faint workshop dust. ' + SEAMLESS,
+  'bare-steel-256': 'Photorealistic brushed stainless steel sheet. Fine ' +
+    'horizontal brushing grain, light grey, soft sheen variation, a few ' +
+    'faint smudges and micro-scratches. ' + SEAMLESS,
+  'concrete-256': 'Photorealistic polished light-grey concrete warehouse ' +
+    'floor. Subtle aggregate speckle, faint darker stains and scuffs, no ' +
+    'large joint lines, neutral tone. ' + SEAMLESS,
+  'galvanized-256': 'Photorealistic galvanized corrugated sheet metal. ' +
+    'Crisp narrow parallel ribs, cool light grey zinc spangle, faint ' +
+    'weathering and tiny rust freckles, ribs run horizontally. ' + SEAMLESS,
+  'cardboard-256': 'Photorealistic plain brown corrugated cardboard. Fine ' +
+    'paper fibre grain, subtle corrugation ridges, faint creases and small ' +
+    'scuffs, blank with no labels or text. ' + SEAMLESS,
+  'wood-256': 'Photorealistic unfinished pine pallet wood. Straight fine ' +
+    'grain, pale warm timber, a few small knots and saw marks, subtle ' +
+    'wear. ' + SEAMLESS,
+  'rubber-256': 'Photorealistic black industrial rubber. Fine matte ' +
+    'vulcanized grain, faint mould texture, subtle grey dust in the ' +
+    'recesses, low sheen. ' + SEAMLESS,
+  'hazard-256': 'Seamless tileable black and safety-yellow diagonal hazard ' +
+    'stripe tape on painted steel. Slightly worn edges, scuffs and tiny ' +
+    'scratches, low-contrast muted yellow, three broad stripes, crisp but ' +
+    'not glowing. ' + SEAMLESS,
+  'pegboard-256': 'Photorealistic dark slate-grey workshop pegboard. ' +
+    'Regular grid of small round holes with subtle chamfers, faint dust ' +
+    'and light scuffs. ' + SEAMLESS,
+  'fabric-256': 'Photorealistic durable grey-blue woven upholstery fabric. ' +
+    'Fine visible weave, subtle colour variation, faint wear and small ' +
+    'pilling, matte. ' + SEAMLESS,
+  'safety-mesh-256': 'Photorealistic galvanized steel safety mesh with a ' +
+    'regular square diamond aperture, thin wire, faint zinc texture and ' +
+    'small scuffs, transparent-looking gaps that read as dark holes. ' +
+    SEAMLESS,
 };
 
-const name = process.argv[2];
-if (!(name in TEXTURES)) {
-  const choices = Object.keys(TEXTURES).join('|');
-  throw new Error(`usage: node scripts/gen-textures.mjs <${choices}>`);
-}
-
-const response = await fetch(
-    'https://openrouter.ai/api/v1/chat/completions',
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${loadKey()}`,
-        'Content-Type': 'application/json',
+async function generate(name) {
+  const response = await fetch(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${loadKey()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'bytedance-seed/seedream-5-0-flash',
+          messages: [{role: 'user', content: TEXTURES[name]}],
+        }),
       },
-      body: JSON.stringify({
-        model: 'bytedance-seed/seedream-5-0-flash',
-        messages: [{role: 'user', content: TEXTURES[name]}],
-      }),
-    },
-);
-
-if (!response.ok) {
-  throw new Error(`OpenRouter ${response.status}: ${await response.text()}`);
+  );
+  if (!response.ok) {
+    throw new Error(`OpenRouter ${response.status}: ${await response.text()}`);
+  }
+  const payload = await response.json();
+  const images = payload?.choices?.[0]?.message?.images;
+  if (!Array.isArray(images) || images.length === 0) {
+    throw new Error(
+        `no image in response: ${JSON.stringify(payload).slice(0, 600)}`);
+  }
+  const dataUrl = images[0].image_url.url;
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  mkdirSync(OUT_DIR, {recursive: true});
+  const outPath = resolve(OUT_DIR, `${name}.png`);
+  writeFileSync(outPath, Buffer.from(base64, 'base64'));
+  execFileSync('magick', [
+    outPath,
+    '-resize', `${SIZE}x${SIZE}!`,
+    '-strip',
+    '-define', 'png:compression-level=9',
+    outPath,
+  ]);
+  console.log(`wrote ${outPath} (${SIZE}x${SIZE})`);
 }
 
-const payload = await response.json();
-const images = payload?.choices?.[0]?.message?.images;
-if (!Array.isArray(images) || images.length === 0) {
-  throw new Error(
-      `no image in response: ${JSON.stringify(payload).slice(0, 600)}`);
+const args = process.argv.slice(2);
+const names = args.includes('all') ? Object.keys(TEXTURES) :
+    args.filter((arg) => !arg.startsWith('--'));
+if (names.length === 0) {
+  throw new Error(`usage: node scripts/gen-textures.mjs ` +
+    `<${Object.keys(TEXTURES).join('|')}|all> [--force]`);
 }
-
-const dataUrl = images[0].image_url.url;
-const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-const outDir = resolve(ROOT, 'public', 'textures');
-mkdirSync(outDir, {recursive: true});
-const outPath = resolve(outDir, `${name}.png`);
-writeFileSync(outPath, Buffer.from(base64, 'base64'));
-console.log(`wrote ${outPath} (${Buffer.from(base64, 'base64').length} bytes)`);
+for (const name of names) {
+  if (!(name in TEXTURES)) {
+    throw new Error(`unknown texture ${name}`);
+  }
+  if (!args.includes('--force') &&
+      existsSync(resolve(OUT_DIR, `${name}.png`))) {
+    console.log(`skip ${name} (already exists)`);
+    continue;
+  }
+  await generate(name);
+}

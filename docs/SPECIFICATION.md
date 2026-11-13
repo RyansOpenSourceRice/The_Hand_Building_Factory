@@ -2,7 +2,7 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.12.6)
+## Current behavior (release 2026.11.13.1)
 
 - A warehouse workshop opens through a low north sill onto a grand
   factory hall, generated almost entirely in code. The workshop keeps the
@@ -14,54 +14,59 @@ What HANDS ON! does, milestone by milestone.
   audience of twelve golden-yellow mannequins in blue hard hats, seated
   in two rows of six and facing the player. Raised pendant lights,
   hanging tube fixtures, and garage doors sit on the south wall. The
-  floor and roof are AI-generated surfaces (disclosed in `docs/AI_USAGE.md`), and the bench
-  pegboard, steel top, rack loads, and garage doors use four more
-  generated detail tiles.
+  floor, roof, machines, crates, barriers, fabric, and printed parts use
+  a shared library of twelve seamless 256x256 material tiles. The tiles
+  repeat with per-surface UV tiling and mipmaps, so the scene keeps a
+  small texture budget instead of one large atlas.
 - A filament color menu: the COLORS button opens three rows of eight
   calm colors for the primary, secondary, and tertiary roles. The
   palette applies to hand parts and the controller hands, updates the
   build live, and persists between visits.
-- Controllers wear low-poly yeah-hand representations tinted with the
-  theme's primary color, semi-transparent so the hardware stays visible.
-  The hand is built as a vertical fist around the controller grip: four
-  fingers stack along the handle and curl around it, with the thumb over
-  the top. The screwdriver shares that grip, so its handle sits inside
-  the fist and the shaft leaves from the thumb side.
-- Printed parts and the controller hands use the filament palette. A
-  color change updates every mounted part and the controller hands
-  immediately.
-- A yellow safety barrier ring with a hazard-striped top rail marks the
-  1.25 m locomotion boundary; dropped parts bounce off its rails.
+- Controllers wear clean low-poly box hands tinted with the theme's
+  primary color, semi-transparent so the hardware stays visible. Each
+  hand has one palm, four two-segment fingers, and one two-segment
+  thumb: exactly five digits, with no extra knuckle bar. The palm is
+  about half the hand length. The screwdriver shares the grip, with its
+  handle in the fist and its tip pointing forward out of the hand.
+- Printed parts and the controller hands use the filament palette plus
+  a tileable PLA layer-line texture. A color change updates every
+  mounted part and the controller hands immediately.
+- A yellow safety barrier ring marks the 1.25 m locomotion boundary.
+  Its hazard-striped top rail is split into short segments so the tile
+  does not shimmer at grazing angles, and all warehouse crates sit
+  outside the barrier clearance. Dropped parts bounce off the rails.
 - Pressing either thumbstick in VR raises the rig through three comfort
   heights (0, +0.4, +0.8 m) with a soft haptic tick, gliding at a calm
   rate and snapping instantly under reduced motion.
-- The game builds a yeah-hand robotic hand, one part at a time: palm,
-  wrist motor, four finger motors, thumb base, four fingers, thumb
-  segments, and the upper cover. The current part shows a soft,
-  pulsing translucent blue hologram at its socket, and the hologram
-  follows the player's view so it stays in sight.
+- The game builds a 21-part yeah-hand robotic hand, one part at a time:
+  palm, wrist plate, wrist motor, four finger motors, thumb base, thumb
+  hinge boss, four fingers, four knuckle pins, thumb segments, two thumb
+  hinge pins, and the upper cover. Pins are press-fit and need no
+  screws. The current part shows a soft, pulsing translucent blue
+  hologram at its socket.
 - All printed parts are 3x human scale and share one assembly frame
   derived from the STL coordinates. The palm stands on the pedestal at
-  1.07 m with its palm toward the player and fingers up; the four fingers
-  spread across the knuckles; the thumb base and segments chain from the
-  side of the palm; the cover lands on the back. The current part is
-  placed at that shared frame, not at an invented per-part socket.
+  1.07 m with its palm toward the player and fingers up; the wrist plate
+  sits under the palm; the four fingers spread across the knuckles with
+  one hinge pin each; the thumb base, hinge boss, segments, and pins
+  chain from the side of the palm; the cover lands on the back. The
+  current part is placed at that shared frame.
 - The five servos are visible on the back of the palm until the upper
   cover goes on. Each has a black case, a brushed-metal output horn and
   arm, a shaft screw, mounting tabs with holes, a seam, and three
   colour-coded wires. Screws are anchored to the mesh surface and point
-  into the stand, palm, knuckles, thumb, or cover as appropriate.
+  into the stand, palm, knuckles, thumb, or cover as appropriate. Finger
+  screws sit on each finger's own centre line.
 - Metal surfaces (servo horn, tabs, shaft, screws, screwdriver shaft)
   use the generated brushed-steel texture with a bright specular
   response. Printed parts stay on the filament palette.
-- Printed parts (palm, fingers, thumb pieces, upper cover) appear on the
-  printer bed with a short drop-in animation. Motors ride the conveyor:
-  they rise out of a floor pit past the workshop sill, run level, turn
-  ninety degrees, climb a supported slope, and glide into reach on the
-  receiving belt. The belt surface scrolls; a roof hatch with a soft
-  light shaft opens above the pit. Every part spawns resting flat on its
-  machine, sized for the 2-7 ft reach envelope. RESET returns the current
-  part to its own machine.
+- Printed parts appear on the printer bed with a short drop-in
+  animation. Motors ride one straight covered incline: they start under
+  a floor trench, pass under a hood, climb a supported belt, and arrive
+  on a receiving tray within reach. The belt surface scrolls and has
+  cleats and side skirts. Every part spawns resting on its machine,
+  sized for the 2-7 ft reach envelope. RESET returns the current part to
+  its own machine.
 - Havok physics runs the stage: dropped parts fall and land, and a
   watchdog quietly returns anything that ends up off the play area.
 - Quest 3: point at the part with a controller and hold the trigger to
@@ -119,12 +124,17 @@ What HANDS ON! does, milestone by milestone.
   Press B (right) or Y (left) to summon the orange screwdriver into that
   hand; press again or squeeze to stow it. The screwdriver never falls,
   so it cannot be lost.
-  Its tip is magnetic: touching it to a screw drives the screw
-  automatically. A ratchet tick plays while driving and the controller
-  pulses gently; the screw sinks in with a click and the tool stays in
-  hand. The palm takes 4 screws, the upper cover takes 2, every other
-  part takes 1. The queue advances only once a part's screws are all
-  driven. Screws can never be carried; the screwdriver or a part can.
+  Its tip must touch a screw head within 12 mm to drive it; hovering
+  nearby does nothing, and only the nearest touched screw turns. A
+  ratchet tick plays while driving and the controller pulses gently; the
+  screw sinks in with a click and the tool stays in hand. The palm takes
+  4 screws, the wrist plate 2, each servo 1, each finger 1, the thumb
+  pieces 2, and the upper cover 4. The queue advances only once a part's
+  screws are all driven. Screws can never be carried; the screwdriver or
+  a part can.
+- The render loop reports frame count, render time, last frame gap,
+  texture count and budget, and the last runtime error. A completed hand
+  keeps rendering so the headset never freezes on the last frame.
 - UNDO and REDO step back and forward through every committed part move,
   snap, reset, and screw drive (stack capped at 50 entries). HUD buttons
   work on desktop and are also pressable in-headset via the controller

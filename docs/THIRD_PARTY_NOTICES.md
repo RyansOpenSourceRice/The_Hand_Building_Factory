@@ -15,8 +15,10 @@ Assets and code not authored in this repository.
 - Files: the five STL-derived meshes in `public/models/hand/`
   (`palm.stl`, `finger.stl`, `thumb-base.stl`, `thumb-segments.stl`,
   `upper-cover.stl`) with the upstream `LICENSE.txt` alongside them. The
-  13 game parts derive from these five meshes through code transforms
-  (scaling, merging, repositioning).
+  eight printed hand parts derive from these five meshes through code
+  transforms (scaling, merging, repositioning). The five servos, wrist
+  plate, thumb hinge boss, four knuckle pins, and two thumb pins are
+  built in code.
 - Source: the STL releases of the Yeah Hand project
   (https://github.com/opsobot/yeah-hand).
 - License: CERN Open Hardware Licence Version 2 - Strongly Reciprocal

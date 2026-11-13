@@ -10,7 +10,7 @@ import {
   PhysicsMotionType,
 } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import type {PhysicsBody} from '@babylonjs/core/Physics/v2/physicsBody';
-import {createScrew} from '../scene/screwMeshes';
+import {createScrew, SCREW_HEAD_HEIGHT} from '../scene/screwMeshes';
 import {ArrowGuides} from './arrows';
 import {makeBoxBody} from '../scene/physics';
 import type {PartDef, PartSource} from './handParts';
@@ -29,7 +29,7 @@ const HISTORY_LIMIT = 50;
 const TWEEN_FRAMES = 11;
 const GHOST_ALPHA = 0.24;
 const DRIVE_SECONDS = 1.5;
-const DRIVE_RADIUS = 0.09;
+export const DRIVE_RADIUS = 0.012;
 const RATCHET_EVERY = 0.12;
 const STICK_OUT = 0.015;
 
@@ -45,6 +45,7 @@ type Snapshot = {
   quat: Quaternion;
   placed: boolean;
   screws: number;
+  driven: boolean[];
 };
 
 type PartState = {
@@ -59,6 +60,7 @@ type PartState = {
   target: Vector3;
   targetQuat: Quaternion;
   screwsDone: number;
+  driven: boolean[];
   history: Snapshot[];
   future: Snapshot[];
 };
@@ -94,6 +96,7 @@ export class AssemblyStage {
   private grabbedBy: string | null = null;
   private driveTarget = -1;
   private driveProgress = 0;
+  private driveDistance = Infinity;
   private ratchetClock = 0;
   private readonly ghostMaterial: StandardMaterial;
   private readonly arrows: ArrowGuides;
@@ -175,6 +178,7 @@ export class AssemblyStage {
         target,
         targetQuat,
         screwsDone: 0,
+        driven: [],
         history: [],
         future: [],
       };
@@ -350,6 +354,7 @@ export class AssemblyStage {
       this.setBodyMotion(state, PhysicsMotionType.STATIC);
       this.buildScrews(state);
       state.screwsDone = state.def.screwCount;
+      state.driven = state.def.screwOffsets.map(() => true);
       this.refreshScrews(state);
       state.history.length = 0;
       state.future.length = 0;
@@ -442,6 +447,7 @@ export class AssemblyStage {
     const state = this.active;
     state.snap.reset();
     state.screwsDone = 0;
+    state.driven = state.def.screwOffsets.map(() => false);
     this.setBodyMotion(state, PhysicsMotionType.STATIC);
     this.restore(state);
     this.tweenTo(state, state.home, state.homeQuat);
@@ -450,6 +456,7 @@ export class AssemblyStage {
       quat: state.homeQuat.clone(),
       placed: false,
       screws: 0,
+      driven: state.driven.map(() => false),
     });
     this.report(
         `${state.def.label} returned. ` +
@@ -467,6 +474,7 @@ export class AssemblyStage {
     for (const state of this.states) {
       state.snap.reset();
       state.screwsDone = 0;
+      state.driven = state.def.screwOffsets.map(() => false);
       state.history.length = 0;
       state.future.length = 0;
       this.setBodyMotion(state, PhysicsMotionType.STATIC);
@@ -581,8 +589,10 @@ export class AssemblyStage {
 
   private remainingAxes(state: PartState): Vector3[] {
     const axes: Vector3[] = [];
-    for (let i = state.screwsDone; i < state.def.screwCount; i++) {
-      axes.push(this.screwInsert(state, i).negate());
+    for (let i = 0; i < state.def.screwCount; i++) {
+      if (!state.driven[i]) {
+        axes.push(this.screwInsert(state, i).negate());
+      }
     }
     return axes;
   }
@@ -593,13 +603,40 @@ export class AssemblyStage {
       return [];
     }
     const sites: Vector3[] = [];
-    for (let i = state.screwsDone; i < state.screws.length; i++) {
+    for (let i = 0; i < state.screws.length; i++) {
+      if (state.driven[i]) {
+        continue;
+      }
       const screw = state.screws[i];
       if (screw) {
-        sites.push(screw.getAbsolutePosition());
+        sites.push(this.screwContact(state, i));
       }
     }
     return sites;
+  }
+
+  private screwContact(state: PartState, index: number): Vector3 {
+    const screw = state.screws?.[index];
+    if (!screw) {
+      return Vector3.Zero();
+    }
+    const outward = this.screwInsert(state, index).negate().normalize();
+    return screw.getAbsolutePosition().add(outward.scale(SCREW_HEAD_HEIGHT));
+  }
+
+  driveState(): {
+      partId: string | null;
+      distance: number;
+      contact: boolean;
+      progress: number;
+      } {
+    const state = this.states[this.current];
+    return {
+      partId: state?.def.id ?? null,
+      distance: this.driveDistance,
+      contact: this.driveTarget >= 0,
+      progress: this.driveProgress,
+    };
   }
 
   driveTick(
@@ -614,24 +651,30 @@ export class AssemblyStage {
       return;
     }
     let target = -1;
-    let best = DRIVE_RADIUS;
+    let targetIndex = -1;
+    let best = Infinity;
     const sites = this.screwSites();
+    const indices = state.driven
+        .map((driven, index) => driven ? -1 : index)
+        .filter((index) => index >= 0);
     for (let i = 0; i < sites.length; i++) {
       const site = sites[i];
       if (!site || !tip) {
         continue;
       }
       const distance = Vector3.Distance(tip, site);
-      if (distance < best) {
+      if (distance <= DRIVE_RADIUS && distance < best) {
         best = distance;
         target = i;
+        targetIndex = indices[i] ?? -1;
       }
     }
+    this.driveDistance = target >= 0 ? best : Infinity;
     if (target !== this.driveTarget) {
       this.driveTarget = target;
       this.driveProgress = 0;
     }
-    if (target === -1 || !tip) {
+    if (target === -1 || targetIndex < 0 || !tip) {
       return;
     }
     this.driveProgress += dt / DRIVE_SECONDS;
@@ -641,13 +684,16 @@ export class AssemblyStage {
       this.onRatchet?.(tag);
     }
     if (this.driveProgress >= 1) {
-      this.driveOne(state, tag);
+      this.driveOne(state, tag, targetIndex);
     }
   }
 
-  private driveOne(state: PartState, tag: string): void {
+  private driveOne(state: PartState, tag: string, index: number): void {
+    if (state.driven[index]) {
+      return;
+    }
+    state.driven[index] = true;
     state.screwsDone++;
-    const index = state.screwsDone - 1;
     const screw = state.screws?.[index];
     if (screw) {
       Animation.CreateAndStartAnimation(
@@ -676,6 +722,7 @@ export class AssemblyStage {
   private stopDrive(): void {
     this.driveTarget = -1;
     this.driveProgress = 0;
+    this.driveDistance = Infinity;
     this.ratchetClock = 0;
   }
 
@@ -700,6 +747,9 @@ export class AssemblyStage {
       this.refreshScrews(state);
       return;
     }
+    if (state.driven.length !== state.def.screwCount) {
+      state.driven = state.def.screwOffsets.map(() => false);
+    }
     state.screws = state.def.screwOffsets.map((_, index) => {
       const screw =
           createScrew(`${state.def.id}-${index}`, state.mesh.getScene());
@@ -717,7 +767,7 @@ export class AssemblyStage {
       const pos = this.screwOffset(state, index);
       const insert = this.screwInsert(state, index);
       screw.rotationQuaternion = this.orientYTo(insert.negate());
-      const driven = index < state.screwsDone;
+      const driven = state.driven[index] ?? index < state.screwsDone;
       screw.position.copyFrom(
           driven ? pos : pos.subtract(insert.scale(STICK_OUT)));
       screw.setEnabled(state.snap.isComplete);
@@ -740,6 +790,7 @@ export class AssemblyStage {
 
   private placePart(state: PartState, tag: string): void {
     state.screwsDone = 0;
+    state.driven = state.def.screwOffsets.map(() => false);
     this.setBodyMotion(state, PhysicsMotionType.STATIC);
     this.tweenTo(state, state.target, state.targetQuat);
     state.ghost.setEnabled(false);
@@ -750,13 +801,19 @@ export class AssemblyStage {
       quat: state.targetQuat.clone(),
       placed: true,
       screws: 0,
+      driven: state.driven.map(() => false),
     });
     this.lastTouched = this.states.indexOf(state);
-    this.report(count === 1 ?
-        `${state.def.label} mounted. ` +
-        'Press B or Y for the screwdriver, then touch its tip to the screw.' :
-        `${state.def.label} mounted. Press B or Y for the screwdriver, ` +
-        `then touch its tip to each of the ${count} screws.`);
+    if (count === 0) {
+      this.report(`${state.def.label} fitted.`);
+    } else if (count === 1) {
+      this.report(`${state.def.label} mounted. ` +
+          'Press B or Y for the screwdriver, then touch its tip to the ' +
+          'screw.');
+    } else {
+      this.report(`${state.def.label} mounted. Press B or Y for the ` +
+          `screwdriver, then touch its tip to each of the ${count} screws.`);
+    }
     this.onSnapped?.(tag);
     const siblings = this.states.filter(
         (entry) => entry.def.phase === state.def.phase);
@@ -766,6 +823,9 @@ export class AssemblyStage {
         state.def.hostLabel,
         siblings[0] === state,
     );
+    if (count === 0) {
+      this.advanceQueue();
+    }
   }
 
   private advanceQueue(): void {
@@ -828,7 +888,9 @@ export class AssemblyStage {
   private rideConveyor(state: PartState): void {
     const frames = SPAWN_RIDE_FRAMES + SPAWN_FRAMES;
     const keys = CONVEYOR_PATH.map((point, index) => ({
-      frame: Math.round((index / CONVEYOR_PATH.length) * SPAWN_RIDE_FRAMES),
+      frame: Math.round(
+          (index / Math.max(1, CONVEYOR_PATH.length - 1)) *
+          SPAWN_RIDE_FRAMES),
       value: new Vector3(point.x, point.y, point.z),
     }));
     keys.push({
@@ -926,6 +988,7 @@ export class AssemblyStage {
       quat: (state.mesh.rotationQuaternion ?? Quaternion.Identity()).clone(),
       placed: state.snap.isComplete,
       screws: state.screwsDone,
+      driven: state.driven.slice(),
     };
   }
 
@@ -947,6 +1010,7 @@ export class AssemblyStage {
       this.restore(state);
     }
     state.screwsDone = snapshot.screws;
+    state.driven = snapshot.driven.slice();
     this.refreshScrews(state);
     this.setBodyMotion(state, PhysicsMotionType.STATIC);
     this.tweenTo(state, snapshot.pos, snapshot.quat);
