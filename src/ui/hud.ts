@@ -66,6 +66,7 @@ export class Hud {
     this.actions = actions;
 
     this.adt = AdvancedDynamicTexture.CreateFullscreenUI('ui', true);
+    this.adt.renderScale = 0.6;
 
     const title = new TextBlock('title');
     title.text = 'HANDS ON!';

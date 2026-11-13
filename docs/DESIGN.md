@@ -45,8 +45,7 @@ this repository. Two exceptions, both approved by Ryan:
   placed in one shared assembly frame so palm, fingers, thumb, and cover
   form a connected hand. The palm faces the player, the servos stay
   visible on the back until the cover goes on, and metal uses the
-  generated brushed-steel tile. Imported under
-  CERN-OHL-S-2.0 with credit.
+  bare-steel tile. Imported under CERN-OHL-S-2.0 with credit.
 
 The crowd, stage, and lighting are procedural and stay procedural. The crowd
 is twelve golden-yellow mannequins in blue hard hats, seated on grey chairs in
@@ -58,8 +57,15 @@ Guidance is diegetic: a small status board above the hand stand, bobbing
 yellow arrows on the part and its destination (always drawn on top), a soft
 glow on the host while a part is waiting, and a grouped narrator that names
 the host at each step.
-The controller hands are stylized fists wrapped around the grip, so the tool
-and the hand agree with the hardware the player is holding.
+The controller hands are five-digit box hands wrapped around the grip, so the
+tool and the hand agree with the hardware the player is holding without
+pretending to be a photoreal hand.
+
+Surfaces use twelve seamless 256x256 tiles generated in code by
+`scripts/gen-tiles.mjs`. Each material wraps the tile with its own UV scale,
+mipmaps, and anisotropic filtering. This keeps the tile library near 6 MB
+instead of a large atlas, and the procedural PLA layer tile gives printed
+parts a filament texture that can be tinted by the palette.
 
 ## Structure decisions
 

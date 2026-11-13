@@ -42,6 +42,18 @@ describe('Screwdriver', () => {
     expect(movedTip.y - tip.y).toBeGreaterThan(0.19);
   });
 
+  it('points the tip forward out of the fist', () => {
+    const hand = new TransformNode('hand', scene);
+    driver.equip(hand);
+    hand.computeWorldMatrix(true);
+    const direction = driver.tipDirectionWorld(new Vector3());
+    const tip = driver.tipWorld(new Vector3());
+    const handle = driver.mesh.getAbsolutePosition();
+    expect(direction.z).toBeGreaterThan(0.95);
+    expect(direction.dot(Vector3.Forward())).toBeGreaterThan(0.95);
+    expect(tip.z).toBeGreaterThan(handle.z + 0.08);
+  });
+
   it('holsters and never creates a second screwdriver', () => {
     const hand = new TransformNode('hand', scene);
     driver.equip(hand);

@@ -9,6 +9,7 @@ import type {GameSettings} from '../game/settings';
 import {FILAMENT_COLORS, FALLBACK_HEX, type ThemeSlot} from '../game/palette';
 import type {PartDef} from '../game/handParts';
 import {brushedMetalMaterial} from './metal';
+import {applyTile, ensurePlanarUVs} from './textures';
 
 export type PrototypeMap = Map<string, Mesh>;
 export type PartMeshProvider = (def: PartDef, scene: Scene) => Mesh;
@@ -56,6 +57,7 @@ export function createThemeMaterials(
     mat.diffuseColor = diffuse;
     mat.emissiveColor = diffuse.scale(0.06);
     mat.specularColor = new Color3(0.05, 0.05, 0.06);
+    applyTile(mat, scene, 'pla', {offsetSeed: name});
     return mat;
   };
   return {
@@ -108,6 +110,7 @@ function proxyMaterial(
     scene: Scene,
     name: string,
     hex: string,
+    tile?: 'paintedSteel' | 'rubber' | 'fabric',
 ): StandardMaterial {
   const cached = scene.getMaterialByName(name);
   if (cached instanceof StandardMaterial) {
@@ -117,6 +120,13 @@ function proxyMaterial(
   mat.diffuseColor = Color3.FromHexString(hex);
   mat.emissiveColor = Color3.FromHexString(hex).scale(0.08);
   mat.specularColor = new Color3(0.12, 0.12, 0.14);
+  if (tile) {
+    applyTile(mat, scene, tile, {
+      uScale: 2,
+      vScale: 2,
+      offsetSeed: name,
+    });
+  }
   return mat;
 }
 
@@ -132,8 +142,9 @@ function child(
 }
 
 function buildServo(id: string, scene: Scene): Mesh {
-  const bodyMat = proxyMaterial(scene, 'servoBodyMat', '#20262e');
-  const darkMat = proxyMaterial(scene, 'servoDarkMat', '#0d1116');
+  const bodyMat =
+      proxyMaterial(scene, 'servoBodyMat', '#20262e', 'paintedSteel');
+  const darkMat = proxyMaterial(scene, 'servoDarkMat', '#0d1116', 'rubber');
   const metal = brushedMetalMaterial(scene);
   const body = MeshBuilder.CreateBox(
       `part:${id}`,
@@ -230,15 +241,106 @@ function buildServo(id: string, scene: Scene): Mesh {
             `part:${id}-wire-${index}`,
             {diameter: 0.003, height: 0.055, tessellation: 8},
             scene),
-        proxyMaterial(scene, `servoWireMat${index}`, hex),
+        proxyMaterial(scene, `servoWireMat${index}`, hex, 'rubber'),
     );
     wire.position.set(-0.018 + index * 0.018, -0.072, 0);
   });
   return body;
 }
 
+function buildWristPlate(
+    id: string,
+    scene: Scene,
+    material: StandardMaterial,
+): Mesh {
+  const plate = MeshBuilder.CreateBox(
+      `part:${id}`,
+      {width: 0.17, height: 0.026, depth: 0.105},
+      scene,
+  );
+  plate.material = material;
+  const collar = MeshBuilder.CreateCylinder(
+      `part:${id}-collar`,
+      {diameter: 0.085, height: 0.02, tessellation: 20},
+      scene,
+  );
+  collar.position.y = 0.018;
+  collar.material = material;
+  const merged = Mesh.MergeMeshes([plate, collar], true, true);
+  if (!merged) {
+    throw new Error(`failed to build ${id}`);
+  }
+  merged.name = `part:${id}`;
+  merged.material = material;
+  return merged;
+}
+
+function buildPin(
+    id: string,
+    scene: Scene,
+    material: StandardMaterial,
+): Mesh {
+  const length = id.includes('thumb') ? 0.048 : 0.057;
+  const body = MeshBuilder.CreateCylinder(
+      `part:${id}`,
+      {diameter: 0.012, height: length, tessellation: 12},
+      scene,
+  );
+  body.rotation.z = Math.PI / 2;
+  body.material = material;
+  const parts: Mesh[] = [body];
+  for (const side of [-1, 1]) {
+    const cap = MeshBuilder.CreateCylinder(
+        `part:${id}-cap${side > 0 ? 'a' : 'b'}`,
+        {diameter: 0.018, height: 0.006, tessellation: 12},
+        scene,
+    );
+    cap.rotation.z = Math.PI / 2;
+    cap.position.x = side * length / 2;
+    cap.material = material;
+    parts.push(cap);
+  }
+  const merged = Mesh.MergeMeshes(parts, true, true);
+  if (!merged) {
+    throw new Error(`failed to build ${id}`);
+  }
+  merged.name = `part:${id}`;
+  merged.material = material;
+  return merged;
+}
+
+function buildHingeBoss(
+    id: string,
+    scene: Scene,
+    material: StandardMaterial,
+): Mesh {
+  const boss = MeshBuilder.CreateCylinder(
+      `part:${id}`,
+      {diameter: 0.038, height: 0.034, tessellation: 18},
+      scene,
+  );
+  boss.rotation.z = Math.PI / 2;
+  boss.material = material;
+  const flange = MeshBuilder.CreateCylinder(
+      `part:${id}-flange`,
+      {diameter: 0.052, height: 0.008, tessellation: 18},
+      scene,
+  );
+  flange.rotation.z = Math.PI / 2;
+  flange.position.x = 0.018;
+  flange.material = material;
+  const merged = Mesh.MergeMeshes([boss, flange], true, true);
+  if (!merged) {
+    throw new Error(`failed to build ${id}`);
+  }
+  merged.name = `part:${id}`;
+  merged.material = material;
+  return merged;
+}
+
 export function createPartProvider(
     prototypes: PrototypeMap,
+    theme?: ThemeMaterials,
 ): PartMeshProvider {
   return (def: PartDef, scene: Scene): Mesh => {
     if (def.file) {
@@ -253,10 +355,22 @@ export function createPartProvider(
         mesh.bakeCurrentTransformIntoVertices();
         mesh.scaling.setAll(1);
       }
+      ensurePlanarUVs(mesh, 18, 55);
       return mesh;
     }
     if (def.primitive === 'servo') {
       return buildServo(def.id, scene);
+    }
+    const printed = theme?.trim ?? proxyMaterial(
+        scene, 'partPrintedMat', '#8a9a7b', 'paintedSteel');
+    if (def.primitive === 'wrist-plate') {
+      return buildWristPlate(def.id, scene, printed);
+    }
+    if (def.primitive === 'pin') {
+      return buildPin(def.id, scene, brushedMetalMaterial(scene));
+    }
+    if (def.primitive === 'hinge-boss') {
+      return buildHingeBoss(def.id, scene, printed);
     }
     throw new Error(`no mesh source for ${def.id}`);
   };

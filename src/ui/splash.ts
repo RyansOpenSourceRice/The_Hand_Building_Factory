@@ -65,6 +65,7 @@ export class CreditSplash {
         SPLASH_WIDTH,
         SPLASH_HEIGHT,
     );
+    this.adt.renderScale = 0.7;
 
     const backing = new Rectangle('splash-backing');
     backing.width = `${SPLASH_WIDTH - 60}px`;

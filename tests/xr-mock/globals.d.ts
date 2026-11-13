@@ -9,6 +9,7 @@ interface FactoryDebug {
   partCenter: () => number[];
   sites: () => number[][];
   tip: () => number[];
+  toolDirection: () => number[];
   driverCenter: () => number[];
   menu: () => boolean;
   menuToggle: () => void;
@@ -71,6 +72,47 @@ interface FactoryDebug {
     meshes: number;
     activeMeshes: number;
     materials: number;
+    frames: number;
+    renderMs: number;
+    lastFrameMs: number;
+    textures: number;
+    textureBytes: number;
+    overTextureBudget: boolean;
+    splash: boolean;
+  };
+  frames: () => {
+    frames: number;
+    renderMs: number;
+    lastFrameMs: number;
+    splash: boolean;
+    error: string;
+  };
+  sceneAudit: () => {
+    lights: number;
+    meshes: number;
+    materials: number;
+    textures: {
+      count: number;
+      bytes: number;
+      tiles: number;
+      tileBytes: number;
+      overBudget: boolean;
+      overTileBudget: boolean;
+    };
+    budget: number;
+    textureList: Array<{name: string; width: number; height: number}>;
+  };
+  digitAudit: (hand: 'left' | 'right') => {
+    fingers: number;
+    thumbs: number;
+    digits: number;
+    meshes: number;
+  } | null;
+  drive: () => {
+    partId: string | null;
+    distance: number;
+    contact: boolean;
+    progress: number;
   };
   audio: () => {
     base: string;

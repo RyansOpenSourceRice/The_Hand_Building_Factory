@@ -52,4 +52,12 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
         clip is ready, and require the music channel to be live at the
         end of the full E2E. (2026.11.12.6)
 
+15. [x] Feedback round 2: five-digit box controller hands, finger screw
+        alignment, forward screwdriver with 12 mm head contact, 21-part
+        assembly with wrist plate and hinge pins, 256x256 tile library
+        with PLA UVs, clear barrier crates, segmented hazard rail,
+        counterbalance forklift on a clear forward/reverse lane, straight
+        covered conveyor, thumb hinge boss and pins, texture/frame audits,
+        and post-completion liveness coverage. (2026.11.13.1)
+
 Definition of done for every item: the four gates in AGENTS.md.

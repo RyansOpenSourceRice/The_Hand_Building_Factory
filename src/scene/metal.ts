@@ -1,8 +1,7 @@
 import {Color3} from '@babylonjs/core/Maths/math.color';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
-import {Texture} from '@babylonjs/core/Materials/Textures/texture';
-import {Constants} from '@babylonjs/core/Engines/constants';
 import type {Scene} from '@babylonjs/core/scene';
+import {applyTile} from './textures';
 
 export function brushedMetalMaterial(
     scene: Scene,
@@ -13,12 +12,11 @@ export function brushedMetalMaterial(
     return cached;
   }
   const mat = new StandardMaterial(name, scene);
-  const grain = new Texture('textures/brushed-steel.png', scene);
-  grain.wrapU = Constants.TEXTURE_WRAP_ADDRESSMODE;
-  grain.wrapV = Constants.TEXTURE_WRAP_ADDRESSMODE;
-  grain.uScale = 2;
-  grain.vScale = 1;
-  mat.diffuseTexture = grain;
+  applyTile(mat, scene, 'bareSteel', {
+    uScale: 2,
+    vScale: 2,
+    offsetSeed: name,
+  });
   mat.diffuseColor = new Color3(0.95, 0.96, 0.98);
   mat.specularColor = new Color3(0.72, 0.74, 0.78);
   mat.specularPower = 96;

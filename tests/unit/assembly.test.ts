@@ -73,8 +73,8 @@ describe('AssemblyStage', () => {
     grabTo(ghost.position);
     driveAll();
     expect(stage.currentIndex).toBe(1);
-    const servo = stage.currentPart;
-    expect(stage.isGrabCandidate(servo)).toBe(true);
+    const next = stage.currentPart;
+    expect(stage.isGrabCandidate(next)).toBe(true);
     expect(stage.isGrabCandidate(palm)).toBe(false);
     expect(statuses.join(' ')).toContain('Next part');
   });
@@ -134,7 +134,7 @@ describe('AssemblyStage', () => {
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     grabTo(ghost.position);
     driveAll();
-    expect(progress.at(-1)).toEqual([1, 13]);
+    expect(progress.at(-1)).toEqual([1, 21]);
   });
 
   it('undo reverts a driven screw', () => {
@@ -165,9 +165,15 @@ describe('AssemblyStage', () => {
     const palm = quiet.currentPart;
     expect(palm.position.x).toBeCloseTo(PRINTER_HOME.x, 2);
     expect(palm.position.y).toBeCloseTo(PRINTER_BED_TOP + 0.055, 2);
-    const ghost = scene.getMeshByName('ghost:palm') as Mesh;
+    const palmGhost = scene.getMeshByName('ghost:palm') as Mesh;
     quiet.startGrab('xr');
-    quiet.moveGrabbed(ghost.position);
+    quiet.moveGrabbed(palmGhost.position);
+    quiet.endGrab('xr');
+    driveAll(quiet);
+    expect(quiet.currentIndex).toBe(1);
+    const wristGhost = scene.getMeshByName('ghost:wrist-plate') as Mesh;
+    quiet.startGrab('xr');
+    quiet.moveGrabbed(wristGhost.position);
     quiet.endGrab('xr');
     driveAll(quiet);
     const servo = quiet.currentPart;
@@ -269,15 +275,15 @@ describe('AssemblyStage', () => {
     grabTo(ghost.position);
     driveAll();
     expect(stage.currentIndex).toBe(1);
-    const servo = scene.getMeshByName('part:servo-base') as Mesh;
-    expect(servo.isEnabled()).toBe(true);
+    const wrist = scene.getMeshByName('part:wrist-plate') as Mesh;
+    expect(wrist.isEnabled()).toBe(true);
     stage.restart();
-    expect(progress.at(-1)).toEqual([0, 13]);
+    expect(progress.at(-1)).toEqual([0, 21]);
     expect(stage.currentIndex).toBe(0);
     expect(stage.currentPart).toBe(palm);
     expect(palm.position.x).toBeCloseTo(PRINTER_HOME.x, 2);
     expect(palm.isEnabled()).toBe(true);
-    expect(servo.isEnabled()).toBe(false);
+    expect(wrist.isEnabled()).toBe(false);
     expect(stage.isGrabCandidate(palm)).toBe(true);
     expect(statuses.at(-1)).toContain('Starting over');
   });

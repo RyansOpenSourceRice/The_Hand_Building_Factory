@@ -38,7 +38,7 @@ an error instead of guessing.
 | Tool          | Arguments | What it does |
 |---------------|-----------|--------------|
 | `read_state`  | none      | Game state snapshot: status text, active part, camera, pointer poses, pointer rotations, active part center, screw sites, driver tip and center, tool parent, guide arrow count, guidance board text, voice state, host glow id, every part's world bounds and screw progress, audio channels, audience count, audio and render stats, the last runtime error, and raw mock controller state. |
-| `audit_hand`  | none      | Compares the current assembly with the formal hand model: 13 parts, all placed and screwed, palm on the pedestal, fingertips above the palm, finger order and span, thumb and cover attachment, reach envelope, and no scattered parts. |
+| `audit_hand`  | none      | Compares the current assembly with the formal hand model: 21 parts, all placed and screwed, wrist plate, hinge boss and pins, palm on the pedestal, fingertips above the palm, finger order and span, thumb and cover attachment, reach envelope, and no scattered parts. |
 | `parts`       | none      | Full world-space state for every hand part: bounds, centre, target, quaternion, placed flag, and screw progress. |
 | `complete_build` | none   | Debug shortcut: place every part and drive every screw so the final hand can be inspected. Does not replace a real playthrough. |
 | `view`        | `view` (`front`, `back`, `left`, `right`, `top`, `servos`) | Moves the desktop QA camera to a fixed inspection view. |
@@ -80,9 +80,10 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
 - The screwdriver never drops. It appears in the hand that pressed
   `b_button` and disappears on the next press or on squeeze. Summon it
   with `b_button`, not by picking it up off a surface.
-- The screwdriver tip is magnetic: when it comes within a few centimeters
-  of a screw site the screw drives itself. No trigger needed. The trigger
-  still grabs and releases parts.
+- The screwdriver tip must touch a screw head within 12 mm to drive it.
+  Hovering nearby does nothing, and only the nearest touched screw turns.
+  No trigger is needed for screws. The trigger still grabs and releases
+  parts.
 - Carry parts with the **left** hand while the right hand holds the
   screwdriver; both can be held at once.
 - Gripping (`squeeze`) drops a held part. Squeezing empty hands does
@@ -101,6 +102,10 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
   the back of the palm and stay visible until the upper cover goes on.
 - `read_state.guidance` must name the step, the route, and progress. It
   reads `PLACE THE PALM` / `PRINTER TO THE STAND` / `PALM` at boot.
+- `read_state.sceneAudit` reports texture count, bytes, tile count, budget,
+  and the light count. `read_state.drive` reports the nearest screw
+  contact distance and progress. `read_state.perf.frames` must keep rising
+  after completion.
 - `read_state.hostGlow` is `stand` while the palm waits, then a part id
   while a later part waits, and empty while screws are being driven.
 - `read_state.voice` reports the current line, the last line, and play
@@ -125,8 +130,9 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
   must never overlap.
 - The full E2E test is the start-to-finish playthrough oracle:
   `npx playwright test -c tests/e2e.config.ts tests/e2e/xr-assembly.spec.ts`.
-  It now checks final part bounds, connection gaps, and the audio trace
-  in addition to the status text.
+  It checks all 21 parts, finger screw alignment, the five-digit controller
+  hand, screwdriver direction, hover/touch contact, texture budget, final
+  part bounds, post-completion frame liveness, and the audio trace.
 
 ## Example session
 

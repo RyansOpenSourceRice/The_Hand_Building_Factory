@@ -222,6 +222,8 @@ async function readState() {
       perf: debug.perf(),
       audio: debug.audio(),
       lastError: debug.lastError(),
+      sceneAudit: debug.sceneAudit(),
+      drive: debug.drive(),
     };
   });
 }
@@ -262,9 +264,13 @@ function auditHand(parts) {
   const thumbBase = byId.get('thumb-base');
   const thumbSegments = byId.get('thumb-segments');
   const cover = byId.get('upper-cover');
+  const wrist = byId.get('wrist-plate');
+  const boss = byId.get('thumb-hinge-boss');
+  const knuckle = byId.get('knuckle-index');
+  const thumbPin = byId.get('thumb-pin-base');
   const checks = [];
   const add = (name, pass, detail) => checks.push({name, pass, detail});
-  add('part count', parts.length === 13, `${parts.length}/13`);
+  add('part count', parts.length === 21, `${parts.length}/21`);
   add('all placed', parts.every((part) => part.placed),
       parts.filter((part) => !part.placed).map((part) => part.id));
   add('all screwed', parts.every((part) => part.screwsDone === part.screwCount),
@@ -273,8 +279,9 @@ function auditHand(parts) {
   add('all visible', parts.every((part) => part.enabled),
       parts.filter((part) => !part.enabled).map((part) => part.id));
   if (!palm || !index || !little || !middle || !ring || !thumbBase ||
-      !thumbSegments || !cover) {
-    add('required parts', false, 'palm, fingers, thumb, cover missing');
+      !thumbSegments || !cover || !wrist || !boss || !knuckle || !thumbPin) {
+    add('required parts', false,
+        'palm, wrist, fingers, thumb, hinge, cover missing');
     return {ok: false, checks};
   }
   const palmBox = boundsOf(palm);
@@ -304,6 +311,16 @@ function auditHand(parts) {
       `segments y ${thumbSegments.min[1].toFixed(3)}`);
   add('cover joined to palm', overlaps(boundsOf(cover), palmBox),
       `cover y ${cover.min[1].toFixed(3)}`);
+  add('wrist plate under palm', overlaps(boundsOf(wrist), palmBox),
+      `wrist y ${wrist.min[1].toFixed(3)}`);
+  add('thumb hinge boss on palm', overlaps(boundsOf(boss), palmBox),
+      `boss y ${boss.min[1].toFixed(3)}`);
+  add('knuckle pin in finger joint',
+      overlaps(boundsOf(knuckle), boundsOf(index)),
+      `pin x ${knuckle.center[0].toFixed(3)}`);
+  add('thumb hinge pin seated',
+      overlaps(boundsOf(thumbPin), boundsOf(thumbBase)),
+      `pin y ${thumbPin.center[1].toFixed(3)}`);
   add('no scattered parts',
       parts.every((part) => Math.abs(part.min[2]) < 0.16 &&
           Math.abs(part.max[2]) < 0.16),
@@ -331,9 +348,10 @@ const TOOLS = [
   {
     name: 'audit_hand',
     description: 'Compare the current assembly to the formal hand model: ' +
-      'part count, placement, screws, palm height, fingertip height, finger ' +
-      'order and span, thumb/cover attachment, reach envelope, and scattered ' +
-      'parts. Returns pass/fail checks. Run after complete_build or a ' +
+      'part count, placement, screws, wrist, hinge pins, palm height, ' +
+      'fingertip height, finger order and span, thumb/cover attachment, ' +
+      'reach envelope, and scattered parts. Returns pass/fail checks. ' +
+      'Run after complete_build or a ' +
       'playthrough.',
     inputSchema: {type: 'object', properties: {}},
   },

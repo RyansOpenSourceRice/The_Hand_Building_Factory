@@ -12,8 +12,8 @@ import {makeBoxBody} from '../scene/physics';
 import {brushedMetalMaterial} from '../scene/metal';
 
 const HOLSTER = new Vector3(0, 1.08, 0.5);
-const HAND_OFFSET = new Vector3(0, 0, 0.036);
-const HAND_TILT = Quaternion.FromEulerAngles(0.12, 0, 0);
+const HAND_OFFSET = new Vector3(0, -0.01, 0.03);
+const HAND_TILT = Quaternion.FromEulerAngles(Math.PI / 2, 0, 0);
 const HANDLE_HEIGHT = 0.11;
 const SHAFT_HEIGHT = 0.06;
 
@@ -144,6 +144,13 @@ export class Screwdriver {
     this.tip.computeWorldMatrix(true);
     result.copyFrom(this.tip.absolutePosition);
     return result;
+  }
+
+  tipDirectionWorld(result: Vector3): Vector3 {
+    this.mesh.computeWorldMatrix(true);
+    Vector3.TransformNormalToRef(
+        Vector3.Up(), this.mesh.getWorldMatrix(), result);
+    return result.normalize();
   }
 
   private detach(): void {

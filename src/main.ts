@@ -58,11 +58,13 @@ import {attachHeightControl} from './input/height';
 import {
   attachControllerHands,
   createDebugHand,
+  digitAudit,
   handRepTint,
   setHandTint,
 } from './input/handRep';
 import {attachDesktopControls} from './input/desktopControls';
 import {attachDesktopGrab} from './input/desktopGrab';
+import {TEXTURE_BUDGET_BYTES, textureStats} from './scene/textures';
 
 type XrCapableNavigator = Navigator & {xr?: object};
 
@@ -124,7 +126,7 @@ async function boot(): Promise<void> {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const stage = new AssemblyStage(
       scene,
-      createPartProvider(prototypes),
+      createPartProvider(prototypes, theme),
       reducedMotion,
   );
   const driver = new Screwdriver(scene);
@@ -532,6 +534,11 @@ async function boot(): Promise<void> {
     reportError(event.reason);
   });
 
+  let frameCount = 0;
+  let renderMs = 0;
+  let lastFrameMs = 0;
+  let lastFrameAt = performance.now();
+
   const bridgeWindow = window as typeof window & {
     factoryDebug?: {
       camera: () => number[];
@@ -544,6 +551,7 @@ async function boot(): Promise<void> {
       partCenter: () => number[];
       sites: () => number[][];
       tip: () => number[];
+      toolDirection: () => number[];
       driverCenter: () => number[];
       menu: () => boolean;
       menuToggle: () => void;
@@ -571,6 +579,40 @@ async function boot(): Promise<void> {
         meshes: number;
         activeMeshes: number;
         materials: number;
+        frames: number;
+        renderMs: number;
+        lastFrameMs: number;
+        textures: number;
+        textureBytes: number;
+        overTextureBudget: boolean;
+        splash: boolean;
+      };
+      frames: () => {
+        frames: number;
+        renderMs: number;
+        lastFrameMs: number;
+        splash: boolean;
+        error: string;
+      };
+      sceneAudit: () => {
+        lights: number;
+        meshes: number;
+        materials: number;
+        textures: ReturnType<typeof textureStats>;
+        budget: number;
+        textureList: Array<{name: string; width: number; height: number}>;
+      };
+      digitAudit: (hand: 'left' | 'right') => {
+        fingers: number;
+        thumbs: number;
+        digits: number;
+        meshes: number;
+      } | null;
+      drive: () => {
+        partId: string | null;
+        distance: number;
+        contact: boolean;
+        progress: number;
       };
       audio: () => {
         base: string;
@@ -654,6 +696,10 @@ async function boot(): Promise<void> {
       const v = driver.tipWorld(new Vector3());
       return [v.x, v.y, v.z];
     },
+    toolDirection: () => {
+      const v = driver.tipDirectionWorld(new Vector3());
+      return [v.x, v.y, v.z];
+    },
     driverCenter: () => {
       const c = driver.mesh.getBoundingInfo().boundingBox.centerWorld;
       return [c.x, c.y, c.z];
@@ -718,12 +764,45 @@ async function boot(): Promise<void> {
     audienceCount: () => AUDIENCE_COUNT,
     partColor: (id) => stage.partColor(id),
     selectTheme: (slot, index) => settings.setTheme(slot, index),
-    perf: () => ({
-      fps: scene.getEngine().getFps(),
-      meshes: scene.meshes.length,
-      activeMeshes: scene.getActiveMeshes().length,
-      materials: scene.materials.length,
+    perf: () => {
+      const textures = textureStats(scene);
+      return {
+        fps: scene.getEngine().getFps(),
+        meshes: scene.meshes.length,
+        activeMeshes: scene.getActiveMeshes().length,
+        materials: scene.materials.length,
+        frames: frameCount,
+        renderMs,
+        lastFrameMs,
+        textures: textures.count,
+        textureBytes: textures.bytes,
+        overTextureBudget: textures.overBudget,
+        splash: splash.isVisible(),
+      };
+    },
+    frames: () => ({
+      frames: frameCount,
+      renderMs,
+      lastFrameMs,
+      splash: splash.isVisible(),
+      error: lastError,
     }),
+    sceneAudit: () => ({
+      lights: scene.lights.length,
+      meshes: scene.meshes.length,
+      materials: scene.materials.length,
+      textures: textureStats(scene),
+      budget: TEXTURE_BUDGET_BYTES,
+      textureList: scene.textures.map((texture) => {
+        const size = texture.getSize();
+        return {name: texture.name, width: size.width, height: size.height};
+      }),
+    }),
+    digitAudit: (hand) => {
+      const root = scene.getTransformNodeByName(`handRep-${hand}`);
+      return root ? digitAudit(root) : null;
+    },
+    drive: () => stage.driveState(),
     audio: () => {
       const engineAudio = AbstractEngine.audioEngine;
       return {
@@ -742,11 +821,16 @@ async function boot(): Promise<void> {
   vrMenu?.setSuppressed(true);
   document.getElementById('boot-fallback')?.remove();
   engine.runRenderLoop(() => {
+    const start = performance.now();
+    lastFrameMs = start - lastFrameAt;
+    lastFrameAt = start;
     try {
       scene.render();
+      frameCount++;
     } catch (err) {
       reportError(err);
     }
+    renderMs = performance.now() - start;
   });
   window.addEventListener('resize', () => engine.resize());
   if (new URLSearchParams(window.location.search).has('perf')) {
