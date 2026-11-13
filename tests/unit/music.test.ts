@@ -20,6 +20,7 @@ const fake = vi.hoisted(() => {
     playing = false;
     playCalls = 0;
     stopCalls = 0;
+    readyFlag = false;
     ready = () => {};
     onReady?: () => void;
 
@@ -29,7 +30,10 @@ const fake = vi.hoisted(() => {
         _scene: unknown,
         onReady: () => void,
     ) {
-      this.ready = onReady;
+      this.ready = () => {
+        this.readyFlag = true;
+        onReady();
+      };
       this.onReady = onReady;
       instances.push(this as unknown as Fake);
     }
@@ -39,7 +43,7 @@ const fake = vi.hoisted(() => {
     }
 
     isReady(): boolean {
-      return true;
+      return this.readyFlag;
     }
 
     play(): void {
@@ -76,11 +80,12 @@ describe('MusicLoop', () => {
     engine.dispose();
   });
 
-  it('starts once and never layers another copy on duck changes', () => {
+  it('starts after the clip is ready and never layers another copy', () => {
     const music = new MusicLoop(scene);
     music.start();
-    expect(fake.instances[0]?.playCalls).toBe(1);
+    expect(fake.instances[0]?.playCalls).toBe(0);
     fake.instances[0]?.ready();
+    expect(fake.instances[0]?.playCalls).toBe(1);
     music.setDucked(true);
     music.setDucked(false);
     music.setDucked(true);
