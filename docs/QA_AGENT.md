@@ -37,7 +37,13 @@ an error instead of guessing.
 
 | Tool          | Arguments | What it does |
 |---------------|-----------|--------------|
-| `read_state`  | none      | Game state snapshot: status text, active part, camera, pointer poses, pointer rotations, active part center, screw sites, driver tip and center, tool parent, guide arrow count, guidance board text, voice state, host glow id, audience count, audio and render stats, the last runtime error, and raw mock controller state. |
+| `read_state`  | none      | Game state snapshot: status text, active part, camera, pointer poses, pointer rotations, active part center, screw sites, driver tip and center, tool parent, guide arrow count, guidance board text, voice state, host glow id, every part's world bounds and screw progress, audio channels, audience count, audio and render stats, the last runtime error, and raw mock controller state. |
+| `audit_hand`  | none      | Compares the current assembly with the formal hand model: 13 parts, all placed and screwed, palm on the pedestal, fingertips above the palm, finger order and span, thumb and cover attachment, reach envelope, and no scattered parts. |
+| `parts`       | none      | Full world-space state for every hand part: bounds, centre, target, quaternion, placed flag, and screw progress. |
+| `complete_build` | none   | Debug shortcut: place every part and drive every screw so the final hand can be inspected. Does not replace a real playthrough. |
+| `view`        | `view` (`front`, `back`, `left`, `right`, `top`, `servos`) | Moves the desktop QA camera to a fixed inspection view. |
+| `part_visibility` | `id`, `visible` | Shows or hides one part for close inspection. Hide `upper-cover` to see the motors. |
+| `audio_channels` | none  | Current narration keys, music playing state, and active effect keys. Poll this to detect overlapping audio. |
 | `screenshot`  | none      | PNG capture of the game view, base64 encoded. |
 | `wait_ms`     | `ms`      | Sleep up to 5000 ms. Use after squeezes to let drops settle. |
 | `pose`        | `side` (`left`/`right`), `pos` `[x,y,z]`, `yaw`, `pitch` | Move a controller in world space. |
@@ -90,8 +96,9 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
   blue destination. Both stay while it is carried, then the arrows switch
   to one over each undriven screw. `arrowCount` is 2 before and during
   the carry, then equals the remaining screws.
-- The five blue blocks are the motors: wrist, index, middle, ring, and
-  little. Their status labels say "motor".
+- The five black-and-brushed-metal servos are the motors: wrist, index,
+  middle, ring, and little. Their status labels say "motor". They sit on
+  the back of the palm and stay visible until the upper cover goes on.
 - `read_state.guidance` must name the step, the route, and progress. It
   reads `PLACE THE PALM` / `PRINTER TO THE STAND` / `PALM` at boot.
 - `read_state.hostGlow` is `stand` while the palm waits, then a part id
@@ -110,6 +117,16 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
   `read_state.perf` and `lastError`.
 - The screwdriver's parent should be `handRep-right` or `handRep-left`,
   never a pointer ray. `read_state.toolParent` exposes it.
+- After a complete build, run `audit_hand` before accepting the result.
+  It is the formal simulator check, not a screenshot opinion. Hide the
+  cover and use `view: "servos"` to inspect the five motor models.
+- During a build, poll `audio_channels` (or run the full E2E test) and
+  fail if two narration keys are ever active together. Intro and tool-on
+  must never overlap.
+- The full E2E test is the start-to-finish playthrough oracle:
+  `npx playwright test -c tests/e2e.config.ts tests/e2e/xr-assembly.spec.ts`.
+  It now checks final part bounds, connection gaps, and the audio trace
+  in addition to the status text.
 
 ## Example session
 

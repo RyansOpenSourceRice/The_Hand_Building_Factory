@@ -21,7 +21,7 @@ describe('screw meshes', () => {
     const screw = createScrew('palm-0', scene);
     expect(screw.getChildMeshes()).toHaveLength(0);
     expect(screw.getTotalVertices()).toBeLessThan(120);
-    expect(screw.getTotalIndices()).toBeLessThan(240);
+    expect(screw.getTotalIndices()).toBeLessThan(320);
   });
 
   it('shares a single material across every screw', () => {

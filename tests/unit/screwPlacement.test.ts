@@ -12,7 +12,7 @@ const OFFSET = new Vector3(0.2, 0.1, -0.3);
 const MARGIN = 0.02;
 
 const offsetProvider = (def: PartDef, scene: Scene): Mesh => {
-  const mesh = MeshBuilder.CreateBox(`part:${def.id}`, {size: 0.4}, scene);
+  const mesh = MeshBuilder.CreateBox(`part:${def.id}`, {size: 1.2}, scene);
   mesh.position.copyFrom(OFFSET);
   mesh.bakeCurrentTransformIntoVertices();
   mesh.refreshBoundingInfo();

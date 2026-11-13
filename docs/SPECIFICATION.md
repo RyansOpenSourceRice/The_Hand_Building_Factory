@@ -2,7 +2,7 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.12.4)
+## Current behavior (release 2026.11.12.5)
 
 - A warehouse workshop opens through a low north sill onto a grand
   factory hall, generated almost entirely in code. The workshop keeps the
@@ -40,6 +40,20 @@ What HANDS ON! does, milestone by milestone.
   segments, and the upper cover. The current part shows a soft,
   pulsing translucent blue hologram at its socket, and the hologram
   follows the player's view so it stays in sight.
+- All printed parts are 3x human scale and share one assembly frame
+  derived from the STL coordinates. The palm stands on the pedestal at
+  1.07 m with its palm toward the player and fingers up; the four fingers
+  spread across the knuckles; the thumb base and segments chain from the
+  side of the palm; the cover lands on the back. The current part is
+  placed at that shared frame, not at an invented per-part socket.
+- The five servos are visible on the back of the palm until the upper
+  cover goes on. Each has a black case, a brushed-metal output horn and
+  arm, a shaft screw, mounting tabs with holes, a seam, and three
+  colour-coded wires. Screws are anchored to the mesh surface and point
+  into the stand, palm, knuckles, thumb, or cover as appropriate.
+- Metal surfaces (servo horn, tabs, shaft, screws, screwdriver shaft)
+  use the generated brushed-steel texture with a bright specular
+  response. Printed parts stay on the filament palette.
 - Printed parts (palm, fingers, thumb pieces, upper cover) appear on the
   printer bed with a short drop-in animation. Motors ride the conveyor:
   they rise out of a floor pit past the workshop sill, run level, turn
@@ -81,7 +95,11 @@ What HANDS ON! does, milestone by milestone.
   one; a watchdog clears a line whose end event is lost. After 25 silent
   seconds the current line repeats once. Music ducks under speech. All
   narration is muted by the SOUND button with the sound effects, while
-  the status board still shows the step.
+  the status board still shows the step. The player waits for the
+  WebAudio context to unlock before calling `play()`, keeps only one
+  pending line, stops every narration sound before starting another,
+  and ignores stale ready callbacks, so two lines cannot overlap.
+  Music starts once and only changes volume, never a second copy.
 - A credits splash shows right after boot and again after the hand is
   complete. It lists the Yeah Hand model source, its CERN Open Hardware
   Licence 2 - Strongly Reciprocal licence, and the modification credit.

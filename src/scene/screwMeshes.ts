@@ -1,26 +1,13 @@
-import {Color3} from '@babylonjs/core/Maths/math.color';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder';
-import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import {Scene} from '@babylonjs/core/scene';
+import {brushedMetalMaterial} from './metal';
 
-const HEAD_DIAMETER = 0.016;
-const HEAD_HEIGHT = 0.0045;
-const SHAFT_DIAMETER = 0.008;
-const SHAFT_HEIGHT = 0.015;
-const TESSELATION = 8;
-
-function screwMaterial(scene: Scene): StandardMaterial {
-  const cached = scene.getMaterialByName('screwMat');
-  if (cached instanceof StandardMaterial) {
-    return cached;
-  }
-  const mat = new StandardMaterial('screwMat', scene);
-  mat.diffuseColor = new Color3(0.86, 0.88, 0.92);
-  mat.emissiveColor = new Color3(0.16, 0.17, 0.2);
-  mat.specularColor = new Color3(0.4, 0.4, 0.45);
-  return mat;
-}
+const HEAD_DIAMETER = 0.018;
+const HEAD_HEIGHT = 0.005;
+const SHAFT_DIAMETER = 0.006;
+const SHAFT_HEIGHT = 0.03;
+const TESSELATION = 12;
 
 export function createScrew(id: string, scene: Scene): Mesh {
   const head = MeshBuilder.CreateCylinder(
@@ -32,7 +19,7 @@ export function createScrew(id: string, scene: Scene): Mesh {
       },
       scene,
   );
-  head.position.y = SHAFT_HEIGHT / 2 + HEAD_HEIGHT / 2;
+  head.position.y = HEAD_HEIGHT / 2;
   const shaft = MeshBuilder.CreateCylinder(
       `screw:${id}-shaft`,
       {
@@ -42,12 +29,13 @@ export function createScrew(id: string, scene: Scene): Mesh {
       },
       scene,
   );
+  shaft.position.y = -SHAFT_HEIGHT / 2;
   const root = Mesh.MergeMeshes([head, shaft], true, true, undefined, false);
   if (!root) {
     throw new Error(`failed to build screw ${id}`);
   }
   root.name = `screw:${id}`;
-  root.material = screwMaterial(scene);
+  root.material = brushedMetalMaterial(scene, 'screwMetalMat');
   root.setEnabled(false);
   return root;
 }

@@ -216,6 +216,8 @@ async function readState() {
       guidance: debug.guidance(),
       voice: debug.voice(),
       hostGlow: debug.hostGlow(),
+      parts: debug.parts(),
+      audioChannels: debug.audioChannels(),
       audienceCount: debug.audienceCount(),
       perf: debug.perf(),
       audio: debug.audio(),
@@ -240,6 +242,80 @@ function sideArg(args) {
   return side;
 }
 
+function boundsOf(part) {
+  return {min: part.min, max: part.max};
+}
+
+function overlaps(a, b) {
+  return a.min[0] <= b.max[0] && a.max[0] >= b.min[0] &&
+    a.min[1] <= b.max[1] && a.max[1] >= b.min[1] &&
+    a.min[2] <= b.max[2] && a.max[2] >= b.min[2];
+}
+
+function auditHand(parts) {
+  const byId = new Map(parts.map((part) => [part.id, part]));
+  const palm = byId.get('palm');
+  const index = byId.get('finger-index');
+  const little = byId.get('finger-little');
+  const middle = byId.get('finger-middle');
+  const ring = byId.get('finger-ring');
+  const thumbBase = byId.get('thumb-base');
+  const thumbSegments = byId.get('thumb-segments');
+  const cover = byId.get('upper-cover');
+  const checks = [];
+  const add = (name, pass, detail) => checks.push({name, pass, detail});
+  add('part count', parts.length === 13, `${parts.length}/13`);
+  add('all placed', parts.every((part) => part.placed),
+      parts.filter((part) => !part.placed).map((part) => part.id));
+  add('all screwed', parts.every((part) => part.screwsDone === part.screwCount),
+      parts.filter((part) => part.screwsDone !== part.screwCount)
+          .map((part) => part.id));
+  add('all visible', parts.every((part) => part.enabled),
+      parts.filter((part) => !part.enabled).map((part) => part.id));
+  if (!palm || !index || !little || !middle || !ring || !thumbBase ||
+      !thumbSegments || !cover) {
+    add('required parts', false, 'palm, fingers, thumb, cover missing');
+    return {ok: false, checks};
+  }
+  const palmBox = boundsOf(palm);
+  add('palm on pedestal', Math.abs(palm.min[1] - 1.07) <= 0.02,
+      `palm bottom ${palm.min[1].toFixed(3)} m`);
+  add('palm upright', palm.max[1] < 1.4 && palm.max[1] > 1.3,
+      `palm top ${palm.max[1].toFixed(3)} m`);
+  add('fingertips above palm', index.max[1] > 1.65,
+      `index tip ${index.max[1].toFixed(3)} m`);
+  add('fingers joined to palm',
+      overlaps(boundsOf(index), palmBox) && index.min[1] < palm.max[1] + 0.03,
+      `finger base ${index.min[1].toFixed(3)} m`);
+  add('finger order',
+      index.center[0] > middle.center[0] &&
+      middle.center[0] > ring.center[0] &&
+      ring.center[0] > little.center[0],
+      [index, middle, ring, little]
+          .map((part) => part.center[0].toFixed(3)).join(' > '));
+  add('fingers span the palm',
+      index.max[0] - little.min[0] > 0.2 &&
+      index.max[0] - little.min[0] < 0.35,
+      `${(index.max[0] - little.min[0]).toFixed(3)} m`);
+  add('thumb joined to palm', overlaps(boundsOf(thumbBase), palmBox),
+      `thumb base y ${thumbBase.min[1].toFixed(3)}`);
+  add('thumb segments joined',
+      overlaps(boundsOf(thumbSegments), boundsOf(thumbBase)),
+      `segments y ${thumbSegments.min[1].toFixed(3)}`);
+  add('cover joined to palm', overlaps(boundsOf(cover), palmBox),
+      `cover y ${cover.min[1].toFixed(3)}`);
+  add('no scattered parts',
+      parts.every((part) => Math.abs(part.min[2]) < 0.16 &&
+          Math.abs(part.max[2]) < 0.16),
+      parts.filter((part) => Math.abs(part.min[2]) >= 0.16 ||
+          Math.abs(part.max[2]) >= 0.16).map((part) => part.id));
+  add('inside reach',
+      parts.every((part) => part.min[1] > 0.95 && part.max[1] < 1.8),
+      parts.filter((part) => part.min[1] <= 0.95 ||
+          part.max[1] >= 1.8).map((part) => part.id));
+  return {ok: checks.every((check) => check.pass), checks};
+}
+
 const TOOLS = [
   {
     name: 'read_state',
@@ -250,6 +326,58 @@ const TOOLS = [
       'count, guidance, voice, host glow, audience count, audio state, ' +
       'render stats, and the last runtime error. World space: +x right, ' +
       '+y up, +z toward the player.',
+    inputSchema: {type: 'object', properties: {}},
+  },
+  {
+    name: 'audit_hand',
+    description: 'Compare the current assembly to the formal hand model: ' +
+      'part count, placement, screws, palm height, fingertip height, finger ' +
+      'order and span, thumb/cover attachment, reach envelope, and scattered ' +
+      'parts. Returns pass/fail checks. Run after complete_build or a ' +
+      'playthrough.',
+    inputSchema: {type: 'object', properties: {}},
+  },
+  {
+    name: 'parts',
+    description: 'Full world-space state for every hand part: bounds, ' +
+      'centre, target, quaternion, placed flag, and screw progress.',
+    inputSchema: {type: 'object', properties: {}},
+  },
+  {
+    name: 'complete_build',
+    description: 'Debug shortcut: place every remaining part and drive every ' +
+      'screw so the final hand can be inspected. Does not replace a ' +
+      'start-to-finish playthrough.',
+    inputSchema: {type: 'object', properties: {}},
+  },
+  {
+    name: 'view',
+    description: 'Move the desktop QA camera to a fixed view of the hand.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        view: {enum: ['front', 'back', 'left', 'right', 'top', 'servos']},
+      },
+      required: ['view'],
+    },
+  },
+  {
+    name: 'part_visibility',
+    description: 'Show or hide one hand part for close inspection. ' +
+      'For example hide upper-cover to inspect the servos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {type: 'string'},
+        visible: {type: 'boolean'},
+      },
+      required: ['id', 'visible'],
+    },
+  },
+  {
+    name: 'audio_channels',
+    description: 'Current narration keys, music playing state, and active ' +
+      'effect keys. Poll this during a build to detect overlapping audio.',
     inputSchema: {type: 'object', properties: {}},
   },
   {
@@ -374,6 +502,58 @@ async function callTool(name, args) {
           text: JSON.stringify(await readState(), null, 2),
         }],
       };
+    case 'audit_hand': {
+      const page = await startSession();
+      const parts = await page.evaluate(() => window.factoryDebug.parts());
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(auditHand(parts), null, 2),
+        }],
+      };
+    }
+    case 'parts': {
+      const page = await startSession();
+      const parts = await page.evaluate(() => window.factoryDebug.parts());
+      return {content: [{type: 'text', text: JSON.stringify(parts, null, 2)}]};
+    }
+    case 'complete_build': {
+      const page = await startSession();
+      await page.evaluate(() => window.factoryDebug.completeHand());
+      await waitMs(300);
+      return {content: [{type: 'text', text: 'completed hand'}]};
+    }
+    case 'view': {
+      const page = await startSession();
+      const view = args?.view;
+      if (!['front', 'back', 'left', 'right', 'top', 'servos']
+          .includes(view)) {
+        throw new Error('unknown view');
+      }
+      await page.evaluate((value) => window.factoryDebug.debugView(value),
+          view);
+      await waitMs(150);
+      return {content: [{type: 'text', text: `${view} view`}]};
+    }
+    case 'part_visibility': {
+      const page = await startSession();
+      const id = String(args?.id ?? '');
+      if (!id) {
+        throw new Error('missing part id');
+      }
+      await page.evaluate(({partId, visible}) => {
+        window.factoryDebug.hidePart(partId, visible);
+      }, {partId: id, visible: Boolean(args?.visible)});
+      return {content: [{type: 'text', text: `${id} visibility set`}]};
+    }
+    case 'audio_channels': {
+      const page = await startSession();
+      const channels = await page.evaluate(
+          () => window.factoryDebug.audioChannels());
+      return {
+        content: [{type: 'text', text: JSON.stringify(channels, null, 2)}],
+      };
+    }
     case 'screenshot': {
       const page = await startSession();
       const image = await page.screenshot({type: 'png'});

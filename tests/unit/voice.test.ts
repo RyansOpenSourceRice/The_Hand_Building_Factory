@@ -121,6 +121,20 @@ describe('VoicePlayer', () => {
     expect(sound('phase-motors').playing).toBe(true);
   });
 
+  it('does not start a stale line after another request arrives', async () => {
+    player.say('phase-motors');
+    sound('phase-motors').ready();
+    player.say('phase-fingers');
+    await Promise.resolve();
+    expect(sound('phase-motors').playing).toBe(false);
+    expect(player.state().active).toHaveLength(0);
+    sound('phase-fingers').ready();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(sound('phase-fingers').playing).toBe(true);
+    expect(player.state().active).toEqual(['phase-fingers']);
+  });
+
   it('clears a stuck line with the watchdog', async () => {
     vi.useFakeTimers();
     await readyAll();

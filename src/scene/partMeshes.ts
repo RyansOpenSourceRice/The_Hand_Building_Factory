@@ -8,6 +8,7 @@ import '@babylonjs/loaders/STL';
 import type {GameSettings} from '../game/settings';
 import {FILAMENT_COLORS, FALLBACK_HEX, type ThemeSlot} from '../game/palette';
 import type {PartDef} from '../game/handParts';
+import {brushedMetalMaterial} from './metal';
 
 export type PrototypeMap = Map<string, Mesh>;
 export type PartMeshProvider = (def: PartDef, scene: Scene) => Mesh;
@@ -103,27 +104,141 @@ export async function loadPrototypes(
   return map;
 }
 
-function buildServo(id: string, theme: ThemeMaterials, scene: Scene): Mesh {
+function proxyMaterial(
+    scene: Scene,
+    name: string,
+    hex: string,
+): StandardMaterial {
+  const cached = scene.getMaterialByName(name);
+  if (cached instanceof StandardMaterial) {
+    return cached;
+  }
+  const mat = new StandardMaterial(name, scene);
+  mat.diffuseColor = Color3.FromHexString(hex);
+  mat.emissiveColor = Color3.FromHexString(hex).scale(0.08);
+  mat.specularColor = new Color3(0.12, 0.12, 0.14);
+  return mat;
+}
+
+function child(
+    parent: Mesh,
+    mesh: Mesh,
+    material: StandardMaterial,
+): Mesh {
+  mesh.parent = parent;
+  mesh.material = material;
+  mesh.isPickable = false;
+  return mesh;
+}
+
+function buildServo(id: string, scene: Scene): Mesh {
+  const bodyMat = proxyMaterial(scene, 'servoBodyMat', '#20262e');
+  const darkMat = proxyMaterial(scene, 'servoDarkMat', '#0d1116');
+  const metal = brushedMetalMaterial(scene);
   const body = MeshBuilder.CreateBox(
       `part:${id}`,
-      {width: 0.126, depth: 0.126, height: 0.063},
+      {width: 0.05, height: 0.10, depth: 0.03},
       scene,
   );
-  const horn = MeshBuilder.CreateCylinder(
-      `part:${id}-horn`,
-      {diameter: 0.042, height: 0.018},
-      scene,
+  body.material = bodyMat;
+
+  child(
+      body,
+      MeshBuilder.CreateBox(
+          `part:${id}-top`, {width: 0.034, height: 0.04, depth: 0.008},
+          scene),
+      metal,
+  ).position.set(0, 0.014, -0.018);
+  child(
+      body,
+      MeshBuilder.CreateBox(
+          `part:${id}-mount`, {width: 0.05, height: 0.09, depth: 0.016},
+          scene),
+      metal,
+  ).position.z = 0.025;
+  child(
+      body,
+      MeshBuilder.CreateBox(
+          `part:${id}-seam`, {width: 0.041, height: 0.06, depth: 0.002},
+          scene),
+      darkMat,
+  ).position.y = -0.006;
+  child(
+      body,
+      MeshBuilder.CreateBox(
+          `part:${id}-gearbox`, {width: 0.024, height: 0.024, depth: 0.01},
+          scene),
+      metal,
+  ).position.set(0, 0.01, -0.024);
+
+  for (const side of [-1, 1]) {
+    const tab = child(
+        body,
+        MeshBuilder.CreateBox(
+            `part:${id}-tab-${side > 0 ? 'r' : 'l'}`,
+            {width: 0.03, height: 0.018, depth: 0.006},
+            scene),
+        metal,
+    );
+    tab.position.set(side * 0.04, -0.055, -0.015);
+    const hole = child(
+        body,
+        MeshBuilder.CreateCylinder(
+            `part:${id}-hole-${side > 0 ? 'r' : 'l'}`,
+            {diameter: 0.008, height: 0.008, tessellation: 10},
+            scene),
+        darkMat,
+    );
+    hole.rotation.x = Math.PI / 2;
+    hole.position.set(side * 0.04, -0.055, -0.015);
+  }
+
+  const horn = child(
+      body,
+      MeshBuilder.CreateCylinder(
+          `part:${id}-horn`,
+          {diameter: 0.016, height: 0.008, tessellation: 16},
+          scene),
+      metal,
   );
-  horn.position.y = 0.04;
-  horn.material = theme.trim;
-  horn.parent = body;
-  body.material = theme.accent;
+  horn.rotation.x = Math.PI / 2;
+  horn.position.set(0, 0.025, -0.025);
+  const arm = child(
+      body,
+      MeshBuilder.CreateBox(
+          `part:${id}-arm`, {width: 0.03, height: 0.008, depth: 0.005},
+          scene),
+      metal,
+  );
+  arm.position.set(0.008, 0.025, -0.03);
+  const shaft = child(
+      body,
+      MeshBuilder.CreateCylinder(
+          `part:${id}-shaft`,
+          {diameter: 0.004, height: 0.008, tessellation: 10},
+          scene),
+      metal,
+  );
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.set(0, 0.025, -0.034);
+
+  const wireColors = ['#b23a2e', '#1e242c', '#d8a62c'];
+  wireColors.forEach((hex, index) => {
+    const wire = child(
+        body,
+        MeshBuilder.CreateCylinder(
+            `part:${id}-wire-${index}`,
+            {diameter: 0.003, height: 0.055, tessellation: 8},
+            scene),
+        proxyMaterial(scene, `servoWireMat${index}`, hex),
+    );
+    wire.position.set(-0.018 + index * 0.018, -0.072, 0);
+  });
   return body;
 }
 
 export function createPartProvider(
     prototypes: PrototypeMap,
-    theme: ThemeMaterials,
 ): PartMeshProvider {
   return (def: PartDef, scene: Scene): Mesh => {
     if (def.file) {
@@ -141,7 +256,7 @@ export function createPartProvider(
       return mesh;
     }
     if (def.primitive === 'servo') {
-      return buildServo(def.id, theme, scene);
+      return buildServo(def.id, scene);
     }
     throw new Error(`no mesh source for ${def.id}`);
   };

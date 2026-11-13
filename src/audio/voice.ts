@@ -14,6 +14,7 @@ export type VoiceState = {
   speaking: boolean;
   muted: boolean;
   plays: Record<string, number>;
+  active: string[];
 };
 
 export class VoicePlayer {
@@ -22,6 +23,8 @@ export class VoicePlayer {
   private current: Sound | null = null;
   private currentKey = '';
   private pending: string | null = null;
+  private armed = !AbstractEngine.audioEngine;
+  private pumpTimer: ReturnType<typeof setTimeout> | null = null;
   private watchdog: ReturnType<typeof setTimeout> | null = null;
   private muted = false;
   private lastKey = '';
@@ -40,8 +43,7 @@ export class VoicePlayer {
             () => {
               this.ready.add(key);
               if (this.pending === key) {
-                this.pending = null;
-                queueMicrotask(() => this.start(key));
+                this.pump();
               }
             },
             {volume: VOLUME},
@@ -62,20 +64,20 @@ export class VoicePlayer {
     if (this.current && this.currentKey === key && this.current.isPlaying) {
       return;
     }
-    this.stopCurrent();
-    if (this.ready.has(key)) {
-      this.start(key);
-    } else {
-      this.pending = key;
-    }
+    this.stopAll();
+    this.pending = key;
+    this.pump();
   }
 
   unlock(): void {
+    this.armed = true;
     try {
       AbstractEngine.audioEngine?.unlock();
     } catch {
+      this.pump();
       return;
     }
+    this.pump();
   }
 
   setMuted(value: boolean): void {
@@ -84,7 +86,7 @@ export class VoicePlayer {
     }
     this.muted = value;
     if (value) {
-      this.stopCurrent();
+      this.stopAll();
     }
   }
 
@@ -100,14 +102,51 @@ export class VoicePlayer {
       speaking: this.current !== null,
       muted: this.muted,
       plays: {...this.plays},
+      active: [...this.sounds.entries()]
+          .filter(([, sound]) => sound.isPlaying)
+          .map(([key]) => key),
     };
+  }
+
+  private canPlay(): boolean {
+    const engine = AbstractEngine.audioEngine;
+    return !engine || engine.unlocked;
+  }
+
+  private pump(): void {
+    if (!this.armed || this.muted || !this.pending) {
+      return;
+    }
+    const key = this.pending;
+    if (!this.ready.has(key)) {
+      return;
+    }
+    if (!this.canPlay()) {
+      this.schedulePump();
+      return;
+    }
+    this.pending = null;
+    this.start(key);
+  }
+
+  private schedulePump(): void {
+    if (this.pumpTimer) {
+      return;
+    }
+    this.pumpTimer = setTimeout(() => {
+      this.pumpTimer = null;
+      this.pump();
+    }, 100);
   }
 
   private start(key: string): void {
     const sound = this.sounds.get(key);
-    if (!sound || this.muted) {
+    if (!sound || this.muted || !this.canPlay()) {
+      this.pending = key;
+      this.schedulePump();
       return;
     }
+    this.stopAll();
     this.current = sound;
     this.currentKey = key;
     this.lastKey = key;
@@ -125,13 +164,17 @@ export class VoicePlayer {
     }
   }
 
-  private stopCurrent(): void {
+  private stopAll(): void {
     this.pending = null;
-    if (this.current) {
+    if (this.pumpTimer) {
+      clearTimeout(this.pumpTimer);
+      this.pumpTimer = null;
+    }
+    for (const sound of this.sounds.values()) {
       try {
-        this.current.stop();
+        sound.stop();
       } catch {
-        this.current = null;
+        continue;
       }
     }
     this.clearCurrent();

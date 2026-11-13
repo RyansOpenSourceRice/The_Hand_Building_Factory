@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.12.5] - 2026-11-12
+
+### Fixed
+
+- The finished hand now uses the STL parts' shared assembly frame at the
+  requested 3x scale. The palm sits on the pedestal with its bottom at
+  1.07 m, fingers reach 1.675 m, the four fingers are spaced across the
+  palm, and the thumb chain and cover meet their hosts. The previous
+  build mixed per-part origins and the wrong scale, leaving parts
+  scattered above and behind the stand.
+- Screws and their insertion axes are defined in mesh-local space:
+  palm screws go down into the stand, motor screws go forward into the
+  palm, finger screws go up into the knuckles, cover screws go forward
+  into the back, and thumb screws go into the palm and thumb base.
+- Servo geometry is a 5 x 10 x 3 cm hobby-servo body with a black case,
+  brushed-metal horn, output arm, shaft, mounting tabs with holes, seam,
+  and colour-coded wires. The motor row and wrist motor sit on the back
+  of the palm and stay visible until the upper cover goes on.
+- Metal parts use the generated brushed-steel texture with a brighter
+  metallic response. This covers the servo horn, tabs and shaft, every
+  screw, and the screwdriver shaft.
+- Narration can no longer overlap. The player waits for the WebAudio
+  context to unlock before it calls `play()`, keeps one pending line,
+  stops every narration sound before a new one, and ignores stale ready
+  callbacks. This fixes intro + tool-on playing together.
+- Music starts once and changes volume on duck/unmute; it never starts a
+  second copy. Effects stop an already-playing one-shot before replaying
+  it and skip playback until the clip is ready.
+
+### Added
+
+- A formal hand-assembly model in `tests/unit/handAssembly.test.ts` and
+  the QA MCP `audit_hand` tool. They check part count, placement, screws,
+  palm height, fingertip height, finger order and span, thumb/cover
+  attachment, reach envelope, and scattered parts.
+- The full E2E playthrough now samples narration and asserts that at most
+  one voice clip is active at any time. It also checks the final world
+  bounds and connectivity of the hand.
+- QA MCP tools for full part state, fixed front/back/side/top/servo
+  views, part visibility, a complete-build inspection shortcut, and
+  audio-channel sampling.
+
 ## [2026.11.12.4] - 2026-11-12
 
 ### Added

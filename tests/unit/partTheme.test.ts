@@ -43,7 +43,7 @@ describe('part theme colors', () => {
       throw new Error('palm definition missing');
     }
     const provider = createPartProvider(
-        new Map([['palm.stl', prototype]]), theme);
+        new Map([['palm.stl', prototype]]));
     const mesh = provider(palm, scene);
     expect(mesh.material).toBe(theme.body);
   });

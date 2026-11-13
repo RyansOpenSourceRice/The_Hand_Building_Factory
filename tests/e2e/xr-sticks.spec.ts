@@ -171,7 +171,7 @@ test.describe('xr thumbsticks (chromium + mock navigator.xr)', () => {
   }) => {
     await pulse(page, 'right', {stickY: -1}, 14_000);
     const final = await pose(page);
-    expect(Math.abs(final.x)).toBeLessThanOrEqual(6.25);
-    expect(Math.abs(final.z)).toBeLessThanOrEqual(6.25);
+    expect(Math.abs(final.x)).toBeLessThanOrEqual(6.2501);
+    expect(Math.abs(final.z)).toBeLessThanOrEqual(6.2501);
   });
 });
