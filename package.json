@@ -1,7 +1,7 @@
 {
   "name": "the-hand-building-factory",
   "description": "HANDS ON! - assemble a robotic hand on stage while the crowd cheers. Meta Quest 3 WebXR for the Super Free AI Game Jam #2.",
-  "version": "2026.11.13.1",
+  "version": "2026.11.13.2",
   "type": "module",
   "private": true,
   "license": "Apache-2.0",

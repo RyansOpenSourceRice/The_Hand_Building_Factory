@@ -30,7 +30,9 @@ import {
   BARRIER_HALF,
   BARRIER_SEGMENT,
   FORKLIFT_MOVING,
+  FORKLIFT_MOVING_YAW,
   FORKLIFT_PARKED,
+  FORKLIFT_PARKED_YAW,
   ROBOT_BASES,
   WAREHOUSE_CRATE_SPOTS,
 } from './layout';
@@ -828,10 +830,10 @@ function buildGrandHall(scene: Scene): void {
 
   const parked = buildForklift(scene, yellowMat, darkMat, 'forkliftParked');
   parked.position.set(FORKLIFT_PARKED.x, 0, FORKLIFT_PARKED.z);
-  parked.rotation.y = -Math.PI / 2;
+  parked.rotation.y = FORKLIFT_PARKED_YAW;
   const moving = buildForklift(scene, yellowMat, darkMat, 'forkliftMoving');
   moving.position.set(FORKLIFT_MOVING.x, 0, FORKLIFT_MOVING.zStart);
-  moving.rotation.y = Math.PI;
+  moving.rotation.y = FORKLIFT_MOVING_YAW;
   scene.onBeforeRenderObservable.add(() => {
     const cycle = 18;
     const t = (performance.now() / 1000) % cycle;

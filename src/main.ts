@@ -65,6 +65,11 @@ import {
 import {attachDesktopControls} from './input/desktopControls';
 import {attachDesktopGrab} from './input/desktopGrab';
 import {TEXTURE_BUDGET_BYTES, textureStats} from './scene/textures';
+import {
+  crateClearanceIssues,
+  forkliftClearanceIssues,
+  forkliftWallIssues,
+} from './scene/layout';
 
 type XrCapableNavigator = Navigator & {xr?: object};
 
@@ -600,6 +605,11 @@ async function boot(): Promise<void> {
         materials: number;
         textures: ReturnType<typeof textureStats>;
         budget: number;
+        clearance: {
+          crates: string[];
+          forklift: string[];
+          forkliftWalls: string[];
+        };
         textureList: Array<{name: string; width: number; height: number}>;
       };
       digitAudit: (hand: 'left' | 'right') => {
@@ -793,6 +803,11 @@ async function boot(): Promise<void> {
       materials: scene.materials.length,
       textures: textureStats(scene),
       budget: TEXTURE_BUDGET_BYTES,
+      clearance: {
+        crates: crateClearanceIssues(),
+        forklift: forkliftClearanceIssues(),
+        forkliftWalls: forkliftWallIssues(),
+      },
       textureList: scene.textures.map((texture) => {
         const size = texture.getSize();
         return {name: texture.name, width: size.width, height: size.height};

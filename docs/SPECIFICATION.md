@@ -2,7 +2,7 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.13.1)
+## Current behavior (release 2026.11.13.2)
 
 - A warehouse workshop opens through a low north sill onto a grand
   factory hall, generated almost entirely in code. The workshop keeps the
@@ -38,12 +38,13 @@ What HANDS ON! does, milestone by milestone.
 - Pressing either thumbstick in VR raises the rig through three comfort
   heights (0, +0.4, +0.8 m) with a soft haptic tick, gliding at a calm
   rate and snapping instantly under reduced motion.
-- The game builds a 21-part yeah-hand robotic hand, one part at a time:
+- The game builds a 25-part yeah-hand robotic hand, one part at a time:
   palm, wrist plate, wrist motor, four finger motors, thumb base, thumb
-  hinge boss, four fingers, four knuckle pins, thumb segments, two thumb
-  hinge pins, and the upper cover. Pins are press-fit and need no
-  screws. The current part shows a soft, pulsing translucent blue
-  hologram at its socket.
+  hinge boss, four fingers, four knuckle pins, four knuckle caps, thumb
+  segments, two thumb hinge pins, and the upper cover. Pins are
+  press-fit and need no screws; the knuckle caps each take one screw.
+  The current part shows a soft, pulsing translucent blue hologram at
+  its socket.
 - All printed parts are 3x human scale and share one assembly frame
   derived from the STL coordinates. The palm stands on the pedestal at
   1.07 m with its palm toward the player and fingers up; the wrist plate
@@ -56,7 +57,8 @@ What HANDS ON! does, milestone by milestone.
   arm, a shaft screw, mounting tabs with holes, a seam, and three
   colour-coded wires. Screws are anchored to the mesh surface and point
   into the stand, palm, knuckles, thumb, or cover as appropriate. Finger
-  screws sit on each finger's own centre line.
+  screws sit on the front face of each finger's own centre line, and
+  knuckle-cap screws sit on the cap hub.
 - Metal surfaces (servo horn, tabs, shaft, screws, screwdriver shaft)
   use the generated brushed-steel texture with a bright specular
   response. Printed parts stay on the filament palette.
@@ -128,10 +130,10 @@ What HANDS ON! does, milestone by milestone.
   nearby does nothing, and only the nearest touched screw turns. A
   ratchet tick plays while driving and the controller pulses gently; the
   screw sinks in with a click and the tool stays in hand. The palm takes
-  4 screws, the wrist plate 2, each servo 1, each finger 1, the thumb
-  pieces 2, and the upper cover 4. The queue advances only once a part's
-  screws are all driven. Screws can never be carried; the screwdriver or
-  a part can.
+  4 screws, the wrist plate 2, each servo 1, each finger 1, each knuckle
+  cap 1, the thumb pieces 2, and the upper cover 4. The queue advances
+  only once a part's screws are all driven. Screws can never be carried;
+  the screwdriver or a part can.
 - The render loop reports frame count, render time, last frame gap,
   texture count and budget, and the last runtime error. A completed hand
   keeps rendering so the headset never freezes on the last frame.
