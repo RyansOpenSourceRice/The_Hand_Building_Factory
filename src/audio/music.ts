@@ -10,6 +10,7 @@ export class MusicLoop {
   private started = false;
   private muted = false;
   private ducked = false;
+  private playRequested = false;
 
   constructor(scene: Scene) {
     try {
@@ -42,6 +43,10 @@ export class MusicLoop {
     return this.sound?.isReady() ?? false;
   }
 
+  isPlaying(): boolean {
+    return this.sound?.isPlaying ?? false;
+  }
+
   setDucked(value: boolean): void {
     if (this.ducked === value) {
       return;
@@ -56,15 +61,19 @@ export class MusicLoop {
     }
     try {
       if (this.muted) {
-        this.sound.stop();
+        this.playRequested = false;
+        if (this.sound.isPlaying) {
+          this.sound.stop();
+        }
         return;
       }
       this.sound.setVolume(this.ducked ? DUCK_VOLUME : VOLUME);
-      if (!this.sound.isPlaying) {
+      if (!this.playRequested) {
+        this.playRequested = true;
         this.sound.play();
       }
     } catch {
-      return;
+      this.playRequested = false;
     }
   }
 }

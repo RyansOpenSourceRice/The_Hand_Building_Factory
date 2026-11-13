@@ -22,6 +22,7 @@ import {enableGamePhysics} from './scene/physics';
 import {AssemblyStage} from './game/assembly';
 import {Screwdriver} from './game/screwdriver';
 import {
+  activeSfx,
   cheer,
   initSfx,
   partDrop,
@@ -123,7 +124,7 @@ async function boot(): Promise<void> {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const stage = new AssemblyStage(
       scene,
-      createPartProvider(prototypes, theme),
+      createPartProvider(prototypes),
       reducedMotion,
   );
   const driver = new Screwdriver(scene);
@@ -588,6 +589,18 @@ async function boot(): Promise<void> {
       };
       voice: () => VoiceState;
       hostGlow: () => string;
+      parts: () => Array<Record<string, unknown>>;
+      targetFor: (id: string) => number[] | null;
+      completeHand: () => void;
+      debugView: (
+        view: 'front' | 'back' | 'left' | 'right' | 'top' | 'servos',
+      ) => void;
+      audioChannels: () => {
+        voice: string[];
+        music: boolean;
+        sfx: string[];
+      };
+      hidePart: (id: string, visible?: boolean) => void;
     };
   };
   bridgeWindow.factoryDebug = {
@@ -674,6 +687,34 @@ async function boot(): Promise<void> {
     guidance: () => guidance.debugText(),
     voice: () => voice.state(),
     hostGlow: () => hostGlow.active(),
+    parts: () => stage.partsState(),
+    targetFor: (id) => stage.targetFor(id)?.asArray() ?? null,
+    completeHand: () => stage.debugComplete(),
+    audioChannels: () => ({
+      voice: voice.state().active,
+      music: music.isPlaying(),
+      sfx: activeSfx(),
+    }),
+    hidePart: (id, visible = true) => {
+      scene.getMeshByName(`part:${id}`)?.setEnabled(visible);
+    },
+    debugView: (view) => {
+      const target = new Vector3(0, 1.35, 0);
+      const spots: Record<string, Vector3> = {
+        front: new Vector3(0, 1.45, 2.2),
+        back: new Vector3(0, 1.45, -2.2),
+        left: new Vector3(-2.2, 1.45, 0),
+        right: new Vector3(2.2, 1.45, 0),
+        top: new Vector3(0, 2.9, 0.01),
+        servos: new Vector3(0, 1.45, -0.8),
+      };
+      const spot = spots[view];
+      if (!spot) {
+        return;
+      }
+      camera.position.copyFrom(spot);
+      camera.setTarget(target);
+    },
     audienceCount: () => AUDIENCE_COUNT,
     partColor: (id) => stage.partColor(id),
     selectTheme: (slot, index) => settings.setTheme(slot, index),

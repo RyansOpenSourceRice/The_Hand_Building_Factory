@@ -41,8 +41,27 @@ interface FactoryDebug {
     speaking: boolean;
     muted: boolean;
     plays: Record<string, number>;
+    active: string[];
   };
   hostGlow: () => string;
+  parts: () => Array<{
+    id: string;
+    center: number[];
+    min: number[];
+    max: number[];
+    target: number[];
+    quat: number[];
+    placed: boolean;
+    screwsDone: number;
+    screwCount: number;
+    enabled: boolean;
+  }>;
+  targetFor: (id: string) => number[] | null;
+  completeHand: () => void;
+  debugView: (view: 'front' | 'back' | 'left' | 'right' | 'top' |
+    'servos') => void;
+  audioChannels: () => {voice: string[]; music: boolean; sfx: string[]};
+  hidePart: (id: string, visible?: boolean) => void;
   audienceCount: () => number;
   partColor: (id: string) => string;
   selectTheme: (slot: 'primary' | 'secondary' | 'tertiary',

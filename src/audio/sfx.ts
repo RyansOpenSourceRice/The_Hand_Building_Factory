@@ -52,6 +52,12 @@ function play(key: SfxKey): void {
     return;
   }
   try {
+    if (!sound.isReady()) {
+      return;
+    }
+    if (sound.isPlaying) {
+      sound.stop();
+    }
     sound.play();
   } catch {
     return;
@@ -76,4 +82,9 @@ export function partDrop(): void {
 
 export function cheer(): void {
   play('cheer');
+}
+
+export function activeSfx(): string[] {
+  return (Object.keys(bank) as SfxKey[])
+      .filter((key) => bank[key]?.isPlaying);
 }

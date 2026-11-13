@@ -9,6 +9,7 @@ import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import {Color3} from '@babylonjs/core/Maths/math.color';
 import {Scene} from '@babylonjs/core/scene';
 import {makeBoxBody} from '../scene/physics';
+import {brushedMetalMaterial} from '../scene/metal';
 
 const HOLSTER = new Vector3(0, 1.08, 0.5);
 const HAND_OFFSET = new Vector3(0, 0, 0.036);
@@ -27,9 +28,7 @@ export class Screwdriver {
     gripMat.diffuseColor = Color3.FromHexString('#c25b2a');
     gripMat.emissiveColor = Color3.FromHexString('#2a0e04');
     gripMat.specularColor = new Color3(0.08, 0.08, 0.08);
-    const metalMat = new StandardMaterial('driverMetalMat', scene);
-    metalMat.diffuseColor = Color3.FromHexString('#9aa0ad');
-    metalMat.specularColor = new Color3(0.3, 0.3, 0.33);
+    const metalMat = brushedMetalMaterial(scene, 'driverMetalMat');
 
     this.mesh = MeshBuilder.CreateCylinder(
         'tool:screwdriver',

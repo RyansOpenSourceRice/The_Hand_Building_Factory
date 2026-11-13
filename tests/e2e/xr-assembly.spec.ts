@@ -50,19 +50,19 @@ const TOOL_POSE_PITCH = Math.PI / 2;
 const TOOL_POSE: V3 = [0, 1.35, 0.9];
 
 const SOCKETS: Record<string, V3> = {
-  'palm': [0, 1.2155, 0],
-  'servo-base': [0, 1.1, -0.19],
-  'servo-f1': [-0.062, 1.27, -0.19],
-  'servo-f2': [0.062, 1.27, -0.19],
-  'servo-f3': [-0.062, 1.16, -0.19],
-  'servo-f4': [0.062, 1.16, -0.19],
-  'thumb-base': [-0.155, 1.21, 0.02],
-  'finger-index': [-0.0945, 1.541, 0],
-  'finger-middle': [-0.0315, 1.541, 0],
-  'finger-ring': [0.0315, 1.541, 0],
-  'finger-little': [0.0945, 1.541, 0],
-  'thumb-segments': [-0.21, 1.3, 0.08],
-  'upper-cover': [0, 1.2155, -0.095],
+  'palm': [0, 1.4949, 0],
+  'servo-base': [0, 1.1549, -0.035],
+  'servo-f1': [0.0993, 1.3899, -0.035],
+  'servo-f2': [0.0367, 1.3899, -0.035],
+  'servo-f3': [-0.0259, 1.3899, -0.035],
+  'servo-f4': [-0.0885, 1.3899, -0.035],
+  'thumb-base': [0, 1.4949, 0],
+  'finger-index': [0, 1.4949, 0],
+  'finger-middle': [-0.0626, 1.4949, 0],
+  'finger-ring': [-0.1252, 1.4949, 0],
+  'finger-little': [-0.1878, 1.4949, 0],
+  'thumb-segments': [0, 1.4949, 0],
+  'upper-cover': [0, 1.4949, 0],
 };
 
 const CONVEYOR_IDS = new Set([
@@ -183,6 +183,29 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         {timeout: 10_000},
     );
     await page.evaluate(() => window.factoryDebug!.splashSkip());
+    await page.evaluate(() => {
+      type Sample = {
+        t: number;
+        voice: number;
+        keys: string[];
+        music: boolean;
+      };
+      const trace: Sample[] = [];
+      const timer = window.setInterval(() => {
+        const channels = window.factoryDebug!.audioChannels();
+        trace.push({
+          t: Date.now(),
+          voice: channels.voice.length,
+          keys: channels.voice,
+          music: channels.music,
+        });
+      }, 100);
+      (window as unknown as {
+        __audioTrace: typeof trace;
+        __audioTimer: number;
+      }).__audioTrace = trace;
+      (window as unknown as {__audioTimer: number}).__audioTimer = timer;
+    });
   });
 
   test('finishes the hand with the magnetic screwdriver, then rebuilds',
@@ -325,6 +348,60 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
 
         await expect(page.locator('#live-status'))
             .toHaveText('HAND COMPLETE! Take a bow.');
+
+        const parts = await page.evaluate(
+            () => window.factoryDebug!.parts());
+        expect(parts).toHaveLength(13);
+        for (const part of parts) {
+          expect(part.placed, part.id).toBe(true);
+          expect(part.screwsDone, part.id).toBe(part.screwCount);
+          expect(part.enabled, part.id).toBe(true);
+        }
+        const byId = new Map(parts.map((part) => [part.id, part]));
+        const palm = byId.get('palm');
+        const index = byId.get('finger-index');
+        const little = byId.get('finger-little');
+        const thumbBase = byId.get('thumb-base');
+        const thumbSegments = byId.get('thumb-segments');
+        const cover = byId.get('upper-cover');
+        expect(palm).toBeDefined();
+        expect(index).toBeDefined();
+        expect(little).toBeDefined();
+        expect(thumbBase).toBeDefined();
+        expect(thumbSegments).toBeDefined();
+        expect(cover).toBeDefined();
+        expect(palm!.min[1]!).toBeCloseTo(1.07, 2);
+        expect(palm!.max[1]!).toBeLessThan(1.4);
+        expect(index!.max[1]!).toBeGreaterThan(1.65);
+        expect(index!.min[1]!).toBeLessThan(palm!.max[1]! + 0.03);
+        expect(index!.min[0]!).toBeGreaterThan(little!.max[0]!);
+        expect(thumbBase!.min[1]!).toBeLessThan(palm!.max[1]!);
+        expect(thumbSegments!.min[1]!).toBeLessThan(thumbBase!.max[1]! + 0.01);
+        expect(cover!.min[1]!).toBeLessThan(palm!.max[1]!);
+        const maxX = Math.max(...parts.map((part) => part.max[0]!));
+        const minX = Math.min(...parts.map((part) => part.min[0]!));
+        expect(maxX - minX).toBeLessThan(0.5);
+        expect(maxX - minX).toBeGreaterThan(0.25);
+
+        const trace = await page.evaluate(() => {
+          const store = window as unknown as {
+            __audioTrace: Array<{
+              t: number;
+              voice: number;
+              keys: string[];
+              music: boolean;
+            }>;
+            __audioTimer: number;
+          };
+          window.clearInterval(store.__audioTimer);
+          return store.__audioTrace;
+        });
+        expect(trace.length).toBeGreaterThan(10);
+        const overlaps = trace.filter((sample) => sample.voice > 1);
+        if (overlaps.length > 0) {
+          console.log('voice overlap', JSON.stringify(overlaps.slice(0, 5)));
+        }
+        expect(overlaps, JSON.stringify(overlaps.slice(0, 3))).toHaveLength(0);
 
         await expect.poll(() => splashVisible(page),
             {timeout: 12_000}).toBe(true);
