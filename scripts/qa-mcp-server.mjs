@@ -270,7 +270,7 @@ function auditHand(parts) {
   const thumbPin = byId.get('thumb-pin-base');
   const checks = [];
   const add = (name, pass, detail) => checks.push({name, pass, detail});
-  add('part count', parts.length === 21, `${parts.length}/21`);
+  add('part count', parts.length === 25, `${parts.length}/25`);
   add('all placed', parts.every((part) => part.placed),
       parts.filter((part) => !part.placed).map((part) => part.id));
   add('all screwed', parts.every((part) => part.screwsDone === part.screwCount),
@@ -300,6 +300,24 @@ function auditHand(parts) {
       ring.center[0] > little.center[0],
       [index, middle, ring, little]
           .map((part) => part.center[0].toFixed(3)).join(' > '));
+  const capPairs = [
+    ['knuckle-cap-index', 'finger-index'],
+    ['knuckle-cap-middle', 'finger-middle'],
+    ['knuckle-cap-ring', 'finger-ring'],
+    ['knuckle-cap-little', 'finger-little'],
+  ];
+  add('knuckle caps on fingers',
+      capPairs.every(([capId, fingerId]) => {
+        const cap = byId.get(capId);
+        const finger = byId.get(fingerId);
+        return !!cap && !!finger && overlaps(boundsOf(cap), boundsOf(finger));
+      }),
+      capPairs.filter(([capId, fingerId]) => {
+        const cap = byId.get(capId);
+        const finger = byId.get(fingerId);
+        return !cap || !finger ||
+            !overlaps(boundsOf(cap), boundsOf(finger));
+      }).map(([capId]) => capId));
   add('fingers span the palm',
       index.max[0] - little.min[0] > 0.2 &&
       index.max[0] - little.min[0] < 0.35,

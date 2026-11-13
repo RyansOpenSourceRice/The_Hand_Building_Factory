@@ -338,6 +338,35 @@ function buildHingeBoss(
   return merged;
 }
 
+function buildKnuckleCap(
+    id: string,
+    scene: Scene,
+    material: StandardMaterial,
+): Mesh {
+  const cap = MeshBuilder.CreateCylinder(
+      `part:${id}`,
+      {diameter: 0.028, height: 0.012, tessellation: 20},
+      scene,
+  );
+  cap.rotation.x = Math.PI / 2;
+  cap.material = material;
+  const hub = MeshBuilder.CreateCylinder(
+      `part:${id}-hub`,
+      {diameter: 0.013, height: 0.006, tessellation: 20},
+      scene,
+  );
+  hub.rotation.x = Math.PI / 2;
+  hub.position.z = 0.007;
+  hub.material = material;
+  const merged = Mesh.MergeMeshes([cap, hub], true, true);
+  if (!merged) {
+    throw new Error(`failed to build ${id}`);
+  }
+  merged.name = `part:${id}`;
+  merged.material = material;
+  return merged;
+}
+
 export function createPartProvider(
     prototypes: PrototypeMap,
     theme?: ThemeMaterials,
@@ -371,6 +400,9 @@ export function createPartProvider(
     }
     if (def.primitive === 'hinge-boss') {
       return buildHingeBoss(def.id, scene, printed);
+    }
+    if (def.primitive === 'knuckle-cap') {
+      return buildKnuckleCap(def.id, scene, theme?.accent ?? printed);
     }
     throw new Error(`no mesh source for ${def.id}`);
   };

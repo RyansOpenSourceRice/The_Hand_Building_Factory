@@ -67,6 +67,10 @@ const SOCKETS: Record<string, V3> = {
   'knuckle-middle': [0.0367, 1.4649, 0],
   'knuckle-ring': [-0.0259, 1.4649, 0],
   'knuckle-little': [-0.0885, 1.4649, 0],
+  'knuckle-cap-index': [0.0993, 1.4649, 0.034],
+  'knuckle-cap-middle': [0.0367, 1.4649, 0.034],
+  'knuckle-cap-ring': [-0.0259, 1.4649, 0.034],
+  'knuckle-cap-little': [-0.0885, 1.4649, 0.034],
   'thumb-segments': [0, 1.4949, 0],
   'thumb-pin-base': [0.04, 1.2149, 0],
   'thumb-pin-tip': [0.16, 1.2649, 0],
@@ -409,7 +413,7 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
 
         const parts = await page.evaluate(
             () => window.factoryDebug!.parts());
-        expect(parts).toHaveLength(21);
+        expect(parts).toHaveLength(25);
         for (const part of parts) {
           expect(part.placed, part.id).toBe(true);
           expect(part.screwsDone, part.id).toBe(part.screwCount);
@@ -425,10 +429,12 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         const wrist = byId.get('wrist-plate');
         const boss = byId.get('thumb-hinge-boss');
         const pin = byId.get('knuckle-index');
+        const cap = byId.get('knuckle-cap-index');
         expect(palm).toBeDefined();
         expect(wrist).toBeDefined();
         expect(boss).toBeDefined();
         expect(pin).toBeDefined();
+        expect(cap).toBeDefined();
         expect(index).toBeDefined();
         expect(little).toBeDefined();
         expect(thumbBase).toBeDefined();
@@ -439,6 +445,16 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         expect(index!.max[1]!).toBeGreaterThan(1.65);
         expect(index!.min[1]!).toBeLessThan(palm!.max[1]! + 0.03);
         expect(index!.min[0]!).toBeGreaterThan(little!.max[0]!);
+        for (const id of ['finger-index', 'finger-middle',
+          'finger-ring', 'finger-little']) {
+          const finger = byId.get(id);
+          expect(finger, id).toBeDefined();
+          const screw = finger!.screwPositions[0];
+          expect(screw, id).toBeDefined();
+          expect(screw![0]!).toBeCloseTo(finger!.center[0]!, 3);
+          expect(screw![2]!).toBeGreaterThan(finger!.min[2]!);
+          expect(screw![2]!).toBeLessThan(finger!.max[2]!);
+        }
         expect(thumbBase!.min[1]!).toBeLessThan(palm!.max[1]!);
         expect(thumbSegments!.min[1]!).toBeLessThan(thumbBase!.max[1]! + 0.01);
         expect(cover!.min[1]!).toBeLessThan(palm!.max[1]!);
@@ -459,6 +475,9 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         expect(sceneAudit.textures.overBudget).toBe(false);
         expect(sceneAudit.textures.overTileBudget).toBe(false);
         expect(sceneAudit.lights).toBeLessThanOrEqual(4);
+        expect(sceneAudit.clearance.crates).toEqual([]);
+        expect(sceneAudit.clearance.forklift).toEqual([]);
+        expect(sceneAudit.clearance.forkliftWalls).toEqual([]);
 
         const trace = await page.evaluate(() => {
           const store = window as unknown as {

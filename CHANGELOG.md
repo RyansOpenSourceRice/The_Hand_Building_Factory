@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.13.2] - 2026-11-13
+
+### Added
+
+- Four front-mounted knuckle caps bring the interactive build to 25 parts:
+  palm, wrist plate, five servos, thumb base, thumb hinge boss, four
+  fingers, four knuckle pins, four knuckle caps, thumb segments, two
+  thumb pins, and the upper cover. The build now has 25 screws.
+- Clearance audits expose crate, forklift, and hall-wall checks through
+  the debug `sceneAudit` output and the E2E test.
+
+### Fixed
+
+- Finger screws now sit on the actual front face of each finger, on that
+  finger's centre line, instead of floating in front of the curved mesh.
+  Servo screws seat on the servo back, and knuckle-cap screws seat on
+  the cap hub.
+- The forklift lane moved inward and shortened, and clearance checks now
+  use the rotated forklift footprint with a wall margin. The moving and
+  parked forklifts stay inside the hall walls and clear of the racks,
+  robot arms, and staging area.
+
+### Changed
+
+- Updated the formal hand audit, unit tests, and full E2E to expect 25
+  parts and 25 screws, including the four knuckle caps.
+
 ## [2026.11.13.1] - 2026-11-13
 
 ### Fixed

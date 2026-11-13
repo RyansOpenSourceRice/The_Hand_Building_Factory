@@ -304,6 +304,7 @@ export class AssemblyStage {
     placed: boolean;
     screwsDone: number;
     screwCount: number;
+    screwPositions: number[][];
     enabled: boolean;
   }> {
     return this.states.map((state) => {
@@ -334,6 +335,8 @@ export class AssemblyStage {
         placed: state.snap.isComplete,
         screwsDone: state.screwsDone,
         screwCount: state.def.screwCount,
+        screwPositions: state.screws?.map(
+            (screw) => screw.getAbsolutePosition().asArray()) ?? [],
         enabled: state.mesh.isEnabled(),
       };
     });

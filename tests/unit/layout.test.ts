@@ -5,8 +5,12 @@ import {
   CRATE_HALF,
   FORKLIFT_PARKED,
   FORKLIFT_MOVING,
+  FORKLIFT_PARKED_YAW,
+  HALL_INNER,
   crateClearanceIssues,
   forkliftClearanceIssues,
+  forkliftFootprint,
+  forkliftWallIssues,
 } from '../../src/scene/layout';
 
 describe('warehouse layout clearance', () => {
@@ -19,6 +23,19 @@ describe('warehouse layout clearance', () => {
 
   it('keeps the forklift sweep clear of racks and robot arms', () => {
     expect(forkliftClearanceIssues()).toEqual([]);
+  });
+
+  it('keeps every forklift pose inside the hall walls', () => {
+    expect(forkliftWallIssues()).toEqual([]);
+    for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+      const half = forkliftFootprint(0, 0, yaw);
+      expect(half.hx).toBeGreaterThan(0);
+      expect(half.hz).toBeGreaterThan(0);
+    }
+    const parked = forkliftFootprint(
+        FORKLIFT_PARKED.x, FORKLIFT_PARKED.z, FORKLIFT_PARKED_YAW);
+    expect(parked.x - parked.hx).toBeGreaterThan(-HALL_INNER.halfWidth);
+    expect(parked.x + parked.hx).toBeLessThan(HALL_INNER.halfWidth);
   });
 
   it('uses a forward-and-reverse lane without flipping', () => {

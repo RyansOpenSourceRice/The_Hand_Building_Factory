@@ -55,6 +55,7 @@ interface FactoryDebug {
     placed: boolean;
     screwsDone: number;
     screwCount: number;
+    screwPositions: number[][];
     enabled: boolean;
   }>;
   targetFor: (id: string) => number[] | null;
@@ -100,6 +101,11 @@ interface FactoryDebug {
       overTileBudget: boolean;
     };
     budget: number;
+    clearance: {
+      crates: string[];
+      forklift: string[];
+      forkliftWalls: string[];
+    };
     textureList: Array<{name: string; width: number; height: number}>;
   };
   digitAudit: (hand: 'left' | 'right') => {

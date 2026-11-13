@@ -23,12 +23,20 @@ export const RACK_CENTERS: readonly [number, number][] = [
 export const RACK_LOCAL_HALF = {x: 0.55, z: 1.45};
 
 export const FORKLIFT_MOVING = {
-  x: 10.2,
-  zStart: -10.4,
-  zEnd: -18,
+  x: 9.8,
+  zStart: -11.4,
+  zEnd: -17.6,
 } as const;
 export const FORKLIFT_PARKED = {x: -10.2, z: -18.5} as const;
-export const FORKLIFT_HALF = {x: 0.62, z: 1.75};
+export const FORKLIFT_HALF = {x: 0.62, z: 1.9};
+export const FORKLIFT_MOVING_YAW = Math.PI;
+export const FORKLIFT_PARKED_YAW = -Math.PI / 2;
+export const HALL_INNER = {
+  halfWidth: 15.85,
+  nearZ: -8.2,
+  farZ: -27.85,
+  clearance: 0.15,
+} as const;
 
 export const ROBOT_BASES: readonly [number, number][] = [
   [-6, -26.5], [0, -26.5], [6, -26.5], [9, -21], [-9, -21],
@@ -42,29 +50,69 @@ export function overlaps2d(a: Footprint, b: Footprint): boolean {
       Math.abs(a.z - b.z) <= a.hz + b.hz;
 }
 
+function rotatedHalf(
+    half: {x: number; z: number},
+    yaw: number,
+): {hx: number; hz: number} {
+  const c = Math.abs(Math.cos(yaw));
+  const s = Math.abs(Math.sin(yaw));
+  return {
+    hx: half.x * c + half.z * s,
+    hz: half.x * s + half.z * c,
+  };
+}
+
+export function forkliftFootprint(
+    x: number,
+    z: number,
+    yaw: number,
+): Footprint {
+  const half = rotatedHalf(FORKLIFT_HALF, yaw);
+  return {x, z, hx: half.hx, hz: half.hz};
+}
+
 export function forkliftSweep(): Footprint[] {
   const lane = FORKLIFT_MOVING;
   const zMin = Math.min(lane.zStart, lane.zEnd);
   const zMax = Math.max(lane.zStart, lane.zEnd);
+  const movingHalf = rotatedHalf(FORKLIFT_HALF, FORKLIFT_MOVING_YAW);
   const sweep: Footprint[] = [];
   for (let z = zMin; z <= zMax + 1e-6; z += 0.25) {
-    sweep.push({x: lane.x, z, hx: FORKLIFT_HALF.x, hz: FORKLIFT_HALF.z});
+    sweep.push({x: lane.x, z, hx: movingHalf.hx, hz: movingHalf.hz});
   }
-  sweep.push({
-    x: FORKLIFT_PARKED.x,
-    z: FORKLIFT_PARKED.z,
-    hx: FORKLIFT_HALF.x,
-    hz: FORKLIFT_HALF.z,
-  });
+  sweep.push(forkliftFootprint(
+      FORKLIFT_PARKED.x, FORKLIFT_PARKED.z, FORKLIFT_PARKED_YAW));
   return sweep;
+}
+
+export function forkliftWallIssues(): string[] {
+  const issues: string[] = [];
+  const clearance = HALL_INNER.clearance;
+  forkliftSweep().forEach((footprint, index) => {
+    if (footprint.x - footprint.hx <
+        -HALL_INNER.halfWidth + clearance) {
+      issues.push(`forklift ${index} hits left wall`);
+    }
+    if (footprint.x + footprint.hx >
+        HALL_INNER.halfWidth - clearance) {
+      issues.push(`forklift ${index} hits right wall`);
+    }
+    if (footprint.z - footprint.hz < HALL_INNER.farZ + clearance) {
+      issues.push(`forklift ${index} hits far wall`);
+    }
+    if (footprint.z + footprint.hz > HALL_INNER.nearZ - clearance) {
+      issues.push(`forklift ${index} hits near boundary`);
+    }
+  });
+  return issues;
 }
 
 export function forkliftClearanceIssues(): string[] {
   const racks = RACK_CENTERS.map(([x, z]) => ({
     x,
     z,
-    hx: RACK_LOCAL_HALF.x,
-    hz: RACK_LOCAL_HALF.z,
+    hx: RACK_LOCAL_HALF.z,
+    hz: RACK_LOCAL_HALF.x,
   }));
   const robots = ROBOT_BASES.map(([x, z]) => ({
     x,
@@ -72,7 +120,7 @@ export function forkliftClearanceIssues(): string[] {
     hx: ROBOT_HALF,
     hz: ROBOT_HALF,
   }));
-  const issues: string[] = [];
+  const issues: string[] = forkliftWallIssues();
   forkliftSweep().forEach((footprint, index) => {
     for (const rack of racks) {
       if (overlaps2d(footprint, rack)) {

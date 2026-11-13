@@ -134,7 +134,7 @@ describe('AssemblyStage', () => {
     const ghost = scene.getMeshByName('ghost:palm') as Mesh;
     grabTo(ghost.position);
     driveAll();
-    expect(progress.at(-1)).toEqual([1, 21]);
+    expect(progress.at(-1)).toEqual([1, 25]);
   });
 
   it('undo reverts a driven screw', () => {
@@ -278,7 +278,7 @@ describe('AssemblyStage', () => {
     const wrist = scene.getMeshByName('part:wrist-plate') as Mesh;
     expect(wrist.isEnabled()).toBe(true);
     stage.restart();
-    expect(progress.at(-1)).toEqual([0, 21]);
+    expect(progress.at(-1)).toEqual([0, 25]);
     expect(stage.currentIndex).toBe(0);
     expect(stage.currentPart).toBe(palm);
     expect(palm.position.x).toBeCloseTo(PRINTER_HOME.x, 2);

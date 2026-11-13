@@ -60,4 +60,9 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
         covered conveyor, thumb hinge boss and pins, texture/frame audits,
         and post-completion liveness coverage. (2026.11.13.1)
 
+16. [x] Feedback round 3: 25-part assembly with four front knuckle
+        caps, finger screws seated on the actual finger surface, servo
+        and cap screws seated on their hosts, and forklift wall-clearance
+        audits using the rotated model footprint. (2026.11.13.2)
+
 Definition of done for every item: the four gates in AGENTS.md.

@@ -1,6 +1,9 @@
 import {describe, expect, it} from 'vitest';
 import {
+  FINGER_SCREW_Z,
+  FINGER_X,
   HAND_ROOT,
+  KNUCKLE_CAP_SCREW_Z,
   MODEL_SCALE,
   PART_DEFS,
   TOTAL_PARTS,
@@ -31,6 +34,11 @@ const localBounds: Record<string, Bounds> = {
     max: [0.137172, -0.110417, 0.057786],
   },
 };
+const FINGER_FRONT_AT_SCREW = 0.0123;
+const KNUCKLE_CAP_BOUNDS: Bounds = {
+  min: [-0.014, -0.014, -0.006],
+  max: [0.014, 0.014, 0.010],
+};
 
 function worldBounds(id: string): Bounds {
   const def = PART_DEFS.find((entry) => entry.id === id);
@@ -38,6 +46,20 @@ function worldBounds(id: string): Bounds {
     throw new Error(`missing part ${id}`);
   }
   if (!def.file) {
+    if (def.primitive === 'knuckle-cap') {
+      return {
+        min: [
+          def.local.x + KNUCKLE_CAP_BOUNDS.min[0],
+          def.local.y + KNUCKLE_CAP_BOUNDS.min[1],
+          def.local.z + KNUCKLE_CAP_BOUNDS.min[2],
+        ],
+        max: [
+          def.local.x + KNUCKLE_CAP_BOUNDS.max[0],
+          def.local.y + KNUCKLE_CAP_BOUNDS.max[1],
+          def.local.z + KNUCKLE_CAP_BOUNDS.max[2],
+        ],
+      };
+    }
     const z = def.local.z;
     return {
       min: [def.local.x - 0.03, def.local.y - 0.055, z - 0.02],
@@ -70,8 +92,8 @@ function overlaps(a: Bounds, b: Bounds): boolean {
 
 describe('formal hand assembly model', () => {
   it('uses one shared 3x frame and places every original part', () => {
-    expect(TOTAL_PARTS).toBe(21);
-    expect(TOTAL_SCREWS).toBe(21);
+    expect(TOTAL_PARTS).toBe(25);
+    expect(TOTAL_SCREWS).toBe(25);
     expect(MODEL_SCALE).toBeCloseTo(0.00313, 5);
     expect(HAND_ROOT.y).toBeCloseTo(1.4949, 4);
     for (const def of PART_DEFS) {
@@ -163,6 +185,28 @@ describe('formal hand assembly model', () => {
       });
       distances.sort((a, b) => a.distance - b.distance);
       expect(distances[0]?.id, def.id).toBe(def.id);
+      expect(offset?.z).toBeCloseTo(FINGER_SCREW_Z, 4);
+      expect(offset?.z).toBeLessThanOrEqual(FINGER_FRONT_AT_SCREW);
+      expect(offset?.z).toBeGreaterThan(FINGER_FRONT_AT_SCREW - 0.004);
+      expect(def.screwNormals[0]).toEqual({x: 0, y: 0, z: -1});
+    }
+  });
+
+  it('seats four knuckle caps on the front of each finger joint', () => {
+    const caps = PART_DEFS.filter((def) => def.primitive === 'knuckle-cap');
+    expect(caps).toHaveLength(4);
+    for (const cap of caps) {
+      const finger = PART_DEFS.find((def) => def.id === cap.hostId);
+      expect(finger, cap.id).toBeDefined();
+      expect(cap.local.x).toBeCloseTo(
+          (finger?.local.x ?? 0) + FINGER_X, 4);
+      const fingerBounds = worldBounds(cap.hostId);
+      const capBounds = worldBounds(cap.id);
+      expect(capBounds.min[2]).toBeGreaterThan(fingerBounds.max[2] - 0.01);
+      expect(overlaps(capBounds, fingerBounds)).toBe(true);
+      expect(cap.screwOffsets[0]?.z).toBeCloseTo(
+          KNUCKLE_CAP_SCREW_Z, 4);
+      expect(cap.screwNormals[0]).toEqual({x: 0, y: 0, z: -1});
     }
   });
 

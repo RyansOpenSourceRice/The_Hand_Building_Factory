@@ -5,7 +5,7 @@ type: software
 authors:
   - given-names: Ryan
     family-names: Glascock
-version: "2026.11.13.1"
+version: "2026.11.13.2"
 date-released: "2026-11-13"
 license: Apache-2.0
 repository-code: "https://github.com/RyansOpenSourceRice/The_Hand_Building_Factory"
