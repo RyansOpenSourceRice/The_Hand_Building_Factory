@@ -62,7 +62,7 @@ interface FactoryDebug {
   targetFor: (id: string) => number[] | null;
   completeHand: () => void;
   debugView: (view: 'front' | 'back' | 'left' | 'right' | 'top' |
-    'servos') => void;
+    'servos' | 'conveyor') => void;
   audioChannels: () => {voice: string[]; music: boolean; sfx: string[]};
   hidePart: (id: string, visible?: boolean) => void;
   audienceCount: () => number;

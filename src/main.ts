@@ -115,7 +115,7 @@ async function boot(): Promise<void> {
     await document.fonts.ready;
   }
 
-  const env = createEnvironment(canvas);
+  const env = await createEnvironment(canvas);
   const {scene, engine} = env;
 
   await enableGamePhysics(scene);
@@ -648,7 +648,8 @@ async function boot(): Promise<void> {
       targetFor: (id: string) => number[] | null;
       completeHand: () => void;
       debugView: (
-        view: 'front' | 'back' | 'left' | 'right' | 'top' | 'servos',
+        view: 'front' | 'back' | 'left' | 'right' | 'top' | 'servos' |
+          'conveyor',
       ) => void;
       audioChannels: () => {
         voice: string[];
@@ -759,21 +760,21 @@ async function boot(): Promise<void> {
       scene.getMeshByName(`part:${id}`)?.setEnabled(visible);
     },
     debugView: (view) => {
-      const target = new Vector3(0, 1.35, 0);
-      const spots: Record<string, Vector3> = {
-        front: new Vector3(0, 1.45, 2.2),
-        back: new Vector3(0, 1.45, -2.2),
-        left: new Vector3(-2.2, 1.45, 0),
-        right: new Vector3(2.2, 1.45, 0),
-        top: new Vector3(0, 2.9, 0.01),
-        servos: new Vector3(0, 1.45, -0.8),
+      const spots: Record<string, [Vector3, Vector3]> = {
+        front: [new Vector3(0, 1.45, 2.2), new Vector3(0, 1.35, 0)],
+        back: [new Vector3(0, 1.45, -2.2), new Vector3(0, 1.35, 0)],
+        left: [new Vector3(-2.2, 1.45, 0), new Vector3(0, 1.35, 0)],
+        right: [new Vector3(2.2, 1.45, 0), new Vector3(0, 1.35, 0)],
+        top: [new Vector3(0, 2.9, 0.01), new Vector3(0, 1.35, 0)],
+        servos: [new Vector3(0, 1.45, -0.8), new Vector3(0, 1.35, 0)],
+        conveyor: [new Vector3(2.3, 1.5, 2.1), new Vector3(0.62, 0.5, 1.7)],
       };
       const spot = spots[view];
       if (!spot) {
         return;
       }
-      camera.position.copyFrom(spot);
-      camera.setTarget(target);
+      camera.position.copyFrom(spot[0]);
+      camera.setTarget(spot[1]);
     },
     audienceCount: () => AUDIENCE_COUNT,
     partColor: (id) => stage.partColor(id),

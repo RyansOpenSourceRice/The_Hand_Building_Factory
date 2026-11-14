@@ -9,3 +9,4 @@ PLAN.local.md
 .env.local
 .env.*.local
 .DS_Store
+*.blend1
