@@ -4,12 +4,12 @@ import {SceneLoader} from '@babylonjs/core/Loading/sceneLoader';
 import {Scene} from '@babylonjs/core/scene';
 import {Color3} from '@babylonjs/core/Maths/math.color';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
-import '@babylonjs/loaders/STL';
+import '@babylonjs/loaders/glTF';
 import type {GameSettings} from '../game/settings';
 import {FILAMENT_COLORS, FALLBACK_HEX, type ThemeSlot} from '../game/palette';
 import type {PartDef} from '../game/handParts';
 import {brushedMetalMaterial} from './metal';
-import {applyTile, ensurePlanarUVs} from './textures';
+import {applyTile} from './textures';
 
 export type PrototypeMap = Map<string, Mesh>;
 export type PartMeshProvider = (def: PartDef, scene: Scene) => Mesh;
@@ -22,20 +22,20 @@ export interface ThemeMaterials {
 
 type MaterialRole = keyof ThemeMaterials;
 
-const STL_FILES = [
-  'palm.stl',
-  'finger.stl',
-  'thumb-base.stl',
-  'thumb-segments.stl',
-  'upper-cover.stl',
+const GLB_FILES = [
+  'palm.glb',
+  'finger.glb',
+  'thumb-base.glb',
+  'thumb-segments.glb',
+  'upper-cover.glb',
 ];
 
 const FILE_ROLES: Readonly<Record<string, MaterialRole>> = {
-  'palm.stl': 'body',
-  'finger.stl': 'body',
-  'thumb-base.stl': 'body',
-  'thumb-segments.stl': 'body',
-  'upper-cover.stl': 'accent',
+  'palm.glb': 'body',
+  'finger.glb': 'body',
+  'thumb-base.glb': 'body',
+  'thumb-segments.glb': 'body',
+  'upper-cover.glb': 'accent',
 };
 
 const MODEL_DIR = 'models/hand/';
@@ -81,22 +81,66 @@ export function applyTheme(
   set(theme.trim, colorForSlot(settings, 'tertiary'));
 }
 
+export type ExportedAnchor = {
+  point: [number, number, number];
+  normal: [number, number, number];
+};
+export type ExportedAnchors = Record<string, ExportedAnchor[]>;
+
+export async function loadPartAnchors(): Promise<ExportedAnchors> {
+  const response = await fetch(`${MODEL_DIR}parts.json`);
+  if (!response.ok) {
+    throw new Error(`missing parts.json (${response.status})`);
+  }
+  const payload = await response.json() as {
+    parts: Record<string, {anchors?: ExportedAnchor[]}>;
+  };
+  const anchors: ExportedAnchors = {};
+  for (const [id, entry] of Object.entries(payload.parts ?? {})) {
+    if (entry.anchors?.length) {
+      anchors[id] = entry.anchors;
+    }
+  }
+  return anchors;
+}
+
 export async function loadPrototypes(
     scene: Scene,
     theme: ThemeMaterials,
 ): Promise<PrototypeMap> {
   const map: PrototypeMap = new Map();
-  for (const file of STL_FILES) {
+  for (const file of GLB_FILES) {
     const result = await SceneLoader.ImportMeshAsync(
         '',
         MODEL_DIR,
         file,
         scene,
     );
-    const mesh =
-        result.meshes.find((entry): entry is Mesh => entry instanceof Mesh);
+    // A glTF import returns a root node plus the real mesh, and the root
+    // carries no geometry, so pick the mesh with vertices.
+    const mesh = result.meshes
+        .filter((entry): entry is Mesh => entry instanceof Mesh)
+        .reduce<Mesh | null>(
+            (best, entry) =>
+              entry.getTotalVertices() > (best?.getTotalVertices() ?? 0) ?
+                entry : best,
+            null,
+        );
     if (!mesh) {
-      throw new Error(`STL ${file} produced no mesh`);
+      throw new Error(`GLB ${file} produced no mesh`);
+    }
+    // The loader parents every import under a root that mirrors x, which is
+    // how a right-handed glTF file is converted for this left-handed scene.
+    // The exported meshes are already baked into the game frame and are
+    // always cloned as bare parts, so drop that root and cancel its mirror by
+    // reversing the winding instead. A part that kept the root would answer
+    // to it as its hierarchy root, and grabbing looks parts up that way.
+    mesh.parent = null;
+    mesh.flipFaces(false);
+    for (const node of result.meshes) {
+      if (node !== mesh) {
+        node.dispose(false, true);
+      }
     }
     mesh.name = `proto:${file}`;
     mesh.material = theme[FILE_ROLES[file] ?? 'body'];
@@ -377,15 +421,9 @@ export function createPartProvider(
       if (!proto) {
         throw new Error(`missing prototype for ${def.file}`);
       }
-      const mesh = proto.clone(`part:${def.id}`);
-      mesh.makeGeometryUnique();
-      if (def.scale !== 1) {
-        mesh.scaling.setAll(def.scale);
-        mesh.bakeCurrentTransformIntoVertices();
-        mesh.scaling.setAll(1);
-      }
-      ensurePlanarUVs(mesh, 18, 55);
-      return mesh;
+      // Clones share prototype geometry, so the four fingers draw one mesh.
+      // The exported GLBs already carry real UVs and game-scale units.
+      return proto.clone(`part:${def.id}`);
     }
     if (def.primitive === 'servo') {
       return buildServo(def.id, scene);

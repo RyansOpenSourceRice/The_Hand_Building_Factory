@@ -20,7 +20,6 @@ export type PartDef = {
   phase: PartPhase;
   hostId: string;
   hostLabel: string;
-  scale: number;
   local: Vec3Literal;
   home: Vec3Literal;
   snapRadius: number;
@@ -29,7 +28,6 @@ export type PartDef = {
   screwNormals: Vec3Literal[];
 };
 
-export const MODEL_SCALE = 0.00313;
 export const HAND_ROOT: Vec3Literal = {x: 0, y: 1.4949, z: 0};
 export const HAND_TILT_X = 0;
 export const HAND_YAW = 0;
@@ -76,7 +74,6 @@ const servoDef = (
   phase: 'motors',
   hostId: 'palm',
   hostLabel: 'the back of the hand',
-  scale: 1,
   local,
   home: CONVEYOR_HOME,
   snapRadius: 0.18,
@@ -92,13 +89,12 @@ const finger = (
 ): PartDef => ({
   id,
   label,
-  file: 'finger.stl',
+  file: 'finger.glb',
   primitive: null,
   source: 'printer',
   phase: 'fingers',
   hostId: 'palm',
   hostLabel: 'the top of the palm',
-  scale: MODEL_SCALE,
   local: {x, y: 0, z: 0},
   home: PRINTER_HOME,
   snapRadius: 0.22,
@@ -125,7 +121,6 @@ const primitiveDef = (
   phase,
   hostId,
   hostLabel,
-  scale: 1,
   local,
   home: PRINTER_HOME,
   snapRadius,
@@ -164,7 +159,6 @@ const knuckleCap = (
   phase: 'fingers',
   hostId,
   hostLabel,
-  scale: 1,
   local: {x: FINGER_X + fingerX, y: KNUCKLE_CAP_Y, z: KNUCKLE_CAP_Z},
   home: PRINTER_HOME,
   snapRadius: 0.085,
@@ -218,13 +212,12 @@ export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'palm',
     label: 'palm',
-    file: 'palm.stl',
+    file: 'palm.glb',
     primitive: null,
     source: 'printer',
     phase: 'palm',
     hostId: 'stand',
     hostLabel: 'the stand',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.35,
@@ -251,13 +244,12 @@ export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'thumb-base',
     label: 'thumb base',
-    file: 'thumb-base.stl',
+    file: 'thumb-base.glb',
     primitive: null,
     source: 'printer',
     phase: 'thumb-base',
     hostId: 'palm',
     hostLabel: 'the side of the palm',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.22,
@@ -301,13 +293,12 @@ export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'thumb-segments',
     label: 'thumb segments',
-    file: 'thumb-segments.stl',
+    file: 'thumb-segments.glb',
     primitive: null,
     source: 'printer',
     phase: 'thumb-segments',
     hostId: 'thumb-base',
     hostLabel: 'the thumb base',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.2,
@@ -320,13 +311,12 @@ export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'upper-cover',
     label: 'upper cover',
-    file: 'upper-cover.stl',
+    file: 'upper-cover.glb',
     primitive: null,
     source: 'printer',
     phase: 'cover',
     hostId: 'palm',
     hostLabel: 'the back of the hand',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.3,
@@ -347,5 +337,42 @@ export const PART_DEFS: readonly PartDef[] = [
 ];
 
 export const TOTAL_PARTS = PART_DEFS.length;
-export const TOTAL_SCREWS =
-    PART_DEFS.reduce((sum, def) => sum + def.screwCount, 0);
+
+export const totalScrews = (): number =>
+  PART_DEFS.reduce((sum, def) => sum + def.screwCount, 0);
+
+export type AnchorRecord = {
+  point: [number, number, number];
+  normal: [number, number, number];
+};
+
+/**
+ * Replace the authored screw placeholders with the anchors exported from
+ * Blender. Each anchor sits on the part surface by construction, so a screw
+ * cannot float away from its host. Call once, before the stage is built.
+ */
+export function applyPartAnchors(
+    anchors: Record<string, AnchorRecord[]>,
+): void {
+  for (const def of PART_DEFS) {
+    if (!def.file) {
+      continue;
+    }
+    const asset = def.file.replace(/\.glb$/, '');
+    const list = anchors[asset];
+    if (!list?.length) {
+      continue;
+    }
+    def.screwCount = list.length;
+    def.screwOffsets = list.map((anchor) => ({
+      x: anchor.point[0],
+      y: anchor.point[1],
+      z: anchor.point[2],
+    }));
+    def.screwNormals = list.map((anchor) => ({
+      x: anchor.normal[0],
+      y: anchor.normal[1],
+      z: anchor.normal[2],
+    }));
+  }
+}

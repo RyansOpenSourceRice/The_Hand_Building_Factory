@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.13.4] - 2026-11-13
+
+### Changed
+
+- The five printed hand meshes are now authored in Blender from the
+  upstream Yeah Hand v1.3 STLs and shipped as `.glb` (palm, finger,
+  thumb base, thumb segments, upper cover) with real UVs, replacing the
+  meshes that were built by hand in TypeScript. Decimation takes the
+  printed parts from 25,514 to 5,262 triangles, and the four fingers
+  share one finger mesh instead of four copies.
+
+### Added
+
+- Screw anchors are derived from mesh facets and exported in
+  `parts.json`, then applied at boot, so a screw can no longer drift off
+  its part during a revision.
+- `npm run qa:geometry` runs a headless validator over the exported
+  assets: it fails when a part has no UVs, exceeds its triangle budget,
+  or has an anchor that leaves the surface or points inward.
+
+### Fixed
+
+- Hand parts could not be picked up. The glTF loader parents every
+  import under a handedness root, so that root answered as each part's
+  hierarchy root and the grab check rejected all of them; the loader now
+  detaches the root and reverses the winding it was compensating for.
+  This is why the start-to-finish XR playthrough could not lift the
+  palm.
+- Exported geometry, `parts.json` anchors and the runtime now share one
+  frame, instead of the runtime re-mirroring the mesh on load.
+
 ## [2026.11.13.3] - 2026-11-13
 
 ### Fixed

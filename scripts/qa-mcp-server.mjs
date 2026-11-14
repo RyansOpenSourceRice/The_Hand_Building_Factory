@@ -7,7 +7,21 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = 4174;
+
+// One session owns one port. Parallel agents each need their own session,
+// so allow --port or QA_PORT to move it; a busy port still fails loudly.
+function previewPort() {
+  const flag = process.argv.indexOf('--port');
+  const raw = (flag === -1 ? undefined : process.argv[flag + 1]) ??
+    process.env.QA_PORT ?? '4174';
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error(`invalid port: ${raw}`);
+  }
+  return port;
+}
+
+const PORT = previewPort();
 const BASE = `http://localhost:${PORT}`;
 const MOCK_SCRIPT =
   resolve(ROOT, 'tests', 'xr-mock', 'xr-mock.js');
@@ -67,22 +81,43 @@ async function waitMs(ms) {
   return new Promise((done) => setTimeout(done, ms));
 }
 
-async function waitForPreview() {
+// A bare 200 is not enough: any server can hold the port. Require the
+// marker the QA tools depend on, so a foreign listener is not mistaken
+// for the game.
+function previewResponds() {
+  return new Promise((done) => {
+    const req = get(`${BASE}/`, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        done(false);
+        return;
+      }
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        body += chunk;
+      });
+      res.on('end', () => done(body.includes('live-status')));
+    });
+    req.on('error', () => done(false));
+    req.setTimeout(1000, () => {
+      req.destroy();
+      done(false);
+    });
+  });
+}
+
+async function waitForPreview(exited) {
   const deadline = Date.now() + PREVIEW_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const ok = await new Promise((done) => {
-      const req = get(`${BASE}/`, (res) => {
-        res.resume();
-        done(res.statusCode === 200);
-      });
-      req.on('error', () => done(false));
-      req.setTimeout(1000, () => {
-        req.destroy();
-        done(false);
-      });
-    });
-    if (ok) {
+    if (await previewResponds()) {
       return;
+    }
+    if (exited()) {
+      throw new Error(
+          `preview server exited before serving port ${PORT} ` +
+          '(another process may hold it)',
+      );
     }
     await waitMs(300);
   }
@@ -90,6 +125,7 @@ async function waitForPreview() {
 }
 
 async function startPreview() {
+  let exited = false;
   const child = spawn(
       process.execPath,
       [
@@ -101,12 +137,13 @@ async function startPreview() {
       {cwd: ROOT, stdio: 'ignore'},
   );
   child.on('exit', () => {
+    exited = true;
     if (session.preview === child) {
       session.preview = null;
     }
   });
   session.preview = child;
-  await waitForPreview();
+  await waitForPreview(() => exited);
 }
 
 async function startSession() {

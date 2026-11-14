@@ -1,8 +1,6 @@
 import {Constants} from '@babylonjs/core/Engines/constants';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import {Texture} from '@babylonjs/core/Materials/Textures/texture';
-import {VertexBuffer} from '@babylonjs/core/Buffers/buffer';
-import type {Mesh} from '@babylonjs/core/Meshes/mesh';
 import type {Scene} from '@babylonjs/core/scene';
 
 export const TILE_SIZE = 256;
@@ -115,26 +113,6 @@ export function tiledMaterial(
   applyTile(material, scene, tile, options);
   material.specularColor.set(0.05, 0.05, 0.06);
   return material;
-}
-
-export function ensurePlanarUVs(
-    mesh: Mesh,
-    uScale = 18,
-    vScale = 55,
-): void {
-  const positions = mesh.getVerticesData(VertexBuffer.PositionKind);
-  if (!positions || positions.length < 3) {
-    return;
-  }
-  const uvs = new Float32Array((positions.length / 3) * 2);
-  for (let i = 0, v = 0; i < positions.length; i += 3, v += 2) {
-    const x = positions[i] ?? 0;
-    const y = positions[i + 1] ?? 0;
-    const z = positions[i + 2] ?? 0;
-    uvs[v] = (x + z) * uScale;
-    uvs[v + 1] = y * vScale;
-  }
-  mesh.setVerticesData(VertexBuffer.UVKind, uvs, false, 2);
 }
 
 export function textureStats(scene: Scene): TextureStats {

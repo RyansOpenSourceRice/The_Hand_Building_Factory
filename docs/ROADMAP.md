@@ -65,4 +65,11 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
         and cap screws seated on their hosts, and forklift wall-clearance
         audits using the rotated model footprint. (2026.11.13.2)
 
+17. [x] Blender-authored assets: the five printed meshes are rebuilt in
+        Blender from the upstream Yeah Hand v1.3 STLs (25,514 to 5,262
+        triangles, real UVs), screw anchors are derived from mesh facets
+        and exported in `parts.json`, `npm run qa:geometry` validates
+        them headlessly, and the glTF handedness root is detached so
+        parts can be grabbed again. (2026.11.13.4)
+
 Definition of done for every item: the four gates in AGENTS.md.

@@ -43,8 +43,10 @@ import {
   applyTheme,
   createPartProvider,
   createThemeMaterials,
+  loadPartAnchors,
   loadPrototypes,
 } from './scene/partMeshes';
+import {applyPartAnchors} from './game/handParts';
 import {Hud} from './ui/hud';
 import {VrMenu} from './ui/vrMenu';
 import {CreditSplash} from './ui/splash';
@@ -126,6 +128,7 @@ async function boot(): Promise<void> {
   const settings = new SettingsStore();
   const theme = createThemeMaterials(scene, settings.get());
   const prototypes = await loadPrototypes(scene, theme);
+  applyPartAnchors(await loadPartAnchors());
   let handRepMaterial: StandardMaterial | null = null;
   const reducedMotion =
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;

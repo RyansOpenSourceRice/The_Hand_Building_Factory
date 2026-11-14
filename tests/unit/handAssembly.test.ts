@@ -4,34 +4,33 @@ import {
   FINGER_X,
   HAND_ROOT,
   KNUCKLE_CAP_SCREW_Z,
-  MODEL_SCALE,
   PART_DEFS,
   TOTAL_PARTS,
-  TOTAL_SCREWS,
+  totalScrews,
 } from '../../src/game/handParts';
 
 type Bounds = {min: [number, number, number]; max: [number, number, number]};
 
 const localBounds: Record<string, Bounds> = {
-  'palm.stl': {
-    min: [-0.129706, -0.424907, -0.002329],
-    max: [0.138731, -0.134103, 0.094830],
+  'palm.glb': {
+    min: [-0.1295, -0.4248, -0.0029],
+    max: [0.1382, -0.1297, 0.0945],
   },
-  'finger.stl': {
-    min: [0.069780, -0.179463, -0.036403],
-    max: [0.128810, 0.180507, 0.032000],
+  'finger.glb': {
+    min: [0.0699, -0.1795, -0.0363],
+    max: [0.1312, 0.1788, 0.0318],
   },
-  'thumb-base.stl': {
-    min: [0.025910, -0.401686, -0.025973],
-    max: [0.232493, -0.248791, 0.075727],
+  'thumb-base.glb': {
+    min: [0.0249, -0.4015, -0.026],
+    max: [0.2342, -0.2479, 0.0772],
   },
-  'thumb-segments.stl': {
-    min: [0.124593, -0.249345, -0.002235],
-    max: [0.193944, -0.014057, 0.062850],
+  'thumb-segments.glb': {
+    min: [0.1244, -0.2494, -0.0024],
+    max: [0.1943, -0.0137, 0.0631],
   },
-  'upper-cover.stl': {
-    min: [-0.136580, -0.424766, -0.092883],
-    max: [0.137172, -0.110417, 0.057786],
+  'upper-cover.glb': {
+    min: [-0.1378, -0.4248, -0.093],
+    max: [0.1379, -0.1068, 0.0603],
   },
 };
 const FINGER_FRONT_AT_SCREW = 0.0123;
@@ -93,8 +92,7 @@ function overlaps(a: Bounds, b: Bounds): boolean {
 describe('formal hand assembly model', () => {
   it('uses one shared 3x frame and places every original part', () => {
     expect(TOTAL_PARTS).toBe(25);
-    expect(TOTAL_SCREWS).toBe(25);
-    expect(MODEL_SCALE).toBeCloseTo(0.00313, 5);
+    expect(totalScrews()).toBe(25);
     expect(HAND_ROOT.y).toBeCloseTo(1.4949, 4);
     for (const def of PART_DEFS) {
       expect(def.local.x).toBeGreaterThanOrEqual(-0.2);
