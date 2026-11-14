@@ -571,6 +571,7 @@ async function boot(): Promise<void> {
       splashBg: () => string;
       splashPos: () => number[];
       splashCam: () => number[];
+      hudVisible: (visible: boolean) => void;
       toolEquipped: () => boolean;
       toolVisible: () => boolean;
       toolParent: () => string;
@@ -727,6 +728,7 @@ async function boot(): Promise<void> {
     splashBg: () => splash.buttonBackground(),
     splashPos: () => splash.debugPosition(),
     splashCam: () => splash.debugCam(),
+    hudVisible: (visible) => hud.setSuppressed(!visible),
     toolEquipped: () => driver.isEquipped(),
     toolVisible: () => driver.isVisible(),
     toolParent: () => driver.mesh.parent?.name ?? '',
