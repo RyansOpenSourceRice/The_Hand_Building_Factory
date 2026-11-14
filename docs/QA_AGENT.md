@@ -76,6 +76,32 @@ fails when a part has no UVs, breaks its triangle budget, or has an anchor
 that leaves the surface or points inward. Run it after any Blender rebuild,
 before the critic.
 
+### The whole scene at once
+
+Every other gate looks at one feature. `npm run qa:scene` looks at the
+finished build as one thing: it dumps every mesh with its world bounds and
+triangle count, checks for geometry under the floor or outside the floor
+plate, flags lifted loads with nothing underneath, and writes
+`qa-out/scene.obj` with one group per mesh.
+
+```sh
+npm run qa:scene
+blender --background --python tools/blender/build_hall_scene.py -- \
+    qa-out/scene.obj
+```
+
+The Blender script builds one scene from that OBJ, colours it by role, and
+runs triangle-level BVH tests over the pairs that must never touch: the
+forklift against walls, racks, arms and the conveyor; the conveyor against
+the barrier; the crowd and pallet stacks against the shell. That is 6,153
+pairs, and it is the check that catches a prop driven through a wall, which
+no per-feature test asks about. AABB overlap between merged meshes is useless
+here (one merged rack mesh has the bounds of the whole rack), which is why
+the test runs on real triangles in Blender.
+
+The dump also says what the frame costs: mesh, triangle, material and
+texture totals, which is the input to the Quest budget question.
+
 ## Setup
 
 Add this to your MCP client config (for example `.mcp.json`):

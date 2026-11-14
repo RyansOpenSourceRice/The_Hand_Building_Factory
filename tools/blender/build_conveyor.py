@@ -97,7 +97,7 @@ def beam(bucket, p0, p1, width, thick, up=(0, 1, 0)):
     bucket.add(CUBE, CUBE_FACES, Matrix.Translation(mid) @ basis @ scale)
 
 
-def cyl(bucket, center, radius, length, axis='x', segments=16):
+def cyl(bucket, center, radius, length, axis='x', segments=8):
     verts = []
     faces = []
     for index in range(segments):
@@ -196,7 +196,7 @@ def build():
     head = Vector((0.62, 1.0695, 0.622))
     tail = Vector((0.62, -0.409, 2.756))
     for drum, radius in ((head, 0.0555), (tail, 0.055)):
-        cyl(steel, drum, radius, 0.40)
+        cyl(steel, drum, radius, 0.40, segments=10)
         for side in (-1, 1):
             box(frame, (0.62 + side * 0.232, drum.y, drum.z),
                 (0.016, 0.140, 0.140))

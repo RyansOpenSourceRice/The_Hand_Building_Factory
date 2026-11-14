@@ -615,6 +615,14 @@ async function boot(): Promise<void> {
         };
         textureList: Array<{name: string; width: number; height: number}>;
       };
+      sceneDump: () => Array<{
+        name: string;
+        min: number[];
+        max: number[];
+        tris: number;
+        mat: string;
+      }>;
+      sceneObj: () => string;
       digitAudit: (hand: 'left' | 'right') => {
         fingers: number;
         thumbs: number;
@@ -818,9 +826,55 @@ async function boot(): Promise<void> {
         return {name: texture.name, width: size.width, height: size.height};
       }),
     }),
+    sceneDump: () => scene.meshes
+        .filter((mesh) => mesh.isEnabled() && mesh.getTotalVertices() > 0)
+        .map((mesh) => {
+          const {min, max} = mesh.getHierarchyBoundingVectors(true);
+          return {
+            name: mesh.name,
+            min: min.asArray(),
+            max: max.asArray(),
+            tris: Math.round(mesh.getTotalIndices() / 3),
+            mat: mesh.material?.name ?? '',
+          };
+        }),
     digitAudit: (hand) => {
       const root = scene.getTransformNodeByName(`handRep-${hand}`);
       return root ? digitAudit(root) : null;
+    },
+    sceneObj: () => {
+      // One OBJ group per mesh, in world space, so the whole scene can be
+      // opened in Blender and checked as one model. OBJ is Y-up here and
+      // Blender's importer converts that to Z-up by default.
+      const lines: string[] = [];
+      let first = 1;
+      const scratch = new Vector3();
+      for (const mesh of scene.meshes) {
+        if (!mesh.isEnabled() || mesh.getTotalVertices() === 0) {
+          continue;
+        }
+        const positions = mesh.getVerticesData('position');
+        const indices = mesh.getIndices();
+        if (!positions || !indices) {
+          continue;
+        }
+        const world = mesh.getWorldMatrix();
+        lines.push(`g ${mesh.name}`);
+        for (let i = 0; i < positions.length; i += 3) {
+          Vector3.TransformCoordinatesFromFloatsToRef(
+              positions[i] ?? 0, positions[i + 1] ?? 0, positions[i + 2] ?? 0,
+              world, scratch);
+          lines.push(`v ${scratch.x.toFixed(3)} ${scratch.y.toFixed(3)} ` +
+            `${scratch.z.toFixed(3)}`);
+        }
+        for (let i = 0; i < indices.length; i += 3) {
+          lines.push(`f ${first + (indices[i] ?? 0)} ` +
+            `${first + (indices[i + 1] ?? 0)} ` +
+            `${first + (indices[i + 2] ?? 0)}`);
+        }
+        first += positions.length / 3;
+      }
+      return lines.join('\n');
     },
     drive: () => stage.driveState(),
     audio: () => {

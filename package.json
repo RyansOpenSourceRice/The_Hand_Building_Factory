@@ -1,7 +1,7 @@
 {
   "name": "the-hand-building-factory",
   "description": "HANDS ON! - assemble a robotic hand on stage while the crowd cheers. Meta Quest 3 WebXR for the Super Free AI Game Jam #2.",
-  "version": "2026.11.14.2",
+  "version": "2026.11.14.3",
   "type": "module",
   "private": true,
   "license": "Apache-2.0",
@@ -19,7 +19,8 @@
     "test:e2e": "playwright test -c tests/e2e.config.ts",
     "qa:critic": "node scripts/critic.mjs",
     "qa:vlm": "node scripts/vlm-critic.mjs",
-    "qa:geometry": "node scripts/validate-hand.mjs"
+    "qa:geometry": "node scripts/validate-hand.mjs",
+    "qa:scene": "node scripts/scene-audit.mjs"
   },
   "dependencies": {
     "@babylonjs/core": "9.33.2",
