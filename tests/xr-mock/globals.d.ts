@@ -17,6 +17,7 @@ interface FactoryDebug {
   splashVisible: () => boolean;
   splashGated: () => boolean;
   splashSkip: () => void;
+  hudVisible: (visible: boolean) => void;
   splashRegate: () => void;
   splashRebuild: () => void;
   splashBg: () => string;

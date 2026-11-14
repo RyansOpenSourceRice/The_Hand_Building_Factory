@@ -72,6 +72,20 @@ and makes no AI service calls.
   `bytedance-seed/seedream-5-0-flash`; release `2026.11.13.1` replaced
   them with the generated tiles.
 
+### Vision critic for screenshots (development tooling)
+
+- Model: `qwen/qwen3-vl-30b-a3b-instruct`, through OpenRouter, overridable
+  with `--model` on the script.
+- Used for: `npm run qa:vlm` sends the screenshots and the state manifest
+  that `npm run qa:critic` produced to the model and asks, for ten claims
+  taken from the specification, whether each one is satisfied, violated or
+  unverifiable. Three samples per run, majority vote, high-severity
+  violations fail the run. About $0.002 per run.
+- Scope: development only. It needs `OPENROUTER_API_KEY`, is not part of CI,
+  and the game never calls it. The deterministic gates stay authoritative.
+- Policy: the [asset approval rule](../AGENTS.md) applies; no output of this
+  model ships in the build.
+
 ### Runware music generation
 
 - Model: `minimax:music@2.6` (MiniMax Music 2.6, instrumental mode),
@@ -128,4 +142,7 @@ and makes no AI service calls.
 - 3D models: the eleven hand meshes come from the Blender script in
   `tools/blender/build_hand_assets.py`, not from an image or mesh
   generator.
+- QA: screenshots are reviewed during development by a vision model
+  (`qwen/qwen3-vl-30b-a3b-instruct` via OpenRouter). Nothing in the build
+  calls it.
 - Runtime: static build, no AI service calls.

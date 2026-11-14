@@ -147,8 +147,30 @@ async function captureViews(views, out, port) {
     });
     await page.waitForFunction(() => window.factoryDebug !== undefined,
         undefined, {timeout: 60_000});
+    // The credits splash shows on a timer shortly after boot and again on
+    // completion, so a capture is only clean once it stays gone. The desktop
+    // HUD is shell chrome no headset player sees; keep both out of the shots.
+    const clearOverlays = async () => {
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await page.evaluate(() => window.factoryDebug.splashSkip());
+        await page.waitForTimeout(150);
+        await page.evaluate(() => window.factoryDebug.hudVisible(false));
+        const visible = await page.evaluate(
+            () => window.factoryDebug.splashVisible());
+        if (!visible) {
+          return;
+        }
+      }
+      throw new Error('credits splash never cleared for the capture');
+    };
     await page.evaluate(() => window.factoryDebug.completeHand());
-    await page.waitForTimeout(800);
+    // The credits splash is scheduled on a timer a couple of seconds after
+    // boot and again once the hand is finished, so wait past both timers
+    // before clearing, then confirm the panel stayed gone.
+    await page.waitForTimeout(3200);
+    await clearOverlays();
+    await page.waitForTimeout(600);
+    await clearOverlays();
     for (const view of views) {
       await page.evaluate((value) => {
         window.factoryDebug.debugView(value);

@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.14.1] - 2026-11-14
+
+### Added
+
+- `npm run qa:vlm` (`scripts/vlm-critic.mjs`) reads the captures that
+  `qa:critic` already produces and asks a vision model
+  (`qwen/qwen3-vl-30b-a3b-instruct` by default) whether ten claims from the
+  specification hold. Three samples, majority vote, about $0.002 per run,
+  and it fails only on high-severity violations two of three samples agree
+  on.
+- `docs/VLA_QA.md` surveys what an embodied model could add here: a
+  pretrained VLA cannot play this game out of the box, the vision judge is
+  the affordable half, and the action space maps onto the existing
+  `hands-on-qa` MCP tools.
+- `factoryDebug.hudVisible()` hides the desktop HUD for captures.
+
+### Fixed
+
+- `qa:critic` had been capturing through the credits splash. The splash is
+  scheduled on a timer after boot and again on completion, so every capture
+  until now was shot through a panel with the credit text on it. The capture
+  now waits past both timers, clears the splash, and re-checks that it stayed
+  gone. The captures no longer include the desktop `ENTER VR` HUD either.
+
 ## [2026.11.13.6] - 2026-11-14
 
 ### Added

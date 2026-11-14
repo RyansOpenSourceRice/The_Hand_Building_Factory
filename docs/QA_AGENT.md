@@ -45,6 +45,31 @@ blank.
 The critic checks the finished hand, not the 25-step path a player walks to
 build it, so run the full E2E playthrough before shipping.
 
+Captures are taken with the credits splash dismissed and the desktop HUD
+hidden, so a shot shows the game rather than the shell. The splash is
+scheduled on a timer after boot and again on completion, so the capture waits
+past both and then confirms it stayed cleared.
+
+### Vision critic
+
+The pixel critic cannot tell whether the frame *looks* right, only that it is
+not blank. `npm run qa:vlm` closes that gap: it sends the captures and the
+critic manifest to a vision model and asks, for ten claims from
+[SPECIFICATION.md](SPECIFICATION.md), whether each one is satisfied,
+violated, or unverifiable. Three samples, majority vote, and it fails only on
+a high-severity violation.
+
+```sh
+npm run qa:critic
+npm run qa:vlm                    # --model, --votes, --out
+```
+
+It needs `OPENROUTER_API_KEY` in the environment or `.env.local`, so it runs
+locally rather than in CI. It costs about $0.002 per run. Output lands in
+`qa-out/vlm-critic.json`. Treat it as an early warning: the deterministic
+gates remain authoritative, and a desktop capture cannot judge headset
+legibility or comfort.
+
 Screw anchors live in the exported assets, so check them on their own too.
 `npm run qa:geometry` reads `public/models/hand/parts.json` and the GLBs and
 fails when a part has no UVs, breaks its triangle budget, or has an anchor
