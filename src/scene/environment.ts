@@ -3,6 +3,7 @@ import {Vector3} from '@babylonjs/core/Maths/math.vector';
 import {TransformNode} from '@babylonjs/core/Meshes/transformNode';
 import {Engine} from '@babylonjs/core/Engines/engine';
 import {Scene} from '@babylonjs/core/scene';
+import {SceneLoader} from '@babylonjs/core/Loading/sceneLoader';
 import {HemisphericLight} from '@babylonjs/core/Lights/hemisphericLight';
 import {SpotLight} from '@babylonjs/core/Lights/spotLight';
 import {PointLight} from '@babylonjs/core/Lights/pointLight';
@@ -27,7 +28,6 @@ import {
 import {
   CONVEYOR_BELT_TOP,
   CONVEYOR_HOME,
-  CONVEYOR_PATH,
   PRINTER_BED_TOP,
   PRINTER_HOME,
 } from '../game/handParts';
@@ -288,14 +288,13 @@ function chevronTexture(scene: Scene): DynamicTexture {
   return texture;
 }
 
-function buildConveyor(scene: Scene): Mesh {
-  const frameMat = machineMat(scene, 'beltFrameMat', '#2a2f3e', '#05070c');
-  const rollerMat = machineMat(scene, 'beltRollerMat', '#3d4459', '#05070c');
-  const rubber = tiledMaterial(scene, 'beltRubberMat', 'rubber', {
-    uScale: 2,
-    vScale: 2,
-    offsetSeed: 'beltRubberMat',
-  });
+const CONVEYOR_DIR = 'models/hall/';
+const CONVEYOR_FILE = 'conveyor.glb';
+
+// The conveyor is a Blender asset: frame, drums, drive unit, feed housing and
+// platform arrive as one mesh per material. The belt keeps the scrolling
+// chevron shader, so the belt still reads as running.
+async function buildConveyor(scene: Scene): Promise<Mesh> {
   const chevrons = chevronTexture(scene);
   const beltMat = new StandardMaterial('beltSurfaceMat', scene);
   beltMat.diffuseTexture = chevrons;
@@ -306,123 +305,50 @@ function buildConveyor(scene: Scene): Mesh {
     chevrons.vOffset -= scene.getEngine().getDeltaTime() / 3200;
   });
 
-  const bottom = new Vector3(
-      CONVEYOR_PATH[0].x, CONVEYOR_PATH[0].y, CONVEYOR_PATH[0].z);
-  const top = new Vector3(
-      CONVEYOR_PATH[1].x, CONVEYOR_PATH[1].y, CONVEYOR_PATH[1].z);
-  const delta = top.subtract(bottom);
-  const length = delta.length();
-  const center = Vector3.Center(bottom, top);
-  const root = new TransformNode('conveyorRamp', scene);
-  root.position.copyFrom(center);
-  root.rotation.x = -Math.atan2(delta.y, -delta.z);
-  const beltWidth = 0.34;
+  const roles = new Map<string, StandardMaterial>([
+    ['frame', machineMat(scene, 'beltFrameMat', '#2a2f3e', '#05070c')],
+    ['steel', machineMat(scene, 'beltRollerMat', '#3d4459', '#05070c')],
+    ['rubber', tiledMaterial(scene, 'beltRubberMat', 'rubber', {
+      uScale: 2,
+      vScale: 2,
+      offsetSeed: 'beltRubberMat',
+    })],
+    ['hazard', hazardMat(scene)],
+    ['belt', beltMat],
+  ]);
 
-  const belt = MeshBuilder.CreateBox(
-      'conveyorBelt',
-      {width: beltWidth, height: 0.024, depth: length},
-      scene,
-  );
-  belt.parent = root;
-  belt.position.y = 0.012;
-  belt.material = beltMat;
-
-  const skirts: Mesh[] = [];
-  for (const dx of [-beltWidth / 2 - 0.012, beltWidth / 2 + 0.012]) {
-    const skirt = MeshBuilder.CreateBox(
-        'conveyorSkirt',
-        {width: 0.018, height: 0.085, depth: length},
-        scene,
-    );
-    skirt.position.set(dx, 0.035, 0);
-    skirt.material = frameMat;
-    skirts.push(skirt);
+  const result = await SceneLoader.ImportMeshAsync(
+      '', CONVEYOR_DIR, CONVEYOR_FILE, scene);
+  // The loader parents every import under a root that mirrors x, which is how
+  // a right-handed glTF file is converted for this left-handed scene. The
+  // exported meshes are already baked into the game frame, so drop that root
+  // and cancel its mirror by reversing the winding instead.
+  const meshes = result.meshes.filter(
+      (node): node is Mesh =>
+        node instanceof Mesh && node.getTotalVertices() > 0);
+  for (const mesh of meshes) {
+    mesh.parent = null;
+    mesh.flipFaces(false);
   }
-  const skirtMerged = Mesh.MergeMeshes(skirts, true, true);
-  if (skirtMerged) {
-    skirtMerged.parent = root;
-    skirtMerged.name = 'conveyorSkirts';
+  for (const node of result.meshes) {
+    if (!meshes.includes(node as Mesh)) {
+      node.dispose(false, false);
+    }
   }
 
-  const cleats: Mesh[] = [];
-  const cleatCount = 15;
-  for (let i = 1; i < cleatCount; i++) {
-    const cleat = MeshBuilder.CreateBox(
-        'conveyorCleat',
-        {width: beltWidth - 0.03, height: 0.026, depth: 0.022},
-        scene,
-    );
-    cleat.position.set(0, 0.038, -length / 2 + (i / cleatCount) * length);
-    cleat.material = rubber;
-    cleats.push(cleat);
+  let belt: Mesh | null = null;
+  for (const mesh of meshes) {
+    const role = roles.get(mesh.material?.name ?? '');
+    if (role) {
+      mesh.material = role;
+    }
+    if (mesh.name.endsWith('belt')) {
+      mesh.name = 'conveyorBelt';
+      belt = mesh;
+    }
   }
-  const cleatMerged = Mesh.MergeMeshes(cleats, true, true);
-  if (cleatMerged) {
-    cleatMerged.parent = root;
-    cleatMerged.name = 'conveyorCleats';
-  }
-
-  const rollerSpec = {diameter: 0.08, height: beltWidth + 0.05};
-  for (const point of [bottom, top]) {
-    const roller = MeshBuilder.CreateCylinder(
-        'conveyorRoller', rollerSpec, scene);
-    roller.rotation.z = Math.PI / 2;
-    roller.position.set(point.x, point.y - 0.02, point.z);
-    roller.material = rollerMat;
-  }
-
-  for (const t of [0.35, 0.62, 0.86]) {
-    const point = Vector3.Lerp(bottom, top, t);
-    const height = Math.max(0.12, point.y - 0.06);
-    const leg = MeshBuilder.CreateBox(
-        'conveyorLeg',
-        {width: 0.04, height, depth: 0.04},
-        scene,
-    );
-    leg.position.set(point.x + 0.16, height / 2, point.z);
-    leg.material = frameMat;
-    const brace = MeshBuilder.CreateBox(
-        'conveyorBrace',
-        {width: 0.36, height: 0.03, depth: 0.035},
-        scene,
-    );
-    brace.position.set(point.x, height - 0.02, point.z);
-    brace.material = frameMat;
-  }
-
-  const tray = MeshBuilder.CreateBox(
-      'conveyorTray', {width: 0.42, height: 0.05, depth: 0.42}, scene);
-  tray.position.set(top.x, top.y - 0.04, top.z + 0.02);
-  tray.material = frameMat;
-  for (const dx of [-0.2, 0.2]) {
-    const guard = MeshBuilder.CreateBox(
-        'conveyorTrayGuard',
-        {width: 0.024, height: 0.12, depth: 0.4},
-        scene,
-    );
-    guard.position.set(top.x + dx, top.y + 0.02, top.z + 0.02);
-    guard.material = frameMat;
-  }
-
-  const pit = MeshBuilder.CreateBox(
-      'conveyorPit', {width: 0.62, height: 0.06, depth: 0.9}, scene);
-  pit.position.set(bottom.x, 0.015, bottom.z - 0.12);
-  pit.material = machineMat(scene, 'beltRunPitMat', '#0c1016', '#02040a');
-  const hoodMat = machineMat(
-      scene, 'conveyorHoodMat', '#333a48', '#0b0e14');
-  const hood = MeshBuilder.CreateBox(
-      'conveyorHood', {width: 0.62, height: 0.34, depth: 0.52}, scene);
-  hood.position.set(0.62, 0.19, 2.24);
-  hood.material = hoodMat;
-  const hoodLip = MeshBuilder.CreateBox(
-      'conveyorHoodLip', {width: 0.68, height: 0.05, depth: 0.08}, scene);
-  hoodLip.position.set(0.62, 0.35, 2.5);
-  hoodLip.material = hoodMat;
-  for (const dx of [-0.3, 0.3]) {
-    const side = MeshBuilder.CreateBox(
-        'conveyorHoodSide', {width: 0.03, height: 0.3, depth: 0.48}, scene);
-    side.position.set(0.62 + dx, 0.17, 2.24);
-    side.material = hazardMat(scene);
+  if (!belt) {
+    throw new Error(`${CONVEYOR_FILE} has no belt mesh`);
   }
   return belt;
 }
@@ -1348,7 +1274,9 @@ function buildWarehouse(scene: Scene): void {
   mergeStatic(crateParts);
 }
 
-export function createEnvironment(canvas: HTMLCanvasElement): Environment {
+export async function createEnvironment(
+    canvas: HTMLCanvasElement,
+): Promise<Environment> {
   const engine = new Engine(canvas, true, {stencil: false, audioEngine: true});
   const scene = new Scene(engine);
   const voidColor = new Color4(0.58, 0.63, 0.7, 1);
@@ -1418,7 +1346,7 @@ export function createEnvironment(canvas: HTMLCanvasElement): Environment {
 
   const printerBed = buildPrinter(scene);
   buildPrinterBench(scene);
-  const conveyorBelt = buildConveyor(scene);
+  const conveyorBelt = await buildConveyor(scene);
   buildWarehouse(scene);
   buildGrandHall(scene);
   const barrierRails = buildBarrierFence(scene);
@@ -1483,13 +1411,13 @@ export function attachEnvironmentColliders(env: Environment): void {
       new Vector3(CONVEYOR_HOME.x, CONVEYOR_BELT_TOP, CONVEYOR_HOME.z),
       new Vector3(0.42, 0.12, 0.42),
   );
-  const hood = env.scene.getMeshByName('conveyorHood');
-  if (hood instanceof Mesh) {
+  const housing = env.scene.getMeshByName('conveyor-frame');
+  if (housing instanceof Mesh) {
     addStaticCollider(
         env.scene,
-        hood,
-        new Vector3(0.62, 0.19, 2.24),
-        new Vector3(0.62, 0.34, 0.52),
+        housing,
+        new Vector3(0.62, 0.39, 2.50),
+        new Vector3(0.60, 0.78, 0.88),
     );
   }
   for (const rail of env.barrierRails) {

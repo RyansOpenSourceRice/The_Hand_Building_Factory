@@ -57,6 +57,14 @@ two tiered rows of six facing the player, so the performer reads as the one
 being watched. Instanced geometry keeps the room light; the small crowd is a
 deliberate choice to protect the Quest frame budget.
 
+Machines the player handles are modelled in Blender and exported, not stacked
+from primitives at runtime. A box pile reads as a box pile the moment the
+player walks around it: the conveyor now arrives as one asset with stringers,
+drums, legs, a drive unit and a feed housing, 1,044 triangles over five
+materials. Machine scale, the belt line and the platform height still come
+from the game's own constants, and the build script derives the rest from
+them, so the model cannot drift away from the path parts travel along.
+
 Guidance is diegetic: a small status board above the hand stand, bobbing
 yellow arrows on the part and its destination (always drawn on top), a soft
 glow on the host while a part is waiting, and a grouped narrator that names

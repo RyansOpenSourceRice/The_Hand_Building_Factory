@@ -36,6 +36,13 @@ Operating rules for AI agents working in this repository. Distilled from Ryan's 
   tiles stay for surfaces that repeat: the hall and the controller hands.
 - Printed parts take the filament palette; the servo keeps the materials it
   is modelled with, because players do not print it.
+- The conveyor is modelled for the same reason: a machine the player walks
+  around cannot be stacked from runtime boxes. `tools/blender/build_conveyor.py`
+  writes `public/models/hall/conveyor.glb` (1,044 triangles, one mesh per
+  material) and `tools/blender/conveyor.blend`, deriving every part from the
+  two points of `CONVEYOR_PATH` so the model cannot drift from the path
+  parts travel along. Edit the script, not the `.glb`. Rebuild with
+  `blender --background --python tools/blender/build_conveyor.py`.
 - Screw anchors live in `parts.json`, are derived from the mesh and point out
   of the part; `applyPartAnchors` flips them into driving directions. Never
   type an anchor by hand. `npm run qa:geometry` must pass: it fails when an

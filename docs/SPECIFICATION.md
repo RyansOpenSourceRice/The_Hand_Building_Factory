@@ -2,23 +2,27 @@
 
 What HANDS ON! does, milestone by milestone.
 
-## Current behavior (release 2026.11.13.3)
+## Current behavior (release 2026.11.14.2)
 
 - A warehouse workshop opens through a low north sill onto a grand
   factory hall, generated almost entirely in code. The workshop keeps the
   lit assembly pedestal, the 3D printer bench on the west, and the
-  conveyor station on the east. The hall carries painted floor lanes,
-  pallet racks with boxed loads, pallet stacks, a parked and a patrolling
-  forklift, five giant yellow robot arms, a demo stage with screens,
-  podium, and a branded band, and two tiers of grey chairs holding an
-  audience of twelve golden-yellow mannequins in blue hard hats, seated
-  in two rows of six and facing the player. Raised pendant lights,
-  hanging tube fixtures, and garage doors sit on the south wall. The
-  floor, roof, machines, crates, barriers, and fabric use a shared
-  library of twelve seamless 256x256 material tiles. The tiles repeat
-  with per-surface UV tiling and mipmaps, so the scene keeps a small
-  texture budget instead of one large atlas. The far wall behind the
-  stage carries one 512x256 equirectangular industrial vista, dimmed
+  conveyor station on the east: a modelled machine with side stringers,
+  a deck, head and tail drums, four braced legs, a discharge platform
+  with rails, a drive unit with a chain guard, and a feed housing the
+  belt climbs out of (`public/models/hall/conveyor.glb`, built by
+  `tools/blender/build_conveyor.py`, 1,044 triangles). The hall carries
+  painted floor lanes, pallet racks with boxed loads, pallet stacks, a
+  parked and a patrolling forklift, five giant yellow robot arms, a demo
+  stage with screens, podium, and a branded band, and two tiers of grey
+  chairs holding an audience of twelve golden-yellow mannequins in blue
+  hard hats, seated in two rows of six and facing the player. Raised
+  pendant lights, hanging tube fixtures, and garage doors sit on the
+  south wall. The floor, roof, machines, crates, barriers, and fabric
+  use a shared library of twelve seamless 256x256 material tiles. The
+  tiles repeat with per-surface UV tiling and mipmaps, so the scene keeps
+  a small texture budget instead of one large atlas. The far wall behind
+  the stage carries one 512x256 equirectangular industrial vista, dimmed
   into the fog so the hall reads as ending in distance.
 - A filament color menu: the COLORS button opens three rows of eight
   calm colors for the primary, secondary, and tertiary roles. The

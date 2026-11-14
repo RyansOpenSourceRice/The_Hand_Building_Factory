@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.14.2] - 2026-11-14
+
+### Changed
+
+- The conveyor is a modelled Blender asset now, not runtime boxes.
+  `tools/blender/build_conveyor.py` builds side stringers, a deck, head
+  and tail drums with bearing plates, four braced legs with foot pads,
+  return rollers, a discharge platform with rails and posts, a drive unit
+  with a chain guard, and a feed housing whose open mouth the belt climbs
+  out of. Every part is derived from the two points of `CONVEYOR_PATH`,
+  so the machine cannot drift from the path parts travel along. 1,044
+  triangles, five meshes (one per material), planar UVs at one tile per
+  metre. `tools/blender/conveyor.blend` keeps the editable source.
+- `public/models/hall/conveyor.glb` replaces what `buildConveyor` used to
+  generate. The loader drops the import's mirror root the same way the
+  hand parts do, `createEnvironment` is async so the asset is in place
+  before physics colliders attach, and the belt keeps the scrolling
+  chevron shader and its material roles.
+- `factoryDebug.debugView('conveyor')` frames the machine so `qa:critic`
+  can capture it.
+
 ## [2026.11.14.1] - 2026-11-14
 
 ### Added
