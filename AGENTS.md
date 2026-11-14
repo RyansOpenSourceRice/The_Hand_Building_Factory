@@ -30,9 +30,10 @@ Operating rules for AI agents working in this repository. Distilled from Ryan's 
   bought-in parts (servo, wrist plate, pin, thumb pin, hinge boss, knuckle
   cap) modelled in the script itself. It writes one `.glb` per part plus
   `parts.json`. Budget: 1200 triangles for the palm, 500-1800 for the other
-  printed parts. Each mesh carries one UV set over its whole surface, so a
-  single 512 px tintable detail atlas can replace the shared tile library
-  later without re-authoring the meshes.
+  printed parts. Each mesh carries one UV set over its whole surface, so all
+  eleven sample one shared 512 px tintable filament detail map
+  (`public/textures/filament-512.png` through `handTexture()`). The 256 px
+  tiles stay for surfaces that repeat: the hall and the controller hands.
 - Printed parts take the filament palette; the servo keeps the materials it
   is modelled with, because players do not print it.
 - Screw anchors live in `parts.json`, are derived from the mesh and point out

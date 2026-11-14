@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.13.6] - 2026-11-14
+
+### Added
+
+- The eleven printed hand meshes share one 512x512 filament detail map
+  (`public/textures/filament-512.png`), generated with
+  `bytedance-seed/seedream-5-5` through OpenRouter. It rides the real UV
+  unwraps the Blender pipeline writes, so the grain never repeats, and it
+  is squeezed into the same 111-144 grey band as the painted tiles
+  (mean 0.50) so the filament palette still decides a part's colour.
+- The far wall behind the stage carries a 512x256 equirectangular
+  industrial vista (`public/textures/hall-vista.png`), generated with
+  `tencent/hy-world-2.1-panorama` through OpenRouter and dimmed towards
+  the fog colour so the hall ends in distance instead of a flat panel.
+
+### Changed
+
+- `scripts/gen-textures.mjs` now calls `bytedance-seed/seedream-5-5` and
+  gained a `--panorama` mode. Panorama models answer only
+  `/api/v1/images`, not `chat/completions`, and cap prompts at 600
+  characters for one 360-degree image per request.
+- The printed parts no longer use the repeating 256x256 PLA tile; only
+  the controller hands do, since their box faces tile it.
+- `textureStats` no longer counts `AdvancedDynamicTexture` GUI canvases
+  against the 16 MB art budget. The HUD, menu, splash and guidance board
+  take their size from the display, and together they were spending 9 MB
+  of the allowance, so any real art addition tripped the audit.
+
 ## [2026.11.13.5] - 2026-11-14
 
 ### Changed

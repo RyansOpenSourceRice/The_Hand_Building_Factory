@@ -24,6 +24,16 @@ export const TILE_FILES = {
 
 export type TileName = keyof typeof TILE_FILES;
 
+// The printed hand parts carry real UV unwraps from the Blender pipeline, so
+// they sample one photo-generated filament detail map instead of a repeating
+// tile. It is neutral grey on purpose: the filament palette does the colour.
+export const HAND_TEXTURE_FILE = 'textures/filament-512.png';
+export const HAND_TEXTURE_SIZE = 512;
+
+// Equirectangular hall vista painted on the far stage wall: the endless
+// factory floor beyond the fogged end of the hall.
+export const PANORAMA_FILE = 'textures/hall-vista.png';
+
 export type TileOptions = {
   uScale?: number;
   vScale?: number;
@@ -99,6 +109,25 @@ export function applyTile(
   return texture;
 }
 
+const handTextures = new WeakMap<Scene, Texture>();
+
+// One instance per scene: the three palette materials share the upload and
+// differ only in the diffuse tint they multiply it by.
+export function handTexture(scene: Scene): Texture {
+  const existing = handTextures.get(scene);
+  if (existing) {
+    return existing;
+  }
+  const texture = new Texture(HAND_TEXTURE_FILE, scene, true, false,
+      Texture.TRILINEAR_SAMPLINGMODE);
+  texture.name = 'hand:filament';
+  texture.wrapU = Constants.TEXTURE_WRAP_ADDRESSMODE;
+  texture.wrapV = Constants.TEXTURE_WRAP_ADDRESSMODE;
+  texture.anisotropicFilteringLevel = 8;
+  handTextures.set(scene, texture);
+  return texture;
+}
+
 export function tiledMaterial(
     scene: Scene,
     name: string,
@@ -122,6 +151,11 @@ export function textureStats(scene: Scene): TextureStats {
   let tileBytes = 0;
   for (const texture of scene.textures) {
     if (!(texture instanceof Texture) || texture.isRenderTarget) {
+      continue;
+    }
+    // GUI canvases are sized by the display or by the panel they wrap, not
+    // by the art this budget guards, so they are counted separately.
+    if (texture.getClassName() === 'AdvancedDynamicTexture') {
       continue;
     }
     count++;

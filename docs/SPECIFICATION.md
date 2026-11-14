@@ -14,10 +14,12 @@ What HANDS ON! does, milestone by milestone.
   audience of twelve golden-yellow mannequins in blue hard hats, seated
   in two rows of six and facing the player. Raised pendant lights,
   hanging tube fixtures, and garage doors sit on the south wall. The
-  floor, roof, machines, crates, barriers, fabric, and printed parts use
-  a shared library of twelve seamless 256x256 material tiles. The tiles
-  repeat with per-surface UV tiling and mipmaps, so the scene keeps a
-  small texture budget instead of one large atlas.
+  floor, roof, machines, crates, barriers, and fabric use a shared
+  library of twelve seamless 256x256 material tiles. The tiles repeat
+  with per-surface UV tiling and mipmaps, so the scene keeps a small
+  texture budget instead of one large atlas. The far wall behind the
+  stage carries one 512x256 equirectangular industrial vista, dimmed
+  into the fog so the hall reads as ending in distance.
 - A filament color menu: the COLORS button opens three rows of eight
   calm colors for the primary, secondary, and tertiary roles. The
   palette applies to hand parts and the controller hands, updates the
@@ -28,9 +30,11 @@ What HANDS ON! does, milestone by milestone.
   thumb: exactly five digits, with no extra knuckle bar. The palm is
   about half the hand length. The screwdriver shares the grip, with its
   handle in the fist and its tip pointing forward out of the hand.
-- Printed parts and the controller hands use the filament palette plus
-  a tileable PLA layer-line texture. A color change updates every
-  mounted part and the controller hands immediately.
+- Printed parts use the filament palette plus one shared 512x512 filament
+  detail map, sampled through the UV unwraps the Blender pipeline writes,
+  so the grain does not repeat across a part. The controller hands use
+  the palette plus the seamless 256x256 PLA tile. A color change updates
+  every mounted part and the controller hands immediately.
 - A yellow safety barrier ring marks the 1.25 m locomotion boundary.
   Its hazard-striped top rail is split into short segments so the tile
   does not shimmer at grazing angles, and all warehouse crates sit

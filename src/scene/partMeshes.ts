@@ -7,7 +7,7 @@ import '@babylonjs/loaders/glTF';
 import type {GameSettings} from '../game/settings';
 import {FILAMENT_COLORS, FALLBACK_HEX, type ThemeSlot} from '../game/palette';
 import type {PartDef} from '../game/handParts';
-import {applyTile} from './textures';
+import {handTexture} from './textures';
 
 export type PrototypeMap = Map<string, Mesh>;
 export type PartMeshProvider = (def: PartDef, scene: Scene) => Mesh;
@@ -69,7 +69,7 @@ export function createThemeMaterials(
     mat.diffuseColor = diffuse;
     mat.emissiveColor = diffuse.scale(0.06);
     mat.specularColor = new Color3(0.05, 0.05, 0.06);
-    applyTile(mat, scene, 'pla', {offsetSeed: name});
+    mat.diffuseTexture = handTexture(scene);
     return mat;
   };
   return {
