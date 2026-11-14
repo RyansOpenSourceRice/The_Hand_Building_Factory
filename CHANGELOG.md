@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.14.3] - 2026-11-14
+
+### Added
+
+- `npm run qa:scene` (`scripts/scene-audit.mjs`) boots the finished build,
+  dumps every mesh with its world bounds and triangle count, and writes
+  `qa-out/scene.json` plus `qa-out/scene.obj`. The OBJ carries one group per
+  mesh, so the whole game opens as a single editable model.
+- `tools/blender/build_hall_scene.py` imports that OBJ into one Blender
+  scene, colours every object by role, and runs triangle-level BVH
+  intersection tests for 6,153 must-not-touch pairs (forklift against walls,
+  racks, arms and the conveyor; the conveyor against the barrier; the crowd
+  and pallet stacks against the shell). It also renders a plan view. The
+  first run found the three far robot arms swing their wrists to 1.9 m below
+  the floor, where the floor plate hides them.
+
+### Changed
+
+- The conveyor drops from 1,044 to 772 triangles: the drums keep ten sides,
+  every other cylinder falls to eight. It is 57 KB instead of 71 KB.
+
 ## [2026.11.14.2] - 2026-11-14
 
 ### Changed

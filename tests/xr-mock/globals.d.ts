@@ -65,6 +65,14 @@ interface FactoryDebug {
     'servos' | 'conveyor') => void;
   audioChannels: () => {voice: string[]; music: boolean; sfx: string[]};
   hidePart: (id: string, visible?: boolean) => void;
+  sceneDump: () => Array<{
+    name: string;
+    min: number[];
+    max: number[];
+    tris: number;
+    mat: string;
+  }>;
+  sceneObj: () => string;
   audienceCount: () => number;
   partColor: (id: string) => string;
   selectTheme: (slot: 'primary' | 'secondary' | 'tertiary',
