@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.13.3] - 2026-11-13
+
+### Fixed
+
+- The controller button that dismisses the credits splash no longer opens
+  the VR menu on the same press. This removes the intermittent CI failure
+  in the XR splash E2E test.
+
 ## [2026.11.13.2] - 2026-11-13
 
 ### Added

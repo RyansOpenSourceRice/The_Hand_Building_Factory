@@ -265,9 +265,8 @@ async function boot(): Promise<void> {
     },
   });
   splash.onDismissed = () => {
-    scene.onBeforeRenderObservable.addOnce(() => {
-      vrMenu?.setSuppressed(false);
-    });
+    // The button press that dismisses the splash must not also open the menu.
+    window.setTimeout(() => vrMenu?.setSuppressed(false), 0);
     hud.setSuppressed(false);
     armAudio();
     voiceArmed = true;
