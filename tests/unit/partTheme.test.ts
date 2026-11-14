@@ -34,8 +34,8 @@ describe('part theme colors', () => {
     engine.dispose();
   });
 
-  it('prints STL parts with the shared body material', () => {
-    const prototype = MeshBuilder.CreateBox('proto:palm.stl', {size: 0.1},
+  it('prints exported parts with the shared body material', () => {
+    const prototype = MeshBuilder.CreateBox('proto:palm.glb', {size: 0.1},
         scene);
     prototype.material = theme.body;
     const palm = PART_DEFS.find((def) => def.id === 'palm');
@@ -43,7 +43,7 @@ describe('part theme colors', () => {
       throw new Error('palm definition missing');
     }
     const provider = createPartProvider(
-        new Map([['palm.stl', prototype]]));
+        new Map([['palm.glb', prototype]]));
     const mesh = provider(palm, scene);
     expect(mesh.material).toBe(theme.body);
   });

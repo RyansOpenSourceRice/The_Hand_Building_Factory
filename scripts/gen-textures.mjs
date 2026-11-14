@@ -5,6 +5,9 @@ import {fileURLToPath} from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SIZE = 256;
+const TEXTURE_MODEL = 'bytedance-seed/seedream-5-5';
+const PANORAMA_MODEL = 'tencent/hy-world-2.1-panorama';
+const PANORAMA_PROMPT_LIMIT = 600;
 const OUT_DIR = resolve(ROOT, 'public', 'textures');
 
 function loadKey() {
@@ -63,7 +66,38 @@ const TEXTURES = {
     'regular square diamond aperture, thin wire, faint zinc texture and ' +
     'small scuffs, transparent-looking gaps that read as dark holes. ' +
     SEAMLESS,
+  // Detail map for the printed hand parts, which carry real unwrapped UVs
+  // and take their colour from the filament palette.
+  'filament-512': 'Photorealistic macro photograph of a neutral grey FDM ' +
+    '3D-printer PLA surface straight off the bed. Fine, evenly spaced ' +
+    'horizontal extrusion layer lines with a slight random wobble, faint ' +
+    'satin sheen along each ridge, tiny dust in the grooves, mid-grey and ' +
+    'colourless so it can be tinted. ' + SEAMLESS,
 };
+
+// The hand detail map is the one photo texture in the build, so it gets a
+// bigger square than the shared hall tiles.
+const SIZES = {'filament-512': 512};
+
+async function postProcess(path, name) {
+  const size = SIZES[name] ?? SIZE;
+  const args = [path, '-alpha', 'off', '-resize', `${size}x${size}!`];
+  if (name === 'filament-512') {
+    // Gray, then squeeze the tone into the same narrow band the painted
+    // tiles use (111-144) so the filament palette tints it and no baked
+    // lighting shows through a colour change. Polynomial coefficients are
+    // in normalised units: gain 0.1294, offset 0.4353.
+    args.push(
+        '-colorspace', 'Gray',
+        '-auto-level',
+        '-function', 'polynomial', '0.1294,0.4353',
+        '-type', 'TrueColor',
+    );
+  }
+  args.push('-strip', '-define', 'png:compression-level=9', path);
+  execFileSync('magick', args);
+  console.log(`wrote ${path} (${size}x${size})`);
+}
 
 async function generate(name) {
   const response = await fetch(
@@ -75,7 +109,7 @@ async function generate(name) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'bytedance-seed/seedream-5-0-flash',
+          model: TEXTURE_MODEL,
           messages: [{role: 'user', content: TEXTURES[name]}],
         }),
       },
@@ -94,31 +128,95 @@ async function generate(name) {
   mkdirSync(OUT_DIR, {recursive: true});
   const outPath = resolve(OUT_DIR, `${name}.png`);
   writeFileSync(outPath, Buffer.from(base64, 'base64'));
+  await postProcess(outPath, name);
+}
+
+// HY-World 2.1 Panorama answers one text prompt with a single 360 degree
+// equirectangular image and caps the prompt at 600 characters, so this is
+// one request per run and no tile set.
+const PANORAMA = {
+  'hall-vista': 'A vast dim industrial factory hall seen from the stage ' +
+    'end, steel columns and roof trusses overhead, rows of idle machines, ' +
+    'pallet stacks and cable trays receding into cool grey-blue haze, high ' +
+    'bay lights glowing faintly, empty concrete floor, no people, no text, ' +
+    'muted desaturated palette, calm photographic realism.',
+};
+
+async function generatePanorama(name) {
+  const prompt = PANORAMA[name];
+  if (prompt.length > PANORAMA_PROMPT_LIMIT) {
+    throw new Error(
+        `panorama prompt is ${prompt.length} characters, limit is ` +
+        `${PANORAMA_PROMPT_LIMIT}`);
+  }
+  // Panorama models are image models, so they answer the images endpoint
+  // rather than chat completions.
+  const response = await fetch(
+      'https://openrouter.ai/api/v1/images',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${loadKey()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({model: PANORAMA_MODEL, prompt}),
+      },
+  );
+  if (!response.ok) {
+    throw new Error(`OpenRouter ${response.status}: ${await response.text()}`);
+  }
+  const payload = await response.json();
+  const image = payload?.data?.[0];
+  if (!image) {
+    throw new Error(
+        `no panorama in response: ${JSON.stringify(payload).slice(0, 600)}`);
+  }
+  const bytes = image.b64_json ?
+    Buffer.from(image.b64_json, 'base64') :
+    Buffer.from(await (await fetch(image.url)).arrayBuffer());
+  mkdirSync(OUT_DIR, {recursive: true});
+  const outPath = resolve(OUT_DIR, `${name}.png`);
+  writeFileSync(outPath, bytes);
+  // Keep the equirectangular 2:1 shape and the texture budget small: the
+  // backdrop is 25 m away and sits in fog.
   execFileSync('magick', [
     outPath,
-    '-resize', `${SIZE}x${SIZE}!`,
+    '-alpha', 'off',
+    '-resize', '512x256!',
     '-strip',
     '-define', 'png:compression-level=9',
     outPath,
   ]);
-  console.log(`wrote ${outPath} (${SIZE}x${SIZE})`);
+  console.log(`wrote ${outPath} (512x256 panorama)`);
 }
 
 const args = process.argv.slice(2);
-const names = args.includes('all') ? Object.keys(TEXTURES) :
-    args.filter((arg) => !arg.startsWith('--'));
-if (names.length === 0) {
-  throw new Error(`usage: node scripts/gen-textures.mjs ` +
-    `<${Object.keys(TEXTURES).join('|')}|all> [--force]`);
-}
-for (const name of names) {
-  if (!(name in TEXTURES)) {
-    throw new Error(`unknown texture ${name}`);
+if (args.includes('--panorama')) {
+  const names = args.filter((arg) => !arg.startsWith('--'));
+  const targets = names.length ? names : Object.keys(PANORAMA);
+  for (const name of targets) {
+    if (!(name in PANORAMA)) {
+      throw new Error(`unknown panorama ${name}`);
+    }
+    await generatePanorama(name);
   }
-  if (!args.includes('--force') &&
-      existsSync(resolve(OUT_DIR, `${name}.png`))) {
-    console.log(`skip ${name} (already exists)`);
-    continue;
+} else {
+  const names = args.includes('all') ? Object.keys(TEXTURES) :
+      args.filter((arg) => !arg.startsWith('--'));
+  if (names.length === 0) {
+    throw new Error(`usage: node scripts/gen-textures.mjs ` +
+      `<${Object.keys(TEXTURES).join('|')}|all> [--force] | ` +
+      `--panorama <${Object.keys(PANORAMA).join('|')}>`);
   }
-  await generate(name);
+  for (const name of names) {
+    if (!(name in TEXTURES)) {
+      throw new Error(`unknown texture ${name}`);
+    }
+    const outPath = resolve(OUT_DIR, `${name}.png`);
+    if (!args.includes('--force') && existsSync(outPath)) {
+      console.log(`skip ${name} (already exists)`);
+      continue;
+    }
+    await generate(name);
+  }
 }

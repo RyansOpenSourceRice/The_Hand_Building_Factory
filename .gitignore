@@ -3,6 +3,7 @@ dist/
 coverage/
 playwright-report/
 test-results/
+qa-out/
 *.local
 PLAN.local.md
 .env.local

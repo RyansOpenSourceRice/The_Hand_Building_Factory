@@ -445,15 +445,29 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         expect(index!.max[1]!).toBeGreaterThan(1.65);
         expect(index!.min[1]!).toBeLessThan(palm!.max[1]! + 0.03);
         expect(index!.min[0]!).toBeGreaterThan(little!.max[0]!);
-        for (const id of ['finger-index', 'finger-middle',
-          'finger-ring', 'finger-little']) {
+        const fingerIds = ['finger-index', 'finger-middle',
+          'finger-ring', 'finger-little'];
+        const fingers = fingerIds.map((id) => byId.get(id));
+        for (const id of fingerIds) {
           const finger = byId.get(id);
           expect(finger, id).toBeDefined();
           const screw = finger!.screwPositions[0];
           expect(screw, id).toBeDefined();
-          expect(screw![0]!).toBeCloseTo(finger!.center[0]!, 3);
-          expect(screw![2]!).toBeGreaterThan(finger!.min[2]!);
-          expect(screw![2]!).toBeLessThan(finger!.max[2]!);
+          // The screw comes from a facet anchor, so it sits on the finger
+          // surface rather than on the bounding-box centre line. It still has
+          // to be on this finger and nearer to it than to any other.
+          expect(screw![0]!, id).toBeGreaterThanOrEqual(finger!.min[0]!);
+          expect(screw![0]!, id).toBeLessThanOrEqual(finger!.max[0]!);
+          expect(screw![2]!, id).toBeGreaterThan(finger!.min[2]!);
+          expect(screw![2]!, id).toBeLessThan(finger!.max[2]!);
+          const nearest = fingers
+              .filter((other) => other !== undefined)
+              .map((other) => ({
+                id: other.id,
+                distance: Math.abs(screw![0]! - other.center[0]!),
+              }))
+              .sort((a, b) => a.distance - b.distance)[0];
+          expect(nearest?.id, id).toBe(id);
         }
         expect(thumbBase!.min[1]!).toBeLessThan(palm!.max[1]!);
         expect(thumbSegments!.min[1]!).toBeLessThan(thumbBase!.max[1]! + 0.01);

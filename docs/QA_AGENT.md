@@ -15,6 +15,42 @@ first, and rebuild after every source change:
 npm run build
 ```
 
+## Fast revision loop
+
+`scripts/critic.mjs` drives the server through one build-and-judge cycle. It
+boots the game once, completes the build, runs `audit_hand`, collects part
+counts, page errors and screenshots, then prints a verdict. A cycle takes
+about five seconds on a built tree, which makes it usable between edits.
+
+```sh
+npm run build
+npm run qa:critic
+```
+
+It exits 0 when the audit passes and the page logged no errors, and 1
+otherwise, naming each failed check and the parts involved. Screenshots and
+`critic.json` land in `qa-out/`.
+
+- `--views front,top,servos` picks which views to capture.
+- `--out <dir>` moves the output.
+- `--keep-as-is` skips `complete_build` and judges the scene as it stands.
+- `--port <n>` moves the preview port. Use a different port per agent so
+  several can critique at once.
+
+Captures come from a plain desktop page rather than the QA session itself:
+inside an XR session the scene draws to the XR framebuffer, so the page
+canvas photographs as one flat colour. A capture under 20 KB is reported as
+blank.
+
+The critic checks the finished hand, not the 25-step path a player walks to
+build it, so run the full E2E playthrough before shipping.
+
+Screw anchors live in the exported assets, so check them on their own too.
+`npm run qa:geometry` reads `public/models/hand/parts.json` and the GLBs and
+fails when a part has no UVs, breaks its triangle budget, or has an anchor
+that leaves the surface or points inward. Run it after any Blender rebuild,
+before the critic.
+
 ## Setup
 
 Add this to your MCP client config (for example `.mcp.json`):
@@ -31,7 +67,13 @@ Add this to your MCP client config (for example `.mcp.json`):
 ```
 
 The server starts `vite preview` itself. If the port is busy it exits with
-an error instead of guessing.
+an error instead of guessing. It listens on 4174 unless `--port <n>` or the
+`QA_PORT` environment variable says otherwise, which is how several agents
+run side by side:
+
+```json
+"args": ["scripts/qa-mcp-server.mjs", "--port", "4180"]
+```
 
 ## Tools
 

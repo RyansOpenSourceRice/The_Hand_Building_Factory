@@ -6,6 +6,87 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.13.6] - 2026-11-14
+
+### Added
+
+- The eleven printed hand meshes share one 512x512 filament detail map
+  (`public/textures/filament-512.png`), generated with
+  `bytedance-seed/seedream-5-5` through OpenRouter. It rides the real UV
+  unwraps the Blender pipeline writes, so the grain never repeats, and it
+  is squeezed into the same 111-144 grey band as the painted tiles
+  (mean 0.50) so the filament palette still decides a part's colour.
+- The far wall behind the stage carries a 512x256 equirectangular
+  industrial vista (`public/textures/hall-vista.png`), generated with
+  `tencent/hy-world-2.1-panorama` through OpenRouter and dimmed towards
+  the fog colour so the hall ends in distance instead of a flat panel.
+
+### Changed
+
+- `scripts/gen-textures.mjs` now calls `bytedance-seed/seedream-5-5` and
+  gained a `--panorama` mode. Panorama models answer only
+  `/api/v1/images`, not `chat/completions`, and cap prompts at 600
+  characters for one 360-degree image per request.
+- The printed parts no longer use the repeating 256x256 PLA tile; only
+  the controller hands do, since their box faces tile it.
+- `textureStats` no longer counts `AdvancedDynamicTexture` GUI canvases
+  against the 16 MB art budget. The HUD, menu, splash and guidance board
+  take their size from the display, and together they were spending 9 MB
+  of the allowance, so any real art addition tripped the audit.
+
+## [2026.11.13.5] - 2026-11-14
+
+### Changed
+
+- Every hand part is now a Blender mesh. The servo, wrist plate, knuckle
+  pin, thumb pin, hinge boss and knuckle cap join the five printed parts,
+  so `tools/blender/build_hand_assets.py` writes eleven `.glb` files and
+  the TypeScript primitive builders are gone. The five servos share one
+  mesh, as the four fingers already did.
+- The servo keeps the materials it is modelled with, since players do not
+  print it; everything printed still follows the filament palette.
+- Screw anchors now point out of the part and are flipped into driving
+  directions when they are applied. Before this, the servo and knuckle-cap
+  screws were driven the wrong way and the exported anchors would have
+  been inverted for the printed parts.
+
+### Fixed
+
+- `npm run qa:geometry` stitched only the first material group of a mesh,
+  so a multi-material part was checked against a fraction of its
+  triangles. It now walks every primitive before validating.
+
+## [2026.11.13.4] - 2026-11-13
+
+### Changed
+
+- The five printed hand meshes are now authored in Blender from the
+  upstream Yeah Hand v1.3 STLs and shipped as `.glb` (palm, finger,
+  thumb base, thumb segments, upper cover) with real UVs, replacing the
+  meshes that were built by hand in TypeScript. Decimation takes the
+  printed parts from 25,514 to 5,262 triangles, and the four fingers
+  share one finger mesh instead of four copies.
+
+### Added
+
+- Screw anchors are derived from mesh facets and exported in
+  `parts.json`, then applied at boot, so a screw can no longer drift off
+  its part during a revision.
+- `npm run qa:geometry` runs a headless validator over the exported
+  assets: it fails when a part has no UVs, exceeds its triangle budget,
+  or has an anchor that leaves the surface or points inward.
+
+### Fixed
+
+- Hand parts could not be picked up. The glTF loader parents every
+  import under a handedness root, so that root answered as each part's
+  hierarchy root and the grab check rejected all of them; the loader now
+  detaches the root and reverses the winding it was compensating for.
+  This is why the start-to-finish XR playthrough could not lift the
+  palm.
+- Exported geometry, `parts.json` anchors and the runtime now share one
+  frame, instead of the runtime re-mirroring the mesh on load.
+
 ## [2026.11.13.3] - 2026-11-13
 
 ### Fixed

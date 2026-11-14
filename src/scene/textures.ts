@@ -1,8 +1,6 @@
 import {Constants} from '@babylonjs/core/Engines/constants';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
 import {Texture} from '@babylonjs/core/Materials/Textures/texture';
-import {VertexBuffer} from '@babylonjs/core/Buffers/buffer';
-import type {Mesh} from '@babylonjs/core/Meshes/mesh';
 import type {Scene} from '@babylonjs/core/scene';
 
 export const TILE_SIZE = 256;
@@ -25,6 +23,16 @@ export const TILE_FILES = {
 } as const;
 
 export type TileName = keyof typeof TILE_FILES;
+
+// The printed hand parts carry real UV unwraps from the Blender pipeline, so
+// they sample one photo-generated filament detail map instead of a repeating
+// tile. It is neutral grey on purpose: the filament palette does the colour.
+export const HAND_TEXTURE_FILE = 'textures/filament-512.png';
+export const HAND_TEXTURE_SIZE = 512;
+
+// Equirectangular hall vista painted on the far stage wall: the endless
+// factory floor beyond the fogged end of the hall.
+export const PANORAMA_FILE = 'textures/hall-vista.png';
 
 export type TileOptions = {
   uScale?: number;
@@ -101,6 +109,25 @@ export function applyTile(
   return texture;
 }
 
+const handTextures = new WeakMap<Scene, Texture>();
+
+// One instance per scene: the three palette materials share the upload and
+// differ only in the diffuse tint they multiply it by.
+export function handTexture(scene: Scene): Texture {
+  const existing = handTextures.get(scene);
+  if (existing) {
+    return existing;
+  }
+  const texture = new Texture(HAND_TEXTURE_FILE, scene, true, false,
+      Texture.TRILINEAR_SAMPLINGMODE);
+  texture.name = 'hand:filament';
+  texture.wrapU = Constants.TEXTURE_WRAP_ADDRESSMODE;
+  texture.wrapV = Constants.TEXTURE_WRAP_ADDRESSMODE;
+  texture.anisotropicFilteringLevel = 8;
+  handTextures.set(scene, texture);
+  return texture;
+}
+
 export function tiledMaterial(
     scene: Scene,
     name: string,
@@ -117,26 +144,6 @@ export function tiledMaterial(
   return material;
 }
 
-export function ensurePlanarUVs(
-    mesh: Mesh,
-    uScale = 18,
-    vScale = 55,
-): void {
-  const positions = mesh.getVerticesData(VertexBuffer.PositionKind);
-  if (!positions || positions.length < 3) {
-    return;
-  }
-  const uvs = new Float32Array((positions.length / 3) * 2);
-  for (let i = 0, v = 0; i < positions.length; i += 3, v += 2) {
-    const x = positions[i] ?? 0;
-    const y = positions[i + 1] ?? 0;
-    const z = positions[i + 2] ?? 0;
-    uvs[v] = (x + z) * uScale;
-    uvs[v + 1] = y * vScale;
-  }
-  mesh.setVerticesData(VertexBuffer.UVKind, uvs, false, 2);
-}
-
 export function textureStats(scene: Scene): TextureStats {
   let count = 0;
   let bytes = 0;
@@ -144,6 +151,11 @@ export function textureStats(scene: Scene): TextureStats {
   let tileBytes = 0;
   for (const texture of scene.textures) {
     if (!(texture instanceof Texture) || texture.isRenderTarget) {
+      continue;
+    }
+    // GUI canvases are sized by the display or by the panel they wrap, not
+    // by the art this budget guards, so they are counted separately.
+    if (texture.getClassName() === 'AdvancedDynamicTexture') {
       continue;
     }
     count++;

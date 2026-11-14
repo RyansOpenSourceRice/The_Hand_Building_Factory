@@ -13,14 +13,11 @@ export type Vec3Literal = {x: number; y: number; z: number};
 export type PartDef = {
   id: string;
   label: string;
-  file: string | null;
-  primitive: 'servo' | 'pin' | 'wrist-plate' | 'hinge-boss' |
-      'knuckle-cap' | null;
+  file: string;
   source: PartSource;
   phase: PartPhase;
   hostId: string;
   hostLabel: string;
-  scale: number;
   local: Vec3Literal;
   home: Vec3Literal;
   snapRadius: number;
@@ -29,7 +26,6 @@ export type PartDef = {
   screwNormals: Vec3Literal[];
 };
 
-export const MODEL_SCALE = 0.00313;
 export const HAND_ROOT: Vec3Literal = {x: 0, y: 1.4949, z: 0};
 export const HAND_TILT_X = 0;
 export const HAND_YAW = 0;
@@ -52,10 +48,14 @@ export const CONVEYOR_PATH: readonly [Vec3Literal, Vec3Literal] = [
 export const PRINTER_BED_TOP = 1.24;
 export const CONVEYOR_BELT_TOP = 1.13;
 
+// Screw normals here point out of the part, the same convention the exported
+// facets use. They are design-time placeholders: `applyPartAnchors` replaces
+// them with the anchors in parts.json before the stage is built, and the
+// stage turns each one into a driving direction.
 const down = (): Vec3Literal => ({x: 0, y: -1, z: 0});
-const intoPalmFromBack = (): Vec3Literal => ({x: 0, y: 0, z: 1});
-const intoPalmFromCover = (): Vec3Literal => ({x: 0, y: 0, z: 1});
-const intoPalmFromThumb = (): Vec3Literal => ({x: -1, y: 0, z: 0});
+const servoBack = (): Vec3Literal => ({x: 0, y: 0, z: -1});
+const up = (): Vec3Literal => ({x: 0, y: 0, z: 1});
+const thumbSide = (): Vec3Literal => ({x: -1, y: 0, z: 0});
 
 const servoLocal = (x: number, y: number): Vec3Literal => ({
   x,
@@ -70,19 +70,17 @@ const servoDef = (
 ): PartDef => ({
   id,
   label,
-  file: null,
-  primitive: 'servo',
+  file: 'servo.glb',
   source: 'conveyor',
   phase: 'motors',
   hostId: 'palm',
   hostLabel: 'the back of the hand',
-  scale: 1,
   local,
   home: CONVEYOR_HOME,
   snapRadius: 0.18,
   screwCount: 1,
   screwOffsets: [{x: 0, y: 0, z: -0.015}],
-  screwNormals: [intoPalmFromBack()],
+  screwNormals: [servoBack()],
 });
 
 const finger = (
@@ -92,13 +90,11 @@ const finger = (
 ): PartDef => ({
   id,
   label,
-  file: 'finger.stl',
-  primitive: null,
+  file: 'finger.glb',
   source: 'printer',
   phase: 'fingers',
   hostId: 'palm',
   hostLabel: 'the top of the palm',
-  scale: MODEL_SCALE,
   local: {x, y: 0, z: 0},
   home: PRINTER_HOME,
   snapRadius: 0.22,
@@ -107,10 +103,10 @@ const finger = (
   screwNormals: [{x: 0, y: 0, z: -1}],
 });
 
-const primitiveDef = (
+const hardPart = (
     id: string,
     label: string,
-    primitive: 'pin' | 'wrist-plate' | 'hinge-boss' | 'knuckle-cap',
+    file: string,
     phase: PartPhase,
     hostId: string,
     hostLabel: string,
@@ -119,13 +115,11 @@ const primitiveDef = (
 ): PartDef => ({
   id,
   label,
-  file: null,
-  primitive,
+  file,
   source: 'printer',
   phase,
   hostId,
   hostLabel,
-  scale: 1,
   local,
   home: PRINTER_HOME,
   snapRadius,
@@ -138,10 +132,10 @@ const knucklePin = (
     id: string,
     label: string,
     x: number,
-): PartDef => primitiveDef(
+): PartDef => hardPart(
     id,
     label,
-    'pin',
+    'pin.glb',
     'fingers',
     'palm',
     'the knuckle',
@@ -158,25 +152,23 @@ const knuckleCap = (
 ): PartDef => ({
   id,
   label,
-  file: null,
-  primitive: 'knuckle-cap',
+  file: 'knuckle-cap.glb',
   source: 'printer',
   phase: 'fingers',
   hostId,
   hostLabel,
-  scale: 1,
   local: {x: FINGER_X + fingerX, y: KNUCKLE_CAP_Y, z: KNUCKLE_CAP_Z},
   home: PRINTER_HOME,
   snapRadius: 0.085,
   screwCount: 1,
   screwOffsets: [{x: 0, y: 0, z: KNUCKLE_CAP_SCREW_Z}],
-  screwNormals: [{x: 0, y: 0, z: -1}],
+  screwNormals: [up()],
 });
 
-const thumbPinBase = primitiveDef(
+const thumbPinBase = hardPart(
     'thumb-pin-base',
     'thumb hinge pin',
-    'pin',
+    'thumb-pin.glb',
     'thumb-segments',
     'thumb-base',
     'the thumb hinge',
@@ -184,10 +176,10 @@ const thumbPinBase = primitiveDef(
     0.075,
 );
 
-const thumbPinTip = primitiveDef(
+const thumbPinTip = hardPart(
     'thumb-pin-tip',
     'thumb tip pin',
-    'pin',
+    'thumb-pin.glb',
     'thumb-segments',
     'thumb-segments',
     'the thumb tip hinge',
@@ -196,10 +188,10 @@ const thumbPinTip = primitiveDef(
 );
 
 const wristPlate: PartDef = {
-  ...primitiveDef(
+  ...hardPart(
       'wrist-plate',
       'wrist plate',
-      'wrist-plate',
+      'wrist-plate.glb',
       'palm',
       'palm',
       'the bottom of the palm',
@@ -208,23 +200,21 @@ const wristPlate: PartDef = {
   ),
   screwCount: 2,
   screwOffsets: [
-    {x: 0.06, y: 0, z: 0},
-    {x: -0.06, y: 0, z: 0},
+    {x: 0.06, y: 0.013, z: 0},
+    {x: -0.06, y: 0.013, z: 0},
   ],
-  screwNormals: [{x: 0, y: 1, z: 0}, {x: 0, y: 1, z: 0}],
+  screwNormals: [up(), up()],
 };
 
 export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'palm',
     label: 'palm',
-    file: 'palm.stl',
-    primitive: null,
+    file: 'palm.glb',
     source: 'printer',
     phase: 'palm',
     hostId: 'stand',
     hostLabel: 'the stand',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.35,
@@ -251,24 +241,22 @@ export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'thumb-base',
     label: 'thumb base',
-    file: 'thumb-base.stl',
-    primitive: null,
+    file: 'thumb-base.glb',
     source: 'printer',
     phase: 'thumb-base',
     hostId: 'palm',
     hostLabel: 'the side of the palm',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.22,
     screwCount: 1,
     screwOffsets: [{x: 0.04, y: -0.28, z: 0}],
-    screwNormals: [intoPalmFromThumb()],
+    screwNormals: [thumbSide()],
   },
-  primitiveDef(
+  hardPart(
       'thumb-hinge-boss',
       'thumb hinge boss',
-      'hinge-boss',
+      'hinge-boss.glb',
       'thumb-base',
       'palm',
       'the side of the palm',
@@ -301,13 +289,11 @@ export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'thumb-segments',
     label: 'thumb segments',
-    file: 'thumb-segments.stl',
-    primitive: null,
+    file: 'thumb-segments.glb',
     source: 'printer',
     phase: 'thumb-segments',
     hostId: 'thumb-base',
     hostLabel: 'the thumb base',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.2,
@@ -320,13 +306,11 @@ export const PART_DEFS: readonly PartDef[] = [
   {
     id: 'upper-cover',
     label: 'upper cover',
-    file: 'upper-cover.stl',
-    primitive: null,
+    file: 'upper-cover.glb',
     source: 'printer',
     phase: 'cover',
     hostId: 'palm',
     hostLabel: 'the back of the hand',
-    scale: MODEL_SCALE,
     local: {x: 0, y: 0, z: 0},
     home: PRINTER_HOME,
     snapRadius: 0.3,
@@ -338,14 +322,59 @@ export const PART_DEFS: readonly PartDef[] = [
       {x: -0.09, y: -0.20, z: -0.085},
     ],
     screwNormals: [
-      intoPalmFromCover(),
-      intoPalmFromCover(),
-      intoPalmFromCover(),
-      intoPalmFromCover(),
+      up(),
+      up(),
+      up(),
+      up(),
     ],
   },
 ];
 
 export const TOTAL_PARTS = PART_DEFS.length;
-export const TOTAL_SCREWS =
-    PART_DEFS.reduce((sum, def) => sum + def.screwCount, 0);
+
+export const totalScrews = (): number =>
+  PART_DEFS.reduce((sum, def) => sum + def.screwCount, 0);
+
+export type AnchorRecord = {
+  point: [number, number, number];
+  normal: [number, number, number];
+};
+
+/**
+ * Replace the authored screw placeholders with the anchors exported from
+ * Blender. Each anchor sits on the part surface by construction, so a screw
+ * cannot float away from its host. Call once, before the stage is built.
+ *
+ * Exported facet normals point out of the part, while the stage drives a
+ * screw along `screwNormals`, so each one is flipped into a driving
+ * direction here. Getting this backwards buries the screws inside the part.
+ */
+export function applyPartAnchors(
+    anchors: Record<string, AnchorRecord[]>,
+): void {
+  for (const def of PART_DEFS) {
+    const asset = def.file.replace(/\.glb$/, '');
+    const list = anchors[asset];
+    if (!list) {
+      throw new Error(`parts.json has no entry for ${def.file}`);
+    }
+    if (list.length !== def.screwCount) {
+      throw new Error(
+          `${def.file} exports ${list.length} anchors but ` +
+          `${def.id} expects ${def.screwCount}`);
+    }
+    if (!list.length) {
+      continue;
+    }
+    def.screwOffsets = list.map((anchor) => ({
+      x: anchor.point[0],
+      y: anchor.point[1],
+      z: anchor.point[2],
+    }));
+    def.screwNormals = list.map((anchor) => ({
+      x: -anchor.normal[0],
+      y: -anchor.normal[1],
+      z: -anchor.normal[2],
+    }));
+  }
+}

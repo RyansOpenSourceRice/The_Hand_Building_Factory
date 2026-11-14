@@ -14,7 +14,12 @@ import {Texture} from '@babylonjs/core/Materials/Textures/texture';
 import {
   DynamicTexture,
 } from '@babylonjs/core/Materials/Textures/dynamicTexture';
-import {applyTile, tiledMaterial, type TileName} from './textures';
+import {
+  applyTile,
+  PANORAMA_FILE,
+  tiledMaterial,
+  type TileName,
+} from './textures';
 import {addStaticCollider, makeBoxBody} from './physics';
 import {
   PhysicsMotionType,
@@ -864,7 +869,16 @@ function buildGrandHall(scene: Scene): void {
   const backdrop = MeshBuilder.CreateBox(
       'stageBackdrop', {width: 10, height: 4.5, depth: 0.2}, scene);
   backdrop.position.set(0, 2.85, -24.6);
-  backdrop.material = machineMat(scene, 'backdropMat', '#1d2129', '#05070c');
+  const backdropMat = new StandardMaterial('backdropMat', scene);
+  const vista = new Texture(PANORAMA_FILE, scene);
+  backdropMat.diffuseTexture = vista;
+  backdropMat.emissiveTexture = vista;
+  // Dim and slightly blue so the vista reads as distance behind the fogged
+  // end of the hall instead of a lit poster hung on the wall.
+  backdropMat.diffuseColor = new Color3(0.5, 0.53, 0.58);
+  backdropMat.emissiveColor = new Color3(0.15, 0.16, 0.19);
+  backdropMat.specularColor = Color3.Black();
+  backdrop.material = backdropMat;
   const bandMat = new StandardMaterial('stageBandMat', scene);
   const bandTex = new DynamicTexture('stageBandTex', 256, scene, false);
   const bandCtx = bandTex.getContext();
