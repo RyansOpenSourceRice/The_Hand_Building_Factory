@@ -32,38 +32,37 @@ const localBounds: Record<string, Bounds> = {
     min: [-0.1378, -0.4248, -0.093],
     max: [0.1379, -0.1068, 0.0603],
   },
+  'servo.glb': {
+    min: [-0.055, -0.0995, -0.038],
+    max: [0.055, 0.05, 0.033],
+  },
+  'wrist-plate.glb': {
+    min: [-0.085, -0.013, -0.0525],
+    max: [0.085, 0.028, 0.0525],
+  },
+  'pin.glb': {
+    min: [-0.0315, -0.009, -0.009],
+    max: [0.0315, 0.009, 0.009],
+  },
+  'thumb-pin.glb': {
+    min: [-0.027, -0.009, -0.009],
+    max: [0.027, 0.009, 0.009],
+  },
+  'hinge-boss.glb': {
+    min: [-0.017, -0.026, -0.0253],
+    max: [0.022, 0.026, 0.0253],
+  },
+  'knuckle-cap.glb': {
+    min: [-0.014, -0.014, -0.006],
+    max: [0.014, 0.014, 0.01],
+  },
 };
 const FINGER_FRONT_AT_SCREW = 0.0123;
-const KNUCKLE_CAP_BOUNDS: Bounds = {
-  min: [-0.014, -0.014, -0.006],
-  max: [0.014, 0.014, 0.010],
-};
 
 function worldBounds(id: string): Bounds {
   const def = PART_DEFS.find((entry) => entry.id === id);
   if (!def) {
     throw new Error(`missing part ${id}`);
-  }
-  if (!def.file) {
-    if (def.primitive === 'knuckle-cap') {
-      return {
-        min: [
-          def.local.x + KNUCKLE_CAP_BOUNDS.min[0],
-          def.local.y + KNUCKLE_CAP_BOUNDS.min[1],
-          def.local.z + KNUCKLE_CAP_BOUNDS.min[2],
-        ],
-        max: [
-          def.local.x + KNUCKLE_CAP_BOUNDS.max[0],
-          def.local.y + KNUCKLE_CAP_BOUNDS.max[1],
-          def.local.z + KNUCKLE_CAP_BOUNDS.max[2],
-        ],
-      };
-    }
-    const z = def.local.z;
-    return {
-      min: [def.local.x - 0.03, def.local.y - 0.055, z - 0.02],
-      max: [def.local.x + 0.03, def.local.y + 0.055, z + 0.02],
-    };
   }
   const base = localBounds[def.file];
   if (!base) {
@@ -191,7 +190,8 @@ describe('formal hand assembly model', () => {
   });
 
   it('seats four knuckle caps on the front of each finger joint', () => {
-    const caps = PART_DEFS.filter((def) => def.primitive === 'knuckle-cap');
+    const caps =
+        PART_DEFS.filter((def) => def.file === 'knuckle-cap.glb');
     expect(caps).toHaveLength(4);
     for (const cap of caps) {
       const finger = PART_DEFS.find((def) => def.id === cap.hostId);
@@ -204,7 +204,7 @@ describe('formal hand assembly model', () => {
       expect(overlaps(capBounds, fingerBounds)).toBe(true);
       expect(cap.screwOffsets[0]?.z).toBeCloseTo(
           KNUCKLE_CAP_SCREW_Z, 4);
-      expect(cap.screwNormals[0]).toEqual({x: 0, y: 0, z: -1});
+      expect(cap.screwNormals[0]).toEqual({x: 0, y: 0, z: 1});
     }
   });
 

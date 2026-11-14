@@ -134,7 +134,7 @@ async function boot(): Promise<void> {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const stage = new AssemblyStage(
       scene,
-      createPartProvider(prototypes, theme),
+      createPartProvider(prototypes),
       reducedMotion,
   );
   const driver = new Screwdriver(scene);

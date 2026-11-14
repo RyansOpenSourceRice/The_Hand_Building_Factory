@@ -24,16 +24,21 @@ Operating rules for AI agents working in this repository. Distilled from Ryan's 
   - Atkinson Hyperlegible font (OFL 1.1) in `public/fonts/`.
   - yeah-hand derived meshes (CERN-OHL-S-2.0) in `public/models/hand/`
     for hand parts (notices in `docs/THIRD_PARTY_NOTICES.md`).
-- Hand meshes are authored in Blender, not by hand in TypeScript. Rebuild
-  them with `tools/blender/build_hand_assets.py` from the upstream v1.3
-  release STLs; the script decimates, unwraps UVs and exports one `.glb` per
-  part plus `parts.json`. Budget: 1200 triangles for the palm, 500-1800 for
-  the other printed parts. Each mesh carries one UV set over its whole
-  surface, so a single 512 px tintable detail atlas can replace the shared
-  tile library later without re-authoring the meshes.
-- Screw anchors live in `parts.json` and are derived from the mesh, never
-  typed by hand. `npm run qa:geometry` must pass: it fails when an anchor
-  leaves its part surface or points inward.
+- Hand meshes are authored in Blender, not by hand in TypeScript. All eleven
+  come from `tools/blender/build_hand_assets.py`: the five printed parts from
+  the upstream v1.3 release STLs (decimated, UV-unwrapped), and the six
+  bought-in parts (servo, wrist plate, pin, thumb pin, hinge boss, knuckle
+  cap) modelled in the script itself. It writes one `.glb` per part plus
+  `parts.json`. Budget: 1200 triangles for the palm, 500-1800 for the other
+  printed parts. Each mesh carries one UV set over its whole surface, so a
+  single 512 px tintable detail atlas can replace the shared tile library
+  later without re-authoring the meshes.
+- Printed parts take the filament palette; the servo keeps the materials it
+  is modelled with, because players do not print it.
+- Screw anchors live in `parts.json`, are derived from the mesh and point out
+  of the part; `applyPartAnchors` flips them into driving directions. Never
+  type an anchor by hand. `npm run qa:geometry` must pass: it fails when an
+  anchor leaves its part surface or points inward.
 - Any new third-party asset requires Ryan's explicit approval before use.
 - npm packages are tooling, not assets, but still follow the supply-chain rules above.
 

@@ -148,12 +148,29 @@ async function main() {
 
   for (const [id, part] of Object.entries(manifest.parts)) {
     const glb = parseGlb(await readFile(resolve(MODEL_DIR, part.glb)));
-    const primitive = glb.json.meshes[0].primitives[0];
-    const positions = readVec3(glb, primitive.attributes.POSITION);
-    const indices = primitive.indices === undefined ?
-      positions.map((_, index) => index) :
-      readIndices(glb, primitive.indices);
-    const hasUvs = primitive.attributes.TEXCOORD_0 !== undefined;
+    // A part may be split into one primitive per material, so stitch every
+    // primitive of every mesh into one triangle soup before checking it.
+    const positions = [];
+    const indices = [];
+    let hasUvs = true;
+    for (const mesh of glb.json.meshes) {
+      for (const primitive of mesh.primitives) {
+        const base = positions.length;
+        positions.push(...readVec3(glb, primitive.attributes.POSITION));
+        if (primitive.attributes.TEXCOORD_0 === undefined) {
+          hasUvs = false;
+        }
+        if (primitive.indices === undefined) {
+          for (let i = 0; i < positions.length - base; i++) {
+            indices.push(base + i);
+          }
+        } else {
+          for (const index of readIndices(glb, primitive.indices)) {
+            indices.push(base + index);
+          }
+        }
+      }
+    }
 
     let minY = Infinity;
     let maxY = -Infinity;

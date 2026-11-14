@@ -180,8 +180,10 @@ What HANDS ON! does, milestone by milestone.
 - Hand part meshes derived from the yeah-hand release STLs
   (`public/models/hand/`, CERN-OHL-S-2.0 with credit and notices) replace
   the red box placeholder, scaled into game units in code.
-- Conversion pipeline: Babylon's STL loader at runtime plus code-built
-  additions (motor housings, screws, screwdriver).
+- Conversion pipeline: `tools/blender/build_hand_assets.py` decimates the
+  upstream STLs, unwraps UVs and exports one `.glb` per part, alongside the
+  bought-in parts it models itself (servo, wrist plate, pins, hinge boss,
+  knuckle caps). The runtime loads GLBs and needs no code-built geometry.
 - The snap service generalizes from one part to a list of parts so the hand
   assembles socket by socket.
 

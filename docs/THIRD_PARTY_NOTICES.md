@@ -12,14 +12,13 @@ Assets and code not authored in this repository.
 
 ## Yeah Hand
 
-- Files: the five exported meshes in `public/models/hand/`
+- Files: the five printed-part meshes in `public/models/hand/`
   (`palm.glb`, `finger.glb`, `thumb-base.glb`, `thumb-segments.glb`,
   `upper-cover.glb`) plus `parts.json`, with the upstream `LICENSE.txt`
   alongside them. These are decimated, UV-unwrapped derivatives of the
   upstream release STLs, produced by `tools/blender/build_hand_assets.py`.
   The eight printed hand parts reuse these five meshes through code
-  transforms (positioning, instancing). The five servos, wrist plate, thumb
-  hinge boss, four knuckle pins, and two thumb pins are built in code.
+  transforms (positioning, instancing).
 - Source: the Hierarchic STL release (v1.3) of the Yeah Hand project
   (https://github.com/opsobot/yeah-hand/releases/tag/v1.3).
 - License: CERN Open Hardware Licence Version 2 - Strongly Reciprocal
@@ -32,6 +31,18 @@ Assets and code not authored in this repository.
   than from upstream hole centres.
 - Naming: this project says it is "based on the Yeah Hand" as permitted by the
   Yeah Hand TRADEMARK.md. It is not affiliated with or endorsed by OPSOBOT.
+
+## Bought-in part meshes
+
+- Files: `servo.glb`, `wrist-plate.glb`, `pin.glb`, `thumb-pin.glb`,
+  `hinge-boss.glb` and `knuckle-cap.glb` in `public/models/hand/`.
+- These are modelled for this project in
+  `tools/blender/build_hand_assets.py`; they are not derived from any
+  upstream file. They reproduce generic hobby hardware (a small servo, a
+  wrist plate, hinge pins, a hinge boss and knuckle caps) so the build reads
+  as a real one. They ship under this project's licence.
+- The servo keeps the materials it is modelled with. The printed parts take
+  the in-game filament palette instead.
 
 ## Narrator voice clips
 

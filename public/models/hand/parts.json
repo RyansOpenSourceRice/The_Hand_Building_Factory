@@ -1,6 +1,6 @@
 {
   "generatedBy": "tools/blender/build_hand_assets.py",
-  "source": "opsobot/yeah-hand v1.3 Hierarchic STLs",
+  "source": "opsobot/yeah-hand v1.3 Hierarchic STLs (printed parts)",
   "licence": "CERN-OHL-S-2.0",
   "scale": 0.00313,
   "parts": {
@@ -250,6 +250,173 @@
           0.1379,
           -0.1068,
           0.0603
+        ]
+      }
+    },
+    "servo": {
+      "id": "servo",
+      "glb": "servo.glb",
+      "tris": 324,
+      "anchors": [
+        {
+          "point": [
+            0.0,
+            0.0,
+            -0.015
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "aim": 1.0,
+          "how": "snap"
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.055,
+          -0.0995,
+          -0.038
+        ],
+        "max": [
+          0.055,
+          0.05,
+          0.033
+        ]
+      }
+    },
+    "wrist-plate": {
+      "id": "wrist-plate",
+      "glb": "wrist-plate.glb",
+      "tris": 88,
+      "anchors": [
+        {
+          "point": [
+            0.06,
+            0.013,
+            0.0
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "aim": 1.0,
+          "how": "snap"
+        },
+        {
+          "point": [
+            -0.06,
+            0.013,
+            -0.0
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "aim": 1.0,
+          "how": "snap"
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.085,
+          -0.013,
+          -0.0525
+        ],
+        "max": [
+          0.085,
+          0.028,
+          0.0525
+        ]
+      }
+    },
+    "pin": {
+      "id": "pin",
+      "glb": "pin.glb",
+      "tris": 132,
+      "anchors": [],
+      "bbox": {
+        "min": [
+          -0.0315,
+          -0.009,
+          -0.009
+        ],
+        "max": [
+          0.0315,
+          0.009,
+          0.009
+        ]
+      }
+    },
+    "thumb-pin": {
+      "id": "thumb-pin",
+      "glb": "thumb-pin.glb",
+      "tris": 132,
+      "anchors": [],
+      "bbox": {
+        "min": [
+          -0.027,
+          -0.009,
+          -0.009
+        ],
+        "max": [
+          0.027,
+          0.009,
+          0.009
+        ]
+      }
+    },
+    "hinge-boss": {
+      "id": "hinge-boss",
+      "glb": "hinge-boss.glb",
+      "tris": 104,
+      "anchors": [],
+      "bbox": {
+        "min": [
+          -0.017,
+          -0.026,
+          -0.0253
+        ],
+        "max": [
+          0.022,
+          0.026,
+          0.0253
+        ]
+      }
+    },
+    "knuckle-cap": {
+      "id": "knuckle-cap",
+      "glb": "knuckle-cap.glb",
+      "tris": 104,
+      "anchors": [
+        {
+          "point": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "aim": 1.0,
+          "how": "snap"
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.014,
+          -0.014,
+          -0.006
+        ],
+        "max": [
+          0.014,
+          0.014,
+          0.01
         ]
       }
     }

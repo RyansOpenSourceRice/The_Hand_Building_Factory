@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.13.5] - 2026-11-14
+
+### Changed
+
+- Every hand part is now a Blender mesh. The servo, wrist plate, knuckle
+  pin, thumb pin, hinge boss and knuckle cap join the five printed parts,
+  so `tools/blender/build_hand_assets.py` writes eleven `.glb` files and
+  the TypeScript primitive builders are gone. The five servos share one
+  mesh, as the four fingers already did.
+- The servo keeps the materials it is modelled with, since players do not
+  print it; everything printed still follows the filament palette.
+- Screw anchors now point out of the part and are flipped into driving
+  directions when they are applied. Before this, the servo and knuckle-cap
+  screws were driven the wrong way and the exported anchors would have
+  been inverted for the printed parts.
+
+### Fixed
+
+- `npm run qa:geometry` stitched only the first material group of a mesh,
+  so a multi-material part was checked against a fraction of its
+  triangles. It now walks every primitive before validating.
+
 ## [2026.11.13.4] - 2026-11-13
 
 ### Changed

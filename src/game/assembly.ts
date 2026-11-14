@@ -1,7 +1,6 @@
 import {Animation} from '@babylonjs/core/Animations/animation';
 import '@babylonjs/core/Animations/animatable';
-import '@babylonjs/core/Rendering/edgesRenderer';
-import {Color3, Color4} from '@babylonjs/core/Maths/math.color';
+import {Color3} from '@babylonjs/core/Maths/math.color';
 import {Quaternion, Vector3} from '@babylonjs/core/Maths/math.vector';
 import {Mesh} from '@babylonjs/core/Meshes/mesh';
 import {StandardMaterial} from '@babylonjs/core/Materials/standardMaterial';
@@ -160,11 +159,6 @@ export class AssemblyStage {
       ghost.setEnabled(false);
       ghost.position.copyFrom(target);
       ghost.rotationQuaternion = targetQuat.clone();
-      if (!def.file) {
-        ghost.enableEdgesRendering();
-        ghost.edgesWidth = 2;
-        ghost.edgesColor = new Color4(0.35, 0.65, 1.0, 0.95);
-      }
 
       const state: PartState = {
         def,
@@ -232,7 +226,10 @@ export class AssemblyStage {
     if (!state) {
       return '';
     }
-    const material = state.mesh.material as StandardMaterial;
+    const material = state.mesh.material;
+    if (!(material instanceof StandardMaterial)) {
+      return '';
+    }
     return material.diffuseColor.toHexString();
   }
 

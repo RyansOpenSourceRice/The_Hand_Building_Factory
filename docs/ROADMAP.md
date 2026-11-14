@@ -72,4 +72,9 @@ Jam window: 2026-11-08 to 2026-11-15 (02:10 UTC).
         them headlessly, and the glTF handedness root is detached so
         parts can be grabbed again. (2026.11.13.4)
 
+18. [x] Full Blender pivot: the servo, wrist plate, knuckle pin, thumb
+        pin, hinge boss and knuckle cap are modelled in the same script,
+        so all 25 parts load from eleven Blender meshes and no hand
+        geometry is built in TypeScript any more. (2026.11.13.5)
+
 Definition of done for every item: the four gates in AGENTS.md.
