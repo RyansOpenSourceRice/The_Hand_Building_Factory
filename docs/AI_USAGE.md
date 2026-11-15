@@ -86,6 +86,46 @@ and makes no AI service calls.
 - Policy: the [asset approval rule](../AGENTS.md) applies; no output of this
   model ships in the build.
 
+### Headset recording review (development tooling)
+
+- Model: `minimax/minimax-m3.1-flash`, through OpenRouter, which accepts
+  text, images and video in one request.
+- Used for: reviewing a Quest 3 screen recording of a real play session.
+  `ffmpeg` extracts stills at 20 second intervals, the script sends them
+  in order with their timestamps, and asks for concrete visual defects
+  only. About one cent per pass over a six minute recording.
+- What it caught: desktop browser chrome and the entry panel covering
+  the stage at boot, in-world signage that is illegible at normal
+  viewing distance, and parts or tools it read as floating or
+  intersecting around the hand.
+- Limit: a still cannot tell "held in the hand" from "clipping through
+  it", and a phone-captured crop bends the frustum, so several of its
+  intersection claims did not reproduce in the desktop critic views.
+  It is a triage tool that says where to look; the deterministic gates
+  and the hand audit stay authoritative. Two of the worst issues in
+  that session were invisible to it by construction: a striped rail
+  that shimmered while the head moved, and narration that named the
+  wrong screw count. Only the player and an audio check could see
+  those.
+
+### Narrator transcript check (audio)
+
+- Requested tool: `nvidia/nemotron-3.5-transcribe`, for speech to text.
+  It is not runnable here: OpenRouter's model catalogue for this
+  project's key lists 191 models and none of them declare audio input,
+  so there is no endpoint to send a clip to. No transcription service
+  was called.
+- Substitute: the transcript is the narration source itself,
+  `src/audio/voice-lines.json`. Those strings are what
+  `scripts/gen-voice.mjs` sends to `speechify/simba-3.5`, so they are
+  the spoken text by construction. They were compared against the screw
+  counts in `src/game/handParts.ts` and against a completed build read
+  through the QA bridge.
+- Result: the cover clip said "two screws" while the cover takes four.
+  Release `2026.11.14.4` corrects the line and regenerates that clip;
+  `tests/unit/voiceLines.test.ts` now fails if a phase line and its
+  parts disagree on a screw count.
+
 ### Runware music generation
 
 - Model: `minimax:music@2.6` (MiniMax Music 2.6, instrumental mode),
@@ -143,6 +183,7 @@ and makes no AI service calls.
   `tools/blender/build_hand_assets.py`, not from an image or mesh
   generator.
 - QA: screenshots are reviewed during development by a vision model
-  (`qwen/qwen3-vl-30b-a3b-instruct` via OpenRouter). Nothing in the build
-  calls it.
+  (`qwen/qwen3-vl-30b-a3b-instruct` via OpenRouter), and screen
+  recordings of real play sessions are triaged by
+  `minimax/minimax-m3.1-flash`. Nothing in the build calls either.
 - Runtime: static build, no AI service calls.

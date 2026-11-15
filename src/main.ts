@@ -823,7 +823,12 @@ async function boot(): Promise<void> {
       },
       textureList: scene.textures.map((texture) => {
         const size = texture.getSize();
-        return {name: texture.name, width: size.width, height: size.height};
+        return {
+          name: texture.name,
+          width: size.width,
+          height: size.height,
+          noMipmap: texture.noMipmap,
+        };
       }),
     }),
     sceneDump: () => scene.meshes

@@ -268,7 +268,7 @@ function buildPrinter(scene: Scene): Mesh {
 
 function chevronTexture(scene: Scene): DynamicTexture {
   const size = 64;
-  const texture = new DynamicTexture('beltChevronTex', size, scene, false);
+  const texture = new DynamicTexture('beltChevronTex', size, scene, true);
   const ctx = texture.getContext();
   ctx.fillStyle = '#10141d';
   ctx.fillRect(0, 0, size, size);
@@ -367,7 +367,7 @@ const HALL_HALF_WIDTH = 16;
 
 function markingsTexture(scene: Scene): DynamicTexture {
   const size = 256;
-  const texture = new DynamicTexture('hallMarkingsTex', size, scene, false);
+  const texture = new DynamicTexture('hallMarkingsTex', size, scene, true);
   const ctx = texture.getContext();
   ctx.fillStyle = '#70757d';
   ctx.fillRect(0, 0, size, size);

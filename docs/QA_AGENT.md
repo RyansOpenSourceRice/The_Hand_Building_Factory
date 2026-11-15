@@ -199,6 +199,10 @@ player**. The player stands near the origin, roughly 1.4-1.7 m high.
   and the light count. `read_state.drive` reports the nearest screw
   contact distance and progress. `read_state.perf.frames` must keep rising
   after completion.
+- `read_state.sceneAudit.textureList` carries each texture's name, size
+  and `noMipmap` flag. A `tile:` texture without mipmaps turns the
+  barrier's hazard rail and the tiled floor into crawling stripes a few
+  metres out, which a still capture cannot show.
 - `read_state.hostGlow` is `stand` while the palm waits, then a part id
   while a later part waits, and empty while screws are being driven.
 - `read_state.voice` reports the current line, the last line, and play
