@@ -83,8 +83,11 @@ export function tileTexture(
   if (existing) {
     return existing;
   }
-  const texture = new Texture(TILE_FILES[name], scene, true, false,
-      Texture.TRILINEAR_SAMPLINGMODE);
+  const texture = new Texture(TILE_FILES[name], scene, {
+    noMipmap: false,
+    invertY: false,
+    samplingMode: Texture.TRILINEAR_SAMPLINGMODE,
+  });
   texture.name = `tile:${name}:${key}`;
   texture.wrapU = Constants.TEXTURE_WRAP_ADDRESSMODE;
   texture.wrapV = Constants.TEXTURE_WRAP_ADDRESSMODE;
@@ -118,8 +121,11 @@ export function handTexture(scene: Scene): Texture {
   if (existing) {
     return existing;
   }
-  const texture = new Texture(HAND_TEXTURE_FILE, scene, true, false,
-      Texture.TRILINEAR_SAMPLINGMODE);
+  const texture = new Texture(HAND_TEXTURE_FILE, scene, {
+    noMipmap: false,
+    invertY: false,
+    samplingMode: Texture.TRILINEAR_SAMPLINGMODE,
+  });
   texture.name = 'hand:filament';
   texture.wrapU = Constants.TEXTURE_WRAP_ADDRESSMODE;
   texture.wrapV = Constants.TEXTURE_WRAP_ADDRESSMODE;

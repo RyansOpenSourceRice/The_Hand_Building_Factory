@@ -488,6 +488,11 @@ test.describe('xr full assembly (chromium + mock navigator.xr)', () => {
         expect(sceneAudit.textures.tiles).toBeGreaterThanOrEqual(12);
         expect(sceneAudit.textures.overBudget).toBe(false);
         expect(sceneAudit.textures.overTileBudget).toBe(false);
+        expect(sceneAudit.textureList
+            .filter((texture) =>
+              texture.name.startsWith('tile:') && texture.noMipmap)
+            .map((texture) => texture.name))
+            .toEqual([]);
         expect(sceneAudit.lights).toBeLessThanOrEqual(4);
         expect(sceneAudit.clearance.crates).toEqual([]);
         expect(sceneAudit.clearance.forklift).toEqual([]);

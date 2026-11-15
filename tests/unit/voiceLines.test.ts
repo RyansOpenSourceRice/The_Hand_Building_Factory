@@ -52,3 +52,27 @@ describe('voice line registry', () => {
         .toBeGreaterThan(4096);
   });
 });
+
+const NUMBER_WORDS: Readonly<Record<string, number>> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+};
+
+describe('screw counts in narration', () => {
+  // A phase whose parts share one screw count narrates that count. A mixed
+  // phase says "one screw each" instead, so it is not checked here.
+  it('states the screws the parts in that phase actually need', () => {
+    for (const phase of PHASES) {
+      const counts = PART_DEFS.filter((def) => def.phase === phase)
+          .map((def) => def.screwCount);
+      const [first] = counts;
+      if (first === undefined ||
+          counts.some((count) => count !== first)) {
+        continue;
+      }
+      const line = VOICE_LINES[screwVoiceKey(phase)]?.text ?? '';
+      const word = line.toLowerCase()
+          .match(/\b(one|two|three|four|five|six)\b/)?.[1] ?? '';
+      expect(NUMBER_WORDS[word], `${phase}: "${line}"`).toBe(first);
+    }
+  });
+});

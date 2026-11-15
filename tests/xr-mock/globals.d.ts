@@ -115,7 +115,12 @@ interface FactoryDebug {
       forklift: string[];
       forkliftWalls: string[];
     };
-    textureList: Array<{name: string; width: number; height: number}>;
+    textureList: Array<{
+      name: string;
+      width: number;
+      height: number;
+      noMipmap: boolean;
+    }>;
   };
   digitAudit: (hand: 'left' | 'right') => {
     fingers: number;

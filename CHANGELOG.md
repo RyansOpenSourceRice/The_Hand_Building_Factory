@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [CalVer](https://calver.org/) versioning
 (`YYYY.MM.DD.N`).
 
+## [2026.11.14.4] - 2026-11-14
+
+### Fixed
+
+- The material tiles carried no mip chain. `new Texture(...)` was passed
+  `true` for its third argument, which is `noMipmap`, so every tile and
+  the filament map sampled at level zero and the hazard stripes on the
+  barrier's top rail crawled and blurred as the head moved. Tiles and
+  the filament map now build mipmaps and keep their trilinear sampling
+  and 8x anisotropy, which is what the design and the specification
+  already claimed. The two tiled canvas textures that face the player at
+  a grazing angle, the floor markings and the belt chevrons, generate
+  mipmaps too. `sceneAudit().textureList` reports each texture's
+  `noMipmap` flag, and the full E2E fails if any `tile:` texture lacks
+  mipmaps.
+- The narrator told the player to drive "two screws" into the upper
+  cover, which takes four. `voice-lines.json` says four now and
+  `public/audio/voice/screw-cover.ogg` is regenerated from it.
+  `tests/unit/voiceLines.test.ts` fails whenever a phase whose parts
+  share one screw count narrates a different number.
+
+### Added
+
+- `docs/AI_USAGE.md` records the headset-recording review
+  (`minimax/minimax-m3.1-flash` over stills, with its limits) and the
+  narrator transcript check, including that
+  `nvidia/nemotron-3.5-transcribe` could not run because no model on
+  this key accepts audio input.
+
 ## [2026.11.14.3] - 2026-11-14
 
 ### Added
